@@ -1786,3 +1786,17 @@ body { background: var(--body-bg); }
 /* Ficha de jugador: el contenido no es un contenedor de scroll propio (lo es .sheet-scroll).
    Si lo fuera, con overscroll-behavior: contain bloquearía la rueda y el gesto, y la ficha no bajaría. */
 .sheet .sheet-scroll .body { overflow: visible; overscroll-behavior: auto; flex: none; }
+
+/* Parte baja de la carta: degradado sutil al lila de la paleta en lugar del oscurecido negro */
+.table-card .art-frame::after {
+  background:
+    linear-gradient(180deg, rgba(23, 21, 34, 0.22) 0%, transparent 14%, transparent 38%, rgba(139, 92, 246, 0.22) 56%, rgba(112, 72, 220, 0.55) 76%, rgba(86, 52, 190, 0.78) 100%);
+}
+/* One Piece: el lila es algo más denso donde está la marca "SAMPLE" de la imagen oficial */
+.swipe-card.g-onepiece.table-card .art-frame::after {
+  background:
+    linear-gradient(180deg, rgba(23, 21, 34, 0.22) 0%, transparent 14%, transparent 30%, rgba(112, 72, 220, 0.6) 48%, rgba(86, 52, 190, 0.88) 62%, rgba(76, 45, 175, 0.92) 100%);
+}
+/* El texto sobre el lila lleva una sombra suave para leerse sobre cualquier ilustración */
+.table-card .hero-deck, .table-card .hero-sub, .table-card .hero-fav { text-shadow: 0 1px 6px rgba(30, 15, 70, 0.55); }
+.table-card .hero-sub { color: rgba(255, 255, 255, 0.85); }
