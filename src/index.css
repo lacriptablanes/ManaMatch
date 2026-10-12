@@ -1912,3 +1912,52 @@ body { background: var(--body-bg); }
 .rules-dots button { width: 8px; height: 8px; padding: 0; border-radius: 99px; background: var(--border-hi); transition: width 0.3s var(--ease-spring), background 0.3s; }
 .rules-dots button.on { width: 26px; background: var(--hot); }
 .rules-cta .primary svg:last-child:not(:first-child) { margin-left: 2px; }
+
+/* ---------- Iconos animados del código de conducta (se reproducen al entrar en cada pantalla) ---------- */
+.art { position: relative; width: 52px; height: 52px; display: grid; place-items: center; }
+.art > svg { width: 100%; height: 100%; }
+.rule-hero.small .art { width: 34px; height: 34px; }
+/* 1 · Se viene a jugar: dos espadas que chocan y sueltan un destello lima */
+.art-clash > svg { position: absolute; inset: 0; }
+.art-clash > svg:last-child { transform: scaleX(-1); }
+.rule-slide.on .art-clash > svg { animation: clash-l 0.6s 0.25s cubic-bezier(.3, 1.6, .5, 1) both; }
+.rule-slide.on .art-clash > svg:last-child { animation-name: clash-r; }
+.art-clash::after { content: ''; position: absolute; left: 50%; top: 38%; width: 10px; height: 10px; margin: -5px; border-radius: 50%; background: #fff; box-shadow: 0 0 18px 8px rgba(196, 245, 106, 0.95); opacity: 0; }
+.rule-slide.on .art-clash::after { animation: flashpt 0.7s 0.55s ease-out both; }
+/* 2 · Quedadas en tiendas: cae un pin de mapa sobre la tienda y deja una onda */
+.art-store > svg { width: 46px; height: 46px; margin-top: 8px; }
+.art-pin { position: absolute; top: -18px; left: 50%; width: 26px; height: 26px; margin-left: -13px; color: #C4F56A; filter: drop-shadow(0 3px 4px rgba(23, 21, 34, 0.35)); }
+.art-pin svg { width: 100%; height: 100%; }
+.art-pin svg path { fill: #C4F56A; stroke: #171522; }
+.art-pin svg circle { fill: #171522; stroke: none; }
+.art-ripple { position: absolute; top: 8px; left: 50%; width: 30px; height: 10px; margin-left: -15px; border-radius: 50%; border: 2px solid #C4F56A; opacity: 0; }
+.rule-slide.on .art-pin { animation: pin-drop 0.75s 0.2s cubic-bezier(.3, 1.5, .5, 1) both; }
+.rule-slide.on .art-ripple { animation: pin-ripple 0.9s 0.6s ease-out both; }
+@keyframes pin-drop { from { transform: translateY(-46px); opacity: 0; } 40% { opacity: 1; } }
+@keyframes pin-ripple { from { transform: scale(0.3); opacity: 1; } to { transform: scale(2.2); opacity: 0; } }
+/* 3 · Respeto: el escudo se levanta y se dibuja el ✓ */
+.art-check { stroke: #C4F56A; stroke-width: 2.6; stroke-dasharray: 1; stroke-dashoffset: 0; }
+.rule-slide.on .art-shield svg { animation: shield-up 0.6s 0.15s var(--ease-spring) both; }
+.rule-slide.on .art-check { animation: draw 0.5s 0.6s ease-out both; }
+@keyframes shield-up { from { transform: translateY(14px) scale(0.7); opacity: 0; } }
+@keyframes draw { from { stroke-dashoffset: 1; } }
+/* 4 · Protege tus datos: el ojo mira a los lados, parpadea y aparece un candado */
+.art-lid { transform-origin: 12px 12px; transform-box: view-box; }
+.art-pupil { transform-box: view-box; }
+.rule-slide.on .art-pupil { animation: look 1.6s 0.3s ease-in-out both; }
+.rule-slide.on .art-lid { animation: blink 3.2s 1.8s ease-in-out infinite; }
+@keyframes look { 25% { transform: translateX(-3.5px); } 60% { transform: translateX(3.5px); } }
+@keyframes blink { 0%, 90%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+.art-lock { position: absolute; right: -14px; bottom: -12px; width: 28px; height: 28px; border-radius: 10px; display: grid; place-items: center; color: #171522; background: #C4F56A; box-shadow: 0 4px 10px rgba(23, 21, 34, 0.25); }
+.art-lock svg { width: 16px; height: 16px; }
+.rule-slide.on .art-lock { animation: pop 0.5s 1.6s var(--ease-spring) both; }
+/* 5 · Solo mayores de 18: el sello "+18" cae sobre la persona */
+.art-adult > svg { width: 48px; height: 48px; }
+.art-stamp {
+  position: absolute; left: -18px; bottom: -14px; padding: 3px 8px; border-radius: 9px; transform: rotate(-12deg);
+  font-family: var(--display); font-weight: 800; font-size: 0.95rem; color: #171522; background: #C4F56A; border: 2px solid #fff;
+  box-shadow: 0 4px 10px rgba(23, 21, 34, 0.25);
+}
+.rule-slide.on .art-stamp { animation: stamp 0.45s 0.4s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes stamp { from { transform: rotate(-12deg) scale(2.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .rule-slide.on .art *, .rule-slide.on .art::after { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; } }

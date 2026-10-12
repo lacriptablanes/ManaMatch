@@ -107,11 +107,11 @@ const migrateMe = (v) => {
 
 /* ---------- Seguridad y convivencia ---------- */
 const RULES = [
-  [I.sword, 'Aquí se viene a jugar', 'ManaMatch es para encontrar rivales y mesa, no para ligar. Nada de insinuaciones ni propuestas personales.'],
-  [I.store, 'Quedadas solo en tiendas', 'Las partidas se proponen siempre en una tienda o evento público. Nunca en domicilios.'],
-  [I.shield, 'Respeto ante todo', 'Sin acoso, insultos, discriminación ni presión. Un "no" es un "no".'],
-  [I.eye, 'Protege tus datos', 'No compartas tu dirección, teléfono ni redes hasta conocer a alguien en la tienda.'],
-  [I.user, 'Solo mayores de 18', 'El chat privado y los duelos 1 contra 1 son solo para adultos verificados.'],
+  [I.sword, 'Aquí se viene a jugar', 'ManaMatch es para encontrar rivales y mesa, no para ligar. Nada de insinuaciones ni propuestas personales.', 'clash'],
+  [I.store, 'Quedadas solo en tiendas', 'Las partidas se proponen siempre en una tienda o evento público. Nunca en domicilios.', 'store'],
+  [I.shield, 'Respeto ante todo', 'Sin acoso, insultos, discriminación ni presión. Un "no" es un "no".', 'shield'],
+  [I.eye, 'Protege tus datos', 'No compartas tu dirección, teléfono ni redes hasta conocer a alguien en la tienda.', 'eye'],
+  [I.user, 'Solo mayores de 18', 'El chat privado y los duelos 1 contra 1 son solo para adultos verificados.', 'adult'],
 ];
 const SAFETY_TIPS = [
   'Queda siempre en la tienda y en horario de apertura.',
@@ -632,6 +632,38 @@ function LoginScreen() {
 }
 
 /* ================= Código de conducta (bienvenida y consulta) ================= */
+// Iconos animados del código de conducta: cada uno representa su norma. Se animan al entrar en su pantalla.
+function RuleArt({ anim, icon }) {
+  if (anim === 'clash') return <div className="art art-clash">{SWORD}{SWORD}</div>;
+  if (anim === 'store') return (
+    <div className="art art-store">
+      {I.store}
+      <span className="art-pin">{I.pin}</span>
+      <span className="art-ripple" />
+    </div>
+  );
+  if (anim === 'shield') return (
+    <div className="art art-shield">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path className="art-shield-body" d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" />
+        <path className="art-check" pathLength="1" d="M8.5 12l2.5 2.5 4.5-5" />
+      </svg>
+    </div>
+  );
+  if (anim === 'eye') return (
+    <div className="art art-eye">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <g className="art-lid"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle className="art-pupil" cx="12" cy="12" r="3" fill="currentColor" fillOpacity="0.3" /></g>
+      </svg>
+      <span className="art-lock">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+      </span>
+    </div>
+  );
+  if (anim === 'adult') return <div className="art art-adult">{I.user}<span className="art-stamp">+18</span></div>;
+  return <div className="art">{icon}</div>;
+}
+
 // Carrusel deslizable: portada, una norma por pantalla y, al final, consejos de seguridad (y aceptar, la primera vez)
 function RulesScreen({ firstTime, onAccept, onClose }) {
   const [adult, setAdult] = useState(false);
@@ -653,16 +685,16 @@ function RulesScreen({ firstTime, onAccept, onClose }) {
           <p className="rules-lead">Encuentra rivales de Magic, Pokémon y One Piece cerca de ti. <b>No es una app de citas:</b> aquí se viene a jugar.</p>
           <p className="slide-hint">Desliza para ver las {RULES.length} normas</p>
         </section>
-        {RULES.map(([icon, title, text], i) => (
+        {RULES.map(([icon, title, text, anim], i) => (
           <section key={title} className={slide(i + 1)} aria-label={`Norma ${i + 1} de ${RULES.length}`}>
-            <div className="rule-hero">{icon}<span className="rule-num">{i + 1}</span></div>
+            <div className="rule-hero"><RuleArt anim={anim} icon={icon} /><span className="rule-num">{i + 1}</span></div>
             <span className="eyebrow">Norma {i + 1} de {RULES.length}</span>
             <h2 className="rules-title">{title}</h2>
             <p className="rules-lead">{text}</p>
           </section>
         ))}
         <section className={`${slide(last)} final`}>
-          <div className="rule-hero small">{I.shield}</div>
+          <div className="rule-hero small"><RuleArt anim="shield" /></div>
           <span className="eyebrow">Antes de jugar</span>
           <h2 className="rules-title">Consejos de seguridad</h2>
           <ul className="tip-list">{SAFETY_TIPS.map((t) => <li key={t}>{I.check}<span>{t}</span></li>)}</ul>
