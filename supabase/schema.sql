@@ -1,6 +1,6 @@
 -- =====================================================================
 -- ManaMatch · Esquema de base de datos con permisos por usuario (Supabase / PostgreSQL)
--- Ejecutado en el proyecto de Supabase (eu-west-1) el 13-10-2026. Los cambios posteriores, como migraciones nuevas.
+-- Ejecutado en el proyecto de Supabase (eu-west-1) el 13-10-2026. Los cambios posteriores irán como migraciones nuevas.
 --
 -- Principios:
 --   · Row Level Security (RLS) activado en TODAS las tablas: sin política, nadie lee ni escribe.

@@ -632,35 +632,57 @@ function LoginScreen() {
 }
 
 /* ================= Código de conducta (bienvenida y consulta) ================= */
+// Carrusel deslizable: portada, una norma por pantalla y, al final, consejos de seguridad (y aceptar, la primera vez)
 function RulesScreen({ firstTime, onAccept, onClose }) {
   const [adult, setAdult] = useState(false);
   const [agree, setAgree] = useState(false);
+  const [page, setPage] = useState(0);
+  const track = useRef(null);
+  const last = RULES.length + 1;
+  const go = (i) => track.current.scrollTo({ left: i * track.current.clientWidth, behavior: 'smooth' });
+  const onScroll = (e) => setPage(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth));
+  const slide = (i) => `rule-slide ${page === i ? 'on' : ''}`;
   return (
     <div className="rules" role="dialog" aria-label="Código de conducta">
-      <div className="rules-scroll">
-        {!firstTime && <button className="icon-btn rules-close" onClick={onClose} aria-label="Cerrar">{I.close}</button>}
-        <div className="rules-logo">{I.sword}</div>
-        <span className="eyebrow">{firstTime ? 'Bienvenido a ManaMatch' : 'ManaMatch'}</span>
-        <h1 className="rules-title">Código de conducta</h1>
-        <p className="rules-lead">Encuentra rivales de Magic, Pokémon y One Piece cerca de ti. <b>No es una app de citas:</b> aquí se viene a jugar.</p>
-        <ol className="rules-list">
-          {RULES.map(([icon, title, text]) => <li key={title}><span className="rule-icon">{icon}</span><div><b>{title}</b><p>{text}</p></div></li>)}
-        </ol>
-        <div className="tips">
-          <h3>{I.shield}Consejos de seguridad</h3>
-          <ul>{SAFETY_TIPS.map((t) => <li key={t}>{t}</li>)}</ul>
-        </div>
-        {firstTime && (
-          <div className="rules-checks">
-            <button type="button" role="checkbox" aria-checked={adult} className={`check-row ${adult ? 'on' : ''}`} onClick={() => setAdult(!adult)}><span className="box">{adult && I.check}</span>Tengo 18 años o más</button>
-            <button type="button" role="checkbox" aria-checked={agree} className={`check-row ${agree ? 'on' : ''}`} onClick={() => setAgree(!agree)}><span className="box">{agree && I.check}</span>Acepto el código de conducta</button>
-          </div>
-        )}
+      {!firstTime && <button className="icon-btn rules-close" onClick={onClose} aria-label="Cerrar">{I.close}</button>}
+      <div className="rules-slides" ref={track} onScroll={onScroll}>
+        <section className={slide(0)}>
+          <div className="rule-hero">{I.sword}</div>
+          <span className="eyebrow">{firstTime ? 'Bienvenido a ManaMatch' : 'ManaMatch'}</span>
+          <h1 className="rules-title">Código de conducta</h1>
+          <p className="rules-lead">Encuentra rivales de Magic, Pokémon y One Piece cerca de ti. <b>No es una app de citas:</b> aquí se viene a jugar.</p>
+          <p className="slide-hint">Desliza para ver las {RULES.length} normas</p>
+        </section>
+        {RULES.map(([icon, title, text], i) => (
+          <section key={title} className={slide(i + 1)} aria-label={`Norma ${i + 1} de ${RULES.length}`}>
+            <div className="rule-hero">{icon}<span className="rule-num">{i + 1}</span></div>
+            <span className="eyebrow">Norma {i + 1} de {RULES.length}</span>
+            <h2 className="rules-title">{title}</h2>
+            <p className="rules-lead">{text}</p>
+          </section>
+        ))}
+        <section className={`${slide(last)} final`}>
+          <div className="rule-hero small">{I.shield}</div>
+          <span className="eyebrow">Antes de jugar</span>
+          <h2 className="rules-title">Consejos de seguridad</h2>
+          <ul className="tip-list">{SAFETY_TIPS.map((t) => <li key={t}>{I.check}<span>{t}</span></li>)}</ul>
+          {firstTime && (
+            <div className="rules-checks">
+              <button type="button" role="checkbox" aria-checked={adult} className={`check-row ${adult ? 'on' : ''}`} onClick={() => setAdult(!adult)}><span className="box">{adult && I.check}</span>Tengo 18 años o más</button>
+              <button type="button" role="checkbox" aria-checked={agree} className={`check-row ${agree ? 'on' : ''}`} onClick={() => setAgree(!agree)}><span className="box">{agree && I.check}</span>Acepto el código de conducta</button>
+            </div>
+          )}
+        </section>
       </div>
       <div className="rules-cta">
-        {firstTime
-          ? <button id="accept-rules" className="primary" disabled={!adult || !agree} onClick={onAccept}>{I.sword}Entrar a jugar</button>
-          : <button className="primary" onClick={onClose}>Entendido</button>}
+        <div className="rules-dots">
+          {Array.from({ length: last + 1 }, (_, i) => <button key={i} type="button" className={page === i ? 'on' : ''} aria-label={`Ir a la pantalla ${i + 1}`} aria-current={page === i} onClick={() => go(i)} />)}
+        </div>
+        {page < last
+          ? <button id="rules-next" className="primary" onClick={() => go(page + 1)}>{page === 0 ? 'Empezar' : 'Siguiente'}{I.chevron}</button>
+          : firstTime
+            ? <button id="accept-rules" className="primary" disabled={!adult || !agree} onClick={onAccept}>{I.sword}Entrar a jugar</button>
+            : <button className="primary" onClick={onClose}>Entendido</button>}
       </div>
     </div>
   );
