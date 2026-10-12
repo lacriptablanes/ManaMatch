@@ -1,6 +1,7 @@
 import { useState, useRef, useId, useEffect } from 'react';
 import { PLAYERS, STORES, pokeImg, opImg } from './data';
 import { GAMES, GAME_IDS } from './games';
+import { supabase } from './supabase';
 
 /* ---------- Iconos SVG inline (sin dependencias) ---------- */
 const svg = (children, extra = {}) => (
@@ -540,6 +541,93 @@ function Confirm({ title, text, confirm, onConfirm, onClose, icon = I.ban, id = 
         </div>
       </div>
     </>
+  );
+}
+
+/* ================= Inicio de sesión ================= */
+// Sesión de Supabase: undefined mientras se comprueba, null sin sesión. Sin Supabase configurado no hay cuentas.
+function useSession() {
+  const [session, setSession] = useState(supabase ? undefined : null);
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    return () => data.subscription.unsubscribe();
+  }, []);
+  return session;
+}
+
+const GOOGLE_G = (
+  <svg viewBox="0 0 48 48" aria-hidden="true">
+    <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z" />
+    <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.1z" />
+    <path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z" />
+    <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z" />
+  </svg>
+);
+
+// Fondo del login: cartas de los tres juegos que caen despacio sobre blanco
+const LOGIN_CARDS = [
+  ['magic', { name: 'Lightning Bolt' }], ['pokemon', { name: 'Charizard ex', img: pokeImg('sv3pt5', 6) }],
+  ['onepiece', { name: 'Portgas.D.Ace (OP03-001)', img: opImg('OP03-001') }], ['magic', { name: 'Ragavan, Nimble Pilferer' }],
+  ['pokemon', { name: 'Pikachu', img: pokeImg('sv3pt5', 25) }], ['onepiece', { name: 'Monkey.D.Luffy (ST01-001)', img: opImg('ST01-001') }],
+  ['magic', { name: "Atraxa, Praetors' Voice" }], ['pokemon', { name: 'Gardevoir ex', img: pokeImg('sv1', 86) }],
+  ['onepiece', { name: 'Charlotte Katakuri (OP03-099)', img: opImg('OP03-099') }], ['magic', { name: 'Korvold, Fae-Cursed King' }],
+];
+const LOGIN_SPARKS = ['#8B5CF6', '#C4F56A', '#B79CFB', '#C4F56A'];
+
+// Dos filas en diagonal con las cartas alternadas. Cada fila se pinta tres veces y avanza una copia por vuelta:
+// la copia central siempre tiene vecinas a ambos lados, así nunca se ve el final de la cinta
+const LOGIN_ROWS = [0, 1].map((r) => LOGIN_CARDS.filter((_, i) => i % 2 === r).map(([game, card]) => ({ key: card.name, src: GAMES[game].full(card) })));
+
+function LoginScreen() {
+  const [email, setEmail] = useState('');
+  const [state, setState] = useState(null); // null | 'google' | 'sending' | 'sent' | 'error'
+  // Vuelve a la misma dirección desde la que se entró (la web publicada o localhost al probar)
+  const redirectTo = location.origin;
+  const google = async () => {
+    setState('google');
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
+    if (error) setState('error');
+  };
+  const sendLink = async (e) => {
+    e.preventDefault();
+    setState('sending');
+    const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: redirectTo } });
+    setState(error ? 'error' : 'sent');
+  };
+  const busy = state === 'google' || state === 'sending';
+  return (
+    <div className="login" role="dialog" aria-label="Iniciar sesión">
+      <div className="login-rain" aria-hidden="true">
+        {LOGIN_ROWS.map((row, r) => (
+          <div key={r} className={`rain-row ${r ? 'down' : 'up'}`}>
+            <div className="rain-track">{[...row, ...row, ...row].map((c, i) => <img key={c.key + i} src={c.src} alt="" />)}</div>
+          </div>
+        ))}
+      </div>
+      <div className="sparks">{Array.from({ length: 24 }, (_, i) => <i key={i} style={{ '--i': i, '--c': LOGIN_SPARKS[i % LOGIN_SPARKS.length] }} />)}</div>
+      <div className="duel-icon" aria-hidden="true">{SWORD}{SWORD}</div>
+      <p className="its">Bienvenido a</p>
+      <h1 className="match-title" data-text="MANAMATCH">MANAMATCH</h1>
+      <p className="swiped">Encuentra rivales de Magic, Pokémon y One Piece cerca de ti.<br />Solo para mayores de 18.</p>
+
+      <button id="login-google" type="button" className="login-google" disabled={busy} onClick={google}>{GOOGLE_G}{state === 'google' ? 'Abriendo Google…' : 'Continuar con Google'}</button>
+
+      <div className="login-or"><span>o con tu correo</span></div>
+
+      {state === 'sent' ? (
+        <p className="login-note" role="status">{I.check}<span>Te hemos enviado un enlace a <b>{email.trim()}</b>. Ábrelo desde este dispositivo para entrar.</span></p>
+      ) : (
+        <form className="match-reply" onSubmit={sendLink}>
+          <input id="login-email" type="email" required autoComplete="email" aria-label="Correo electrónico" placeholder="tu@correo.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <button id="login-email-send" disabled={busy || !email.trim()}>{state === 'sending' ? 'Enviando…' : 'Enviar enlace'}</button>
+        </form>
+      )}
+      {state === 'error' && <p className="login-note error" role="alert">{I.alert}<span>No se ha podido iniciar sesión. Inténtalo de nuevo en unos minutos.</span></p>}
+
+      <p className="login-legal">{I.shield}Nunca publicamos en tu nombre</p>
+    </div>
   );
 }
 
@@ -1102,7 +1190,7 @@ function DeckSheet({ game, onSave, onClose }) {
 /* ================= My profile ================= */
 const THEMES = [['light', 'Día', I.sun], ['dark', 'Noche', I.moon], ['system', 'Auto', I.auto]];
 
-function MyProfile({ me, setMe, matchCount, theme, setTheme, blocked, onUnblock, onEdit, onAddDeck, onReset, onRules, onWipe, flash, installer }) {
+function MyProfile({ me, setMe, matchCount, theme, setTheme, blocked, onUnblock, onEdit, onAddDeck, onReset, onRules, onWipe, flash, installer, account, onSignOut }) {
   const set = (patch) => setMe((x) => ({ ...x, ...patch }));
   const p = prof(me);
   const setProf = (patch) => setMe((x) => ({ ...x, profiles: { ...x.profiles, [x.game]: { ...x.profiles[x.game], ...patch } } }));
@@ -1222,6 +1310,19 @@ function MyProfile({ me, setMe, matchCount, theme, setTheme, blocked, onUnblock,
         </div>
       </div>
 
+      {account && (
+        <>
+          <h3 className="section-title">Cuenta</h3>
+          <div className="list">
+            <button id="sign-out" className="row" onClick={onSignOut}>
+              <span className="row-icon">{I.user}</span>
+              <div className="grow"><div className="title">Cerrar sesión</div><div className="sub">{account}</div></div>
+              <span className="chev">{I.chevron}</span>
+            </button>
+          </div>
+        </>
+      )}
+
       <button id="reset-profile" className="danger-btn" onClick={onReset}>{I.reset}Restablecer perfil de ejemplo</button>
       <button id="wipe-data" className="danger-btn" onClick={onWipe}>{I.trash}Borrar mis datos de este dispositivo</button>
     </>
@@ -1323,6 +1424,7 @@ export default function App() {
   useViewportHeight();
   const online = useOnline();
   const installer = useInstall();
+  const session = useSession();
 
   // El botón "atrás" cierra primero lo último que se abrió
   useBack(tab !== 'discover', () => setTab('discover'));
@@ -1382,6 +1484,10 @@ export default function App() {
   const openChat = (p) => { setChatWith(p); setTab('chat'); setMatchFx(null); setUnread(0); };
   const inChat = tab === 'chat' && chatWith;
 
+  // Con cuentas activadas, sin sesión no se ve nada de la app
+  if (session === undefined) return <main className="phone" aria-busy="true" />;
+  if (supabase && !session) return <main className="phone"><LoginScreen /></main>;
+
   return (
     <main className={`phone ${tab === 'discover' ? 'discover' : ''}`}>
       <nav className="topnav" aria-label="Secciones">
@@ -1410,6 +1516,7 @@ export default function App() {
             blocked={blocked} onUnblock={(id) => setBlocked((b) => b.filter((x) => x !== id))}
             onEdit={() => setEditing('profile')} onAddDeck={() => setEditing('deck')} onRules={() => setRulesOpen(true)} onWipe={() => setWiping(true)} flash={flash} installer={installer}
             onReset={() => { setMe(DEFAULT_ME); flash('Perfil restablecido', I.reset); }}
+            account={session?.user.email} onSignOut={() => supabase.auth.signOut()}
           />
         )}
       </section>

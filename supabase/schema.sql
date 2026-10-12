@@ -1,6 +1,6 @@
 -- =====================================================================
--- ManaMatch · BORRADOR del esquema de base de datos con permisos por usuario (Supabase / PostgreSQL)
--- Aún no se ha ejecutado contra una base de datos real: revisadlo y probadlo en un proyecto de pruebas.
+-- ManaMatch · Esquema de base de datos con permisos por usuario (Supabase / PostgreSQL)
+-- Ejecutado en el proyecto de Supabase (eu-west-1) el 13-10-2026. Los cambios posteriores, como migraciones nuevas.
 --
 -- Principios:
 --   · Row Level Security (RLS) activado en TODAS las tablas: sin política, nadie lee ni escribe.
@@ -142,10 +142,13 @@ language sql stable security definer set search_path = public as $$
     and d <= least(radius_km, 50) * 1000
     and not public.is_blocked(auth.uid(), p.id);
 $$;
+revoke execute on function public.nearby_players(int) from public, anon;
+grant execute on function public.nearby_players(int) to authenticated;
 
 -- ---------- Políticas (RLS) ----------
+-- Solo los usuarios con sesión iniciada (rol "authenticated") ven perfiles: un visitante anónimo no ve a nadie.
 -- Perfiles: los perfiles visibles y no bloqueados son públicos; cada uno solo edita el suyo
-create policy "ver perfiles" on public.profiles for select
+create policy "ver perfiles" on public.profiles for select to authenticated
   using (id = auth.uid() or (visible and not public.is_blocked(auth.uid(), id)));
 create policy "crear mi perfil" on public.profiles for insert with check (id = auth.uid());
 create policy "editar mi perfil" on public.profiles for update
@@ -160,11 +163,11 @@ create policy "mis datos privados" on public.private_profiles for all
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- Perfiles de juego y mazos: lectura pública (si el perfil es visible), escritura solo del dueño
-create policy "ver perfiles de juego" on public.game_profiles for select
+create policy "ver perfiles de juego" on public.game_profiles for select to authenticated
   using (exists (select 1 from profiles p where p.id = user_id));
 create policy "editar mis perfiles de juego" on public.game_profiles for all
   using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy "ver mazos" on public.decks for select
+create policy "ver mazos" on public.decks for select to authenticated
   using (exists (select 1 from profiles p where p.id = user_id));
 create policy "editar mis mazos" on public.decks for all
   using (user_id = auth.uid()) with check (user_id = auth.uid());
