@@ -1267,7 +1267,13 @@ function CreateProfileScreen({ onCreate }) {
   const age = ageFrom(d.birthDate);
   const ageOk = age !== null && age >= 18 && age <= 99;
   // Cada paso se completa antes de pasar al siguiente
-  const stepOk = [d.name.trim() && ageOk, true, !!p.favCard?.name, true][page];
+  const done = [!!(d.name.trim() && ageOk), true, !!p.favCard?.name, true];
+  const stepOk = done[page];
+  const reachable = done.indexOf(false) === -1 ? last : done.indexOf(false);
+  // Si algo mueve el carrusel más allá del primer paso sin completar (teclado, foco…), vuelve a ese paso
+  useEffect(() => { if (page > reachable) go(reachable); });
+  // Las pantallas que no se ven no aceptan foco ni pulsaciones (así Tab o las flechas no saltan a la siguiente)
+  const step = (i) => ({ className: `${slide(i)}${i < last ? ' dense' : ''}`, inert: page !== i });
   const create = async () => {
     setState('saving');
     try { await onCreate({ ...d, name: d.name.trim() }); } catch { setState('error'); }
@@ -1276,7 +1282,7 @@ function CreateProfileScreen({ onCreate }) {
     <div className="rules onboarding" role="dialog" aria-label="Crear tu perfil">
       {page > 0 && <button className="icon-btn rules-close back" onClick={() => go(page - 1)} aria-label="Paso anterior">{I.back}</button>}
       <div className="rules-slides locked" ref={track} onScroll={onScroll}>
-        <section className={`${slide(0)} dense`}>
+        <section {...step(0)}>
           <div className="rule-hero small"><RuleArt anim="adult" /></div>
           <span className="eyebrow">Paso 1 de 3</span>
           <h1 className="rules-title">Crea tu perfil</h1>
@@ -1287,7 +1293,7 @@ function CreateProfileScreen({ onCreate }) {
             <AgeNotice />
           </div>
         </section>
-        <section className={`${slide(1)} dense`}>
+        <section {...step(1)}>
           <div className="rule-hero small"><RuleArt anim="clash" /></div>
           <span className="eyebrow">Paso 2 de 3</span>
           <h2 className="rules-title">¿A qué juegas?</h2>
@@ -1302,7 +1308,7 @@ function CreateProfileScreen({ onCreate }) {
             ))}
           </div>
         </section>
-        <section className={`${slide(2)} dense`}>
+        <section {...step(2)}>
           <div className={`rule-hero small g-${d.game}`}><div className="art">{GAME_ICON[d.game]}</div></div>
           <span className="eyebrow">Paso 3 de 3</span>
           <h2 className="rules-title">Tu estilo de juego</h2>
@@ -1316,7 +1322,7 @@ function CreateProfileScreen({ onCreate }) {
             <div className={`fav-preview g-${d.game}`}><img className={imgCls(d.game).trim()} src={artOf(d.game, p.favCard)} alt="" /><span>{p.favCard.name}</span></div>
           </div>
         </section>
-        <section className={slide(3)}>
+        <section {...step(3)}>
           <Hex src={artOf(d.game, p.favCard)} alt="" size={130} colors={frameOf(d.game, p.colors).list} fullCard={d.game !== 'magic' ? d.game : false} />
           <span className="eyebrow onboard-ready">Todo listo</span>
           <h2 className="rules-title">{d.name.trim() || 'Jugador'}</h2>
