@@ -222,10 +222,18 @@ function useBack(active, onBack) {
   useEffect(() => { cb.current = onBack; });
   useEffect(() => {
     if (!active) return;
-    const entry = { popped: false, onPop() { this.popped = true; cb.current(); } };
-    backStack.push(entry);
-    history.pushState({ mm: true }, '');
+    const entry = { popped: false, pushed: false, onPop() { this.popped = true; cb.current(); } };
+    // La entrada se añade un instante después: si la capa se monta y desmonta enseguida (React en modo
+    // estricto, o un cierre inmediato) no se toca el historial. Antes, ese "atrás" extra podía salir
+    // de la página actual y volver a la anterior.
+    const timer = setTimeout(() => {
+      entry.pushed = true;
+      backStack.push(entry);
+      history.pushState({ mm: true }, '');
+    });
     return () => {
+      clearTimeout(timer);
+      if (!entry.pushed) return;
       const i = backStack.indexOf(entry);
       if (i !== -1) backStack.splice(i, 1);
       if (!entry.popped) { ignorePop++; history.back(); }
