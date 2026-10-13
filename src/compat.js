@@ -30,5 +30,18 @@ export function compat(me, p) {
   return { score, shared, sharedFormats, sharedDays, sharedSlots, sharedStores, sameLevel: lvlDiff === 0 };
 }
 
-/* Ordena de más a menos compatible; a igualdad, el más cercano primero */
-export const byCompat = (me) => (a, b) => compat(me, b).score - compat(me, a).score || a.dist - b.dist;
+/* Fiabilidad: con al menos 3 partidas confirmadas, "Fiable" si casi nunca falla.
+   Quien falla a menudo no se señala en público: simplemente aparece más tarde en el mazo. */
+export const MIN_PLAYED = 3;
+export function reliability(p) {
+  const played = p.rel?.played ?? 0, noShow = p.rel?.noShow ?? 0;
+  const total = played + noShow;
+  if (total < MIN_PLAYED) return { level: 'new', played, factor: 1 };
+  const rate = noShow / total;
+  if (rate <= 0.1) return { level: 'reliable', played, factor: 1.05 };
+  return { level: rate >= 0.25 ? 'flaky' : 'ok', played, factor: rate >= 0.25 ? 0.7 : 0.95 };
+}
+
+/* Ordena de más a menos compatible (ajustado por fiabilidad); a igualdad, el más cercano primero */
+const rank = (me, p) => compat(me, p).score * reliability(p).factor;
+export const byCompat = (me) => (a, b) => rank(me, b) - rank(me, a) || a.dist - b.dist;

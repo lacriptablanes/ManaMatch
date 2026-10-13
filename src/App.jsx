@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { PLAYERS, STORES, pokeImg, opImg } from './data';
 import { GAMES, GAME_IDS, placeholderArt } from './games';
 import { CATALOG, GAME_CATEGORIES, MAX_GAMES, gameName, isGameId } from './catalog';
-import { compat, byCompat } from './compat';
+import { compat, byCompat, reliability } from './compat';
 import { supabase } from './supabase';
 import {
   loadMe, saveMe, uploadAvatar, removeAvatars, isAvatarPath, avatarUrl, ageFrom, isCardUpload,
@@ -406,6 +406,14 @@ function GamePicker({ value, onChange }) {
   );
 }
 
+/* Insignia de fiabilidad: solo positiva o "nuevo"; los que fallan no se señalan en público */
+const RelBadge = ({ p, compact }) => {
+  const r = reliability(p);
+  if (r.level === 'reliable') return <span className="rel-badge reliable" title={`${r.played} partidas confirmadas por sus rivales`}>{I.shield}Fiable{!compact && ` · ${r.played} partidas`}</span>;
+  if (r.level === 'new') return <span className="rel-badge new">{I.sparkle ?? I.plus}Nuevo{!compact && ' en ManaMatch'}</span>;
+  return compact ? null : <span className="rel-badge">{I.check}{r.played} partidas jugadas</span>;
+};
+
 /* Juegos de otro jugador, con los que compartís resaltados primero */
 const GameList = ({ me, p }) => {
   const shared = sharedGames(me, p);
@@ -516,8 +524,11 @@ function TableCard({ p, me, leaving, onInfo }) {
           {p.favCard.name && <span className="hero-fav">{gameIcon(p.game)}{p.favCard.name}</span>}
         </div>
         <div className="hero-sub">{I.store}{storeName(p.stores[0])}<i className="dot-sep" />{p.level}</div>
-        <div className="hero-shared" title="Compatibilidad contigo">
-          <b>{c.score}%</b>{shared > 0 ? (shared === 1 ? '1 juego en común' : `${shared} juegos en común`) : 'compatible'}
+        <div className="hero-chips">
+          <div className="hero-shared" title="Compatibilidad contigo">
+            <b>{c.score}%</b>{shared > 0 ? (shared === 1 ? '1 juego en común' : `${shared} juegos en común`) : 'compatible'}
+          </div>
+          <RelBadge p={p} compact />
         </div>
       </div>
       <div className={`stamp like${leaving === 'like' || leaving === 'super' ? ' show' : ''}`}>¡Duelo!</div>
@@ -562,6 +573,7 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock
           </div>
           <div className="info-pills">
             {p.verified && <span className="info-pill ok">{I.shield}Verificado en {storeName(p.stores[0])}</span>}
+            <RelBadge p={p} />
             <span className="info-pill">{I.pin}{fuzzyDist(p.dist)}</span>
             <span className="info-pill">{I.clock}{p.availability}</span>
           </div>
@@ -637,6 +649,40 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock
         )}
       </section>
     </>
+  );
+}
+
+/* ================= Fiabilidad: ¿os visteis en la tienda? ================= */
+const ATTEND = [
+  ['came', 'Sí, vino', I.check],
+  ['noshow', 'No se presentó', I.close],
+  ['cancelled', 'Lo cancelamos', I.cal],
+];
+function Attendance({ p, meetup, value, onChange, onReport }) {
+  const store = storeName(meetup.store);
+  const [now] = useState(() => Date.now());
+  const future = meetup.date && new Date(meetup.date).getTime() > now;
+  if (value) {
+    const text = value === 'came' ? `Has confirmado que ${p.name} vino. ¡Gracias por cuidar la comunidad!`
+      : value === 'noshow' ? `Has indicado que ${p.name} no se presentó.` : 'Partida cancelada: no cuenta para nadie.';
+    return (
+      <div className={`attend done ${value}`} role="status">
+        {value === 'came' ? I.shield : value === 'noshow' ? I.alert : I.cal}<span>{text}</span>
+        {value === 'noshow' && <button type="button" className="link-btn" onClick={onReport}>Denunciar</button>}
+        <button type="button" className="link-btn" onClick={() => onChange(null)}>Cambiar</button>
+      </div>
+    );
+  }
+  return (
+    <div className="attend">
+      <div className="attend-q">{I.store}<b>{future ? `Después de la partida en ${store}, confirma si ${p.name} vino` : `¿Os visteis en ${store}?`}</b></div>
+      <p>Tu respuesta es privada. Con varias partidas confirmadas, los jugadores consiguen la insignia <b>Fiable</b>.</p>
+      {!future && (
+        <div className="attend-btns">
+          {ATTEND.map(([id, label, icon]) => <button key={id} type="button" className={`ghost small ${id}`} onClick={() => onChange(id)}>{icon}{label}</button>)}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1272,7 +1318,7 @@ function useModeratedSend(onSend) {
   return [send, warn, () => setWarn(null)];
 }
 
-function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport }) {
+function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport, attended, onAttend }) {
   const [text, setText] = useState('');
   const [planning, setPlanning] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(true);
@@ -1284,6 +1330,7 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport }) {
 
   const theirs = frameOf(p.game, p.colors);
   const formats = [...new Set([...p.formats, ...(me.profiles[p.game]?.formats ?? [])])];
+  const lastMeetup = msgs.findLast((m) => m.type === 'meetup');
   return (
     <div className={`chat g-${p.game}`} style={{ '--them': theirs.glow, '--them-grad': theirs.grad }}>
       <div className="chat-head">
@@ -1316,6 +1363,7 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport }) {
             {m.from === 'them' && <div className="ticket-ok">{I.check}{p.name} ha aceptado</div>}
           </div>
         ) : <div key={i} className={`msg ${m.from}`}>{m.text}</div>)}
+        {lastMeetup && <Attendance p={p} meetup={lastMeetup} value={attended} onChange={onAttend} onReport={onReport} />}
       </div>
       {planning && (
         <div className="panel form plan">
@@ -2104,6 +2152,8 @@ export default function App() {
   const [passed, setPassed] = useState([]);
   const [matches, setMatches] = useState([]);
   const [chats, setChats] = useState({});
+  // Asistencia confirmada por ti en cada duelo (en producción se envía al servidor, que calcula la fiabilidad)
+  const [attendance, setAttendance] = useStoredState('manamatch-attendance', {}, (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {}));
   const [unread, setUnread] = useState(0);
   const [profile, setProfile] = useState(null);
   const [matchFx, setMatchFx] = useState(null);
@@ -2298,7 +2348,7 @@ export default function App() {
         {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} />}
         {tab === 'nearby' && <Nearby players={PLAYERS.filter((p) => notBlocked(p) && p.dist <= me.radius && (!me.onlyVerified || p.verified))} onInfo={setProfile} />}
         {tab === 'chat' && (chatWith
-          ? <Chat p={chatWith} me={me} msgs={chats[chatWith.id] || []} onSend={(m) => send(chatWith, m)} onBack={() => setChatWith(null)} onInfo={setProfile} onReport={() => setReporting(chatWith)} />
+          ? <Chat p={chatWith} me={me} attended={attendance[chatWith.id]} onAttend={(v) => setAttendance((a) => ({ ...a, [chatWith.id]: v }))} msgs={chats[chatWith.id] || []} onSend={(m) => send(chatWith, m)} onBack={() => setChatWith(null)} onInfo={setProfile} onReport={() => setReporting(chatWith)} />
           : <Matches matches={visibleMatches} chats={chats} openChat={openChat} />)}
         {tab === 'me' && (
           <MyProfile

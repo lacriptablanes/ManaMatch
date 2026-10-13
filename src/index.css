@@ -2202,3 +2202,33 @@ body { background: var(--body-bg); }
 .img-flag.mini { top: 8px; right: 8px; bottom: auto; padding: 6px; z-index: 2; }
 .deck-card { position: relative; }
 .upload-note { margin-top: 6px; text-align: center; }
+
+/* =====================================================================
+   FIABILIDAD
+   ===================================================================== */
+.hero-chips { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
+.hero-chips .hero-shared { margin-top: 0; }
+.rel-badge {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px;
+  font-size: 0.78rem; font-weight: 700; color: var(--text-2); background: var(--bg3);
+}
+.rel-badge svg { width: 14px; height: 14px; }
+.rel-badge.reliable { color: #fff; background: var(--brand); }
+.rel-badge.new { color: var(--brand-soft); background: color-mix(in srgb, var(--brand) 14%, transparent); }
+.info-pills .rel-badge { padding: 6px 12px; font-size: 0.8rem; }
+.attend {
+  margin: 10px 0; padding: 14px; border-radius: 18px; background: var(--card); border: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.attend-q { display: flex; gap: 8px; align-items: flex-start; }
+.attend-q svg { width: 18px; height: 18px; flex: none; color: var(--brand-soft); margin-top: 1px; }
+.attend p { margin: 0; font-size: 0.82rem; color: var(--muted); line-height: 1.4; }
+.attend-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.attend-btns .came { border-color: var(--hot); color: var(--text); }
+.attend-btns .noshow { color: var(--error); border-color: color-mix(in srgb, var(--error) 45%, transparent); }
+.attend.done { flex-direction: row; align-items: center; flex-wrap: wrap; font-size: 0.85rem; color: var(--text-2); }
+.attend.done > svg { width: 18px; height: 18px; flex: none; color: var(--brand-soft); }
+.attend.done span { flex: 1; min-width: 160px; }
+.attend.done.noshow > svg { color: var(--error); }
+/* Que la lista de mensajes no encoja las tarjetas (partida propuesta, asistencia) */
+.msgs > * { flex-shrink: 0; }
