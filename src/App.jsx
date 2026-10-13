@@ -19,6 +19,7 @@ const I = {
   send: svg(<><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4z" /></>),
   cal: svg(<><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></>),
   back: svg(<path d="M15 6l-6 6 6 6" />, { strokeWidth: 2.5 }),
+  gear: svg(<><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></>),
   close: svg(<path d="M6 6l12 12M18 6L6 18" />, { strokeWidth: 2.5 }),
   sword: svg(<><path d="M21 3l-.8 3.6L10 16.8 7.2 14 17.4 3.8z" fill="currentColor" fillOpacity="0.25" /><path d="M5 12.5l6.5 6.5" strokeWidth="2.4" /><path d="M8.2 15.8L4.5 19.5" strokeWidth="2.6" /><circle cx="3.6" cy="20.4" r="1.1" fill="currentColor" /></>, { strokeWidth: 1.8 }),
   pin: svg(<><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></>),
@@ -247,15 +248,23 @@ function useInstall() {
 }
 
 /* Sugerencias de cartas con el buscador del juego (Scryfall, Pokémon TCG API o catálogo de One Piece) */
+// Sugerencias de cartas. Cada resultado va ligado a su búsqueda: mientras llega el de la búsqueda actual
+// no se muestran los de la anterior (se podría elegir una carta equivocada) y se indica que está buscando.
 function useCardSuggest(game, q) {
-  const [list, setList] = useState([]);
+  const [res, setRes] = useState({ key: '', list: [], failed: false });
+  const key = q.trim().length < 2 ? '' : `${game}:${q.trim()}`;
   useEffect(() => {
-    if (q.trim().length < 2) return;
+    if (!key) return;
     const ctrl = new AbortController();
-    const t = setTimeout(() => { GAMES[game].search(q, ctrl.signal).then(setList).catch(() => {}); }, 300);
+    const t = setTimeout(() => {
+      GAMES[game].search(q, ctrl.signal)
+        .then((list) => setRes({ key, list, failed: false }))
+        .catch(() => { if (!ctrl.signal.aborted) setRes({ key, list: [], failed: true }); });
+    }, 300);
     return () => { clearTimeout(t); ctrl.abort(); };
-  }, [game, q]);
-  return q.trim().length < 2 ? [] : list;
+  }, [game, q, key]);
+  const ready = key && res.key === key;
+  return { list: ready ? res.list : [], loading: !!key && !ready, failed: ready && res.failed, done: ready && !res.failed };
 }
 
 /* ---------- Utilidades por juego ---------- */
@@ -664,16 +673,26 @@ function RuleArt({ anim, icon }) {
   return <div className="art">{icon}</div>;
 }
 
+// Carrusel horizontal con puntos: `slide(i)` marca la pantalla visible para que anime al entrar
+function useCarousel(count) {
+  const [page, setPage] = useState(0);
+  const track = useRef(null);
+  const go = (i) => track.current.scrollTo({ left: i * track.current.clientWidth, behavior: 'smooth' });
+  const onScroll = (e) => setPage(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth));
+  const slide = (i) => `rule-slide ${page === i ? 'on' : ''}`;
+  const dots = (
+    <div className="rules-dots">
+      {Array.from({ length: count }, (_, i) => <button key={i} type="button" className={page === i ? 'on' : ''} aria-label={`Ir a la pantalla ${i + 1}`} aria-current={page === i} onClick={() => go(i)} />)}
+    </div>
+  );
+  return { page, last: count - 1, track, go, onScroll, slide, dots };
+}
+
 // Carrusel deslizable: portada, una norma por pantalla y, al final, consejos de seguridad (y aceptar, la primera vez)
 function RulesScreen({ firstTime, onAccept, onClose }) {
   const [adult, setAdult] = useState(false);
   const [agree, setAgree] = useState(false);
-  const [page, setPage] = useState(0);
-  const track = useRef(null);
-  const last = RULES.length + 1;
-  const go = (i) => track.current.scrollTo({ left: i * track.current.clientWidth, behavior: 'smooth' });
-  const onScroll = (e) => setPage(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth));
-  const slide = (i) => `rule-slide ${page === i ? 'on' : ''}`;
+  const { page, last, track, go, onScroll, slide, dots } = useCarousel(RULES.length + 2);
   return (
     <div className="rules" role="dialog" aria-label="Código de conducta">
       {!firstTime && <button className="icon-btn rules-close" onClick={onClose} aria-label="Cerrar">{I.close}</button>}
@@ -707,14 +726,146 @@ function RulesScreen({ firstTime, onAccept, onClose }) {
         </section>
       </div>
       <div className="rules-cta">
-        <div className="rules-dots">
-          {Array.from({ length: last + 1 }, (_, i) => <button key={i} type="button" className={page === i ? 'on' : ''} aria-label={`Ir a la pantalla ${i + 1}`} aria-current={page === i} onClick={() => go(i)} />)}
-        </div>
+        {dots}
         {page < last
           ? <button id="rules-next" className="primary" onClick={() => go(page + 1)}>{page === 0 ? 'Empezar' : 'Siguiente'}{I.chevron}</button>
           : firstTime
             ? <button id="accept-rules" className="primary" disabled={!adult || !agree} onClick={onAccept}>{I.sword}Entrar a jugar</button>
             : <button className="primary" onClick={onClose}>Entendido</button>}
+      </div>
+    </div>
+  );
+}
+
+/* ================= Normas y sanciones (ver docs/NORMAS.md) ================= */
+const NORMS = [
+  {
+    level: 'Leves', sev: 1, art: 'spam',
+    items: ['Spam o mensajes repetidos.', 'Lenguaje grosero puntual, sin ir dirigido a nadie.', 'Nombre, bio o mazos con contenido inapropiado leve.'],
+    ladder: ['Advertencia', 'Turno perdido · 3 días', 'Turno perdido · 14 días'],
+  },
+  {
+    level: 'Graves', sev: 2, art: 'heart',
+    items: [
+      'Insultos, burlas o faltas de respeto a otro jugador.', 'Ligar o hacer insinuaciones.',
+      'Pedir teléfono o redes con insistencia, o presionar para quedar fuera de una tienda.', 'Discriminación por cualquier motivo.',
+      'Hacerse pasar por otra persona o por una tienda.', 'Fotos de perfil inapropiadas.',
+    ],
+    ladder: ['Turno perdido · 7 días', 'Turno perdido · 30 días', 'Descalificación'],
+  },
+  {
+    level: 'Muy graves', sev: 3, art: 'alert',
+    items: [
+      'Contenido sexual de cualquier tipo.', 'Mentir sobre la edad o cualquier contacto de un adulto con un menor.',
+      'Amenazas, violencia o acoso, también fuera de la app.', 'Publicar datos personales de otra persona.',
+      'Estafas o robos en partidas o intercambios.', 'Crear cuentas nuevas para saltarse una sanción.',
+    ],
+    ladder: ['Descalificación inmediata'],
+  },
+];
+// Nombres al estilo de los jueces de torneo
+const SANCTIONS = [
+  ['warn', 'Advertencia', 'Un aviso. Sin más consecuencias.'],
+  ['pause', 'Turno perdido', 'Suspensión temporal: no puedes retar, chatear ni aparecer a otros jugadores.'],
+  ['dq', 'Descalificación', 'Expulsión definitiva de ManaMatch.'],
+];
+const NORMS_PROCESS = [
+  [I.flag, 'Revisión en 24 h', 'Las denuncias se revisan en un máximo de 24 horas. En casos muy graves, el perfil se oculta mientras tanto.'],
+  [I.bell, 'Siempre sabrás por qué', 'Quien recibe una sanción ve qué norma ha incumplido y cuánto dura.'],
+  [I.reset, 'Puedes recurrir', 'Tienes 14 días para recurrir y lo revisa una persona distinta.'],
+  [I.clock, 'El historial caduca', 'Las infracciones leves se borran a los 6 meses y las graves a los 12.'],
+  [I.shield, 'Autoridades', 'Lo que pueda ser delito (amenazas, menores…) se comunica a las autoridades.'],
+];
+const SANCTION_MARK = { warn: '!', pause: 'II', dq: '✕' };
+
+// Iconos animados de las normas: balanza, mensajes repetidos, corazón tachado, alarma, cartas de sanción y reloj
+function NormArt({ art }) {
+  const stroke = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true };
+  if (art === 'scale') return (
+    <div className="art art-scale">
+      <svg {...stroke}>
+        <path d="M12 4v16M8 20h8" />
+        <g className="art-beam"><path d="M4 7h16" /><path d="M4 7l-2.5 6h5z" /><path d="M20 7l-2.5 6h5z" /></g>
+        <circle cx="12" cy="4" r="1.3" fill="currentColor" />
+      </svg>
+    </div>
+  );
+  if (art === 'spam') return (
+    <div className="art art-spam">
+      {[0, 1, 2].map((i) => <span key={i} className="art-bubble" style={{ '--i': i }}><i /><i /><i /></span>)}
+    </div>
+  );
+  if (art === 'heart') return (
+    <div className="art art-heart">
+      <svg {...stroke}>
+        <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="currentColor" fillOpacity="0.2" />
+        <path className="art-slash" pathLength="1" d="M4 4l16 16" />
+      </svg>
+    </div>
+  );
+  if (art === 'alert') return <div className="art art-alert">{I.alert}<span className="art-pulse" /><span className="art-pulse" /></div>;
+  if (art === 'cards') return (
+    <div className="art art-cards">{SANCTIONS.map(([id], i) => <span key={id} className={`mini-card s-${id}`} style={{ '--i': i }}>{SANCTION_MARK[id]}</span>)}</div>
+  );
+  if (art === 'clock') return (
+    <div className="art art-clock">
+      <svg {...stroke}><circle cx="12" cy="12" r="9" /><path className="art-hand" d="M12 12V6.5" /><path className="art-hand short" d="M12 12h3.5" /></svg>
+    </div>
+  );
+  return null;
+}
+
+function NormsScreen({ onClose }) {
+  const { page, last, track, go, onScroll, slide, dots } = useCarousel(NORMS.length + 3);
+  return (
+    <div className="rules norms" role="dialog" aria-label="Normas y sanciones">
+      <button className="icon-btn rules-close" onClick={onClose} aria-label="Cerrar">{I.close}</button>
+      <div className="rules-slides" ref={track} onScroll={onScroll}>
+        <section className={slide(0)}>
+          <div className="rule-hero"><NormArt art="scale" /></div>
+          <span className="eyebrow">Comunidad ManaMatch</span>
+          <h1 className="rules-title">Normas y sanciones</h1>
+          <p className="rules-lead">Las infracciones van en tres niveles. <b>Cuanto más grave, más dura la sanción</b>, y si se repite, sube un escalón.</p>
+          <p className="slide-hint">Desliza para verlas</p>
+        </section>
+        {NORMS.map(({ level, sev, art, items, ladder }, i) => (
+          <section key={level} className={`${slide(i + 1)} dense`} aria-label={`Infracciones ${level.toLowerCase()}`}>
+            <div className={`rule-hero small sev-${sev}`}><NormArt art={art} /></div>
+            <span className="eyebrow">Nivel {i + 1} de {NORMS.length}</span>
+            <h2 className="rules-title">{level}</h2>
+            <ul className={`tip-list norm-list sev-${sev}`}>{items.map((t) => <li key={t}><span className="norm-dot" /><span>{t}</span></li>)}</ul>
+            <div className={`ladder sev-${sev}`} aria-label="Sanción">
+              {ladder.map((step, n) => (
+                <div key={step} className="ladder-step" style={{ '--n': n }}>
+                  {ladder.length > 1 && <span>{n + 1}.ª vez</span>}
+                  <b>{step}</b>
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+        <section className={`${slide(NORMS.length + 1)} dense`}>
+          <div className="rule-hero small"><NormArt art="cards" /></div>
+          <span className="eyebrow">Como en los torneos</span>
+          <h2 className="rules-title">Sanciones</h2>
+          <ul className="tip-list sanction-list">
+            {SANCTIONS.map(([id, name, text]) => <li key={id}><span className={`mini-card s-${id}`}>{SANCTION_MARK[id]}</span><div><b>{name}</b><p>{text}</p></div></li>)}
+          </ul>
+        </section>
+        <section className={`${slide(last)} dense`}>
+          <div className="rule-hero small"><NormArt art="clock" /></div>
+          <span className="eyebrow">Justo y transparente</span>
+          <h2 className="rules-title">Cómo funciona</h2>
+          <ul className="tip-list sanction-list">
+            {NORMS_PROCESS.map(([icon, title, text]) => <li key={title}><span className="process-icon">{icon}</span><div><b>{title}</b><p>{text}</p></div></li>)}
+          </ul>
+        </section>
+      </div>
+      <div className="rules-cta">
+        {dots}
+        {page < last
+          ? <button id="norms-next" className="primary" onClick={() => go(page + 1)}>{page === 0 ? 'Empezar' : 'Siguiente'}{I.chevron}</button>
+          : <button id="norms-done" className="primary" onClick={onClose}>Entendido</button>}
       </div>
     </div>
   );
@@ -1049,7 +1200,7 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport }) {
 function CardInput({ id, game, value, onChange, placeholder }) {
   const [q, setQ] = useState(value?.name ?? '');
   const [open, setOpen] = useState(false);
-  const suggestions = useCardSuggest(game, open ? q : '');
+  const { list: suggestions, loading, failed, done } = useCardSuggest(game, open ? q : '');
   const pick = (card) => { setQ(card.name); onChange({ name: card.name, ...(card.img && { img: card.img }) }); setOpen(false); };
   const blur = () => setTimeout(() => {
     setOpen(false);
@@ -1064,6 +1215,11 @@ function CardInput({ id, game, value, onChange, placeholder }) {
         <input id={id} value={q} placeholder={placeholder} autoComplete="off" onChange={(e) => { setQ(e.target.value); setOpen(true); }} onBlur={blur}
           onFocus={(e) => e.target.scrollIntoView({ block: 'start', behavior: 'smooth' })} />
       </div>
+      {open && (loading || failed || (done && !suggestions.length)) && (
+        <p className="suggest suggest-state" role="status">
+          {loading ? <><span className="spinner" />Buscando cartas…</> : failed ? 'No se ha podido buscar. Revisa la conexión e inténtalo de nuevo.' : 'Sin resultados con ese nombre.'}
+        </p>
+      )}
       {open && suggestions.length > 0 && (
         <ul className="suggest" role="listbox">
           {suggestions.map((s) => (
@@ -1118,7 +1274,8 @@ function EditProfileSheet({ me, onSave, onClose }) {
   };
 
   const bioFlag = checkMessage(d.bio) === 'conduct' ? 'conduct' : null;
-  const valid = d.name.trim() && d.age >= 18 && p.colors.length && p.formats.length && !bioFlag;
+  const ageOk = d.age >= 18 && d.age <= 99;
+  const valid = d.name.trim() && ageOk && p.colors.length && p.formats.length && !bioFlag;
   return (
     <>
       <div className="sheet-bg" onClick={onClose} />
@@ -1147,8 +1304,10 @@ function EditProfileSheet({ me, onSave, onClose }) {
 
           <div className="field-row">
             <label className="grow">Nombre de jugador<input id="edit-name" value={d.name} maxLength={24} onChange={(e) => set({ name: e.target.value })} /></label>
-            <label style={{ width: 90 }}>Edad<input id="edit-age" type="number" min="18" max="99" value={d.age} onChange={(e) => set({ age: +e.target.value })} /></label>
+            <label style={{ width: 90 }}>Edad<input id="edit-age" type="number" min="18" max="99" value={d.age} onChange={(e) => set({ age: e.target.value === '' ? '' : +e.target.value })} /></label>
           </div>
+          {d.age !== '' && !ageOk && <p className="upload-error" role="alert">{d.age < 18 ? 'ManaMatch es solo para mayores de 18.' : 'Revisa la edad: como máximo 99.'}</p>}
+          {!d.name.trim() && <p className="upload-error" role="alert">Escribe un nombre de jugador.</p>}
           <p className="field-hint">{I.shield}Tu edad no se muestra a nadie: solo sirve para confirmar que eres mayor de 18.</p>
           <label>
             <span className="label-row">Sobre ti como jugador <small>{d.bio.length}/160</small></span>
@@ -1244,13 +1403,11 @@ function DeckSheet({ game, onSave, onClose }) {
 /* ================= My profile ================= */
 const THEMES = [['light', 'Día', I.sun], ['dark', 'Noche', I.moon], ['system', 'Auto', I.auto]];
 
-function MyProfile({ me, setMe, matchCount, theme, setTheme, blocked, onUnblock, onEdit, onAddDeck, onReset, onRules, onWipe, flash, installer, account, onSignOut }) {
+function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
   const set = (patch) => setMe((x) => ({ ...x, ...patch }));
   const p = prof(me);
   const setProf = (patch) => setMe((x) => ({ ...x, profiles: { ...x.profiles, [x.game]: { ...x.profiles[x.game], ...patch } } }));
-  const setNotif = (k, v) => setMe((x) => ({ ...x, notif: { ...x.notif, [k]: v } }));
   const dayNames = DAYS.filter(([k]) => me.days.includes(k)).map(([, n]) => n.slice(0, 3)).join(', ');
-  const blockedPlayers = PLAYERS.filter((x) => blocked.includes(x.id));
   return (
     <>
       <div className="game-switch">
@@ -1293,21 +1450,6 @@ function MyProfile({ me, setMe, matchCount, theme, setTheme, blocked, onUnblock,
         <button id="add-deck" className="deck-card add" onClick={onAddDeck}><span className="add-icon">{I.plus}</span>Añadir mazo<small>Formato y {GAMES[me.game].keyCard(GAMES[me.game].formats[0]).toLowerCase()}</small></button>
       </div>
 
-      {!installer.installed && (
-        <div className="panel install">
-          <img src="/icon-192.png" alt="" width="48" height="48" />
-          <div className="grow">
-            <div className="setting-label">Instala ManaMatch</div>
-            <div className="setting-hint">
-              {installer.canPrompt ? 'Tenla en tu pantalla de inicio, a pantalla completa y sin conexión.'
-                : installer.isIOS ? <>En Safari pulsa <b>Compartir</b> {I.share} y luego <b>Añadir a pantalla de inicio</b>.</>
-                  : 'Abre el menú del navegador y elige «Instalar aplicación» o «Añadir a pantalla de inicio».'}
-            </div>
-          </div>
-          {installer.canPrompt && <button id="install-app" className="primary small" onClick={installer.install}>{I.download}Instalar</button>}
-        </div>
-      )}
-
       <h3 className="section-title">Verificación</h3>
       <div className="panel verify">
         <span className="verify-icon">{I.qr}</span>
@@ -1318,68 +1460,109 @@ function MyProfile({ me, setMe, matchCount, theme, setTheme, blocked, onUnblock,
         <button className="ghost small" onClick={() => flash('Código listo: enséñalo en la tienda', I.qr)}>Ver código</button>
       </div>
 
-      <h3 className="section-title">Apariencia</h3>
-      <div className="panel">
-        <div className="setting"><span className="setting-icon">{I.palette}</span><div className="grow"><div className="setting-label">Tema</div><div className="setting-hint">Auto sigue el modo de tu dispositivo</div></div></div>
-        <Segmented name="Tema" value={theme} onChange={setTheme} options={THEMES} />
-      </div>
-
-      <h3 className="section-title">Búsqueda</h3>
-      <div className="panel form">
-        <label>
-          <span className="label-row">Radio de búsqueda <b>{me.radius} km</b></span>
-          <input id="radius" type="range" min="1" max="50" value={me.radius} onChange={(e) => set({ radius: +e.target.value })} style={{ '--p': `${((me.radius - 1) / 49) * 100}%` }} />
-        </label>
-        <Switch id="only-verified" icon={I.shield} label="Solo jugadores verificados" hint="Verificados en persona por una tienda" on={me.onlyVerified} onChange={(v) => set({ onlyVerified: v })} />
-      </div>
-
-      <h3 className="section-title">Privacidad</h3>
-      <div className="panel settings">
-        <Switch id="visible" icon={I.eye} label="Aparecer en Descubrir" hint="Si lo desactivas, nadie nuevo verá tu perfil" on={me.visible} onChange={(v) => set({ visible: v })} />
-        <Switch id="show-distance" icon={I.pin} label="Mostrar mi rango de distancia" hint="Nunca se muestra tu ubicación exacta" on={me.showDistance} onChange={(v) => set({ showDistance: v })} />
-      </div>
-
-      <h3 className="section-title">Notificaciones</h3>
-      <div className="panel settings">
-        <Switch id="notif-matches" icon={I.sword} label="Nuevos duelos" on={me.notif.matches} onChange={(v) => setNotif('matches', v)} />
-        <Switch id="notif-messages" icon={I.chat} label="Mensajes" on={me.notif.messages} onChange={(v) => setNotif('messages', v)} />
-        <Switch id="notif-events" icon={I.bell} label="Eventos de mis tiendas" hint="Torneos, prereleases y ligas" on={me.notif.events} onChange={(v) => setNotif('events', v)} />
-      </div>
-
-      <h3 className="section-title">Seguridad</h3>
-      <div className="list">
-        <button id="open-rules" className="row" onClick={onRules}>
-          <span className="row-icon safe">{I.book}</span>
-          <div className="grow"><div className="title">Código de conducta</div><div className="sub">ManaMatch es para jugar, no para ligar</div></div>
-          <span className="chev">{I.chevron}</span>
-        </button>
-        <div className="panel blocked">
-          <div className="setting"><span className="setting-icon">{I.ban}</span><div className="grow"><div className="setting-label">Usuarios bloqueados</div><div className="setting-hint">{blockedPlayers.length ? 'No pueden verte ni escribirte' : 'No has bloqueado a nadie'}</div></div></div>
-          {blockedPlayers.map((x) => (
-            <div key={x.id} className="blocked-row">
-              <img loading="lazy" decoding="async" className="avatar" src={x.avatar} alt="" /><span className="grow">{x.name}</span>
-              <button className="link-btn" onClick={() => onUnblock(x.id)}>Desbloquear</button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {account && (
-        <>
-          <h3 className="section-title">Cuenta</h3>
-          <div className="list">
-            <button id="sign-out" className="row" onClick={onSignOut}>
-              <span className="row-icon">{I.user}</span>
-              <div className="grow"><div className="title">Cerrar sesión</div><div className="sub">{account}</div></div>
-              <span className="chev">{I.chevron}</span>
-            </button>
-          </div>
-        </>
-      )}
-
-      <button id="reset-profile" className="danger-btn" onClick={onReset}>{I.reset}Restablecer perfil de ejemplo</button>
-      <button id="wipe-data" className="danger-btn" onClick={onWipe}>{I.trash}Borrar mis datos de este dispositivo</button>
     </>
+  );
+}
+
+/* ================= Ajustes (se abren desde el botón de la rueda en el perfil) ================= */
+function SettingsScreen({ me, setMe, theme, setTheme, blocked, onUnblock, onReset, onRules, onNorms, onWipe, installer, account, onSignOut, onClose }) {
+  const set = (patch) => setMe((x) => ({ ...x, ...patch }));
+  const setNotif = (k, v) => setMe((x) => ({ ...x, notif: { ...x.notif, [k]: v } }));
+  const blockedPlayers = PLAYERS.filter((x) => blocked.includes(x.id));
+  return (
+    <div className="page" role="dialog" aria-label="Ajustes">
+      <header className="page-bar">
+        <button id="close-settings" className="icon-btn" onClick={onClose} aria-label="Volver al perfil">{I.back}</button>
+        <h2>Ajustes</h2>
+        <span style={{ width: 44 }} />
+      </header>
+      <div className="screen page-body">
+        <h3 className="section-title">Apariencia</h3>
+        <div className="panel">
+          <div className="setting"><span className="setting-icon">{I.palette}</span><div className="grow"><div className="setting-label">Tema</div><div className="setting-hint">Auto sigue el modo de tu dispositivo</div></div></div>
+          <Segmented name="Tema" value={theme} onChange={setTheme} options={THEMES} />
+        </div>
+
+        <h3 className="section-title">Búsqueda</h3>
+        <div className="panel form">
+          <label>
+            <span className="label-row">Radio de búsqueda <b>{me.radius} km</b></span>
+            <input id="radius" type="range" min="1" max="50" value={me.radius} onChange={(e) => set({ radius: +e.target.value })} style={{ '--p': `${((me.radius - 1) / 49) * 100}%` }} />
+          </label>
+          <Switch id="only-verified" icon={I.shield} label="Solo jugadores verificados" hint="Verificados en persona por una tienda" on={me.onlyVerified} onChange={(v) => set({ onlyVerified: v })} />
+        </div>
+
+        <h3 className="section-title">Privacidad</h3>
+        <div className="panel settings">
+          <Switch id="visible" icon={I.eye} label="Aparecer en Descubrir" hint="Si lo desactivas, nadie nuevo verá tu perfil" on={me.visible} onChange={(v) => set({ visible: v })} />
+          <Switch id="show-distance" icon={I.pin} label="Mostrar mi rango de distancia" hint="Nunca se muestra tu ubicación exacta" on={me.showDistance} onChange={(v) => set({ showDistance: v })} />
+        </div>
+
+        <h3 className="section-title">Notificaciones</h3>
+        <div className="panel settings">
+          <Switch id="notif-matches" icon={I.sword} label="Nuevos duelos" on={me.notif.matches} onChange={(v) => setNotif('matches', v)} />
+          <Switch id="notif-messages" icon={I.chat} label="Mensajes" on={me.notif.messages} onChange={(v) => setNotif('messages', v)} />
+          <Switch id="notif-events" icon={I.bell} label="Eventos de mis tiendas" hint="Torneos, prereleases y ligas" on={me.notif.events} onChange={(v) => setNotif('events', v)} />
+        </div>
+
+        <h3 className="section-title">Seguridad</h3>
+        <div className="list">
+          <button id="open-rules" className="row" onClick={onRules}>
+            <span className="row-icon safe">{I.book}</span>
+            <div className="grow"><div className="title">Código de conducta</div><div className="sub">ManaMatch es para jugar, no para ligar</div></div>
+            <span className="chev">{I.chevron}</span>
+          </button>
+          <button id="open-norms" className="row" onClick={onNorms}>
+            <span className="row-icon safe">{I.flag}</span>
+            <div className="grow"><div className="title">Normas y sanciones</div><div className="sub">Qué se sanciona y cómo</div></div>
+            <span className="chev">{I.chevron}</span>
+          </button>
+          <div className="panel blocked">
+            <div className="setting"><span className="setting-icon">{I.ban}</span><div className="grow"><div className="setting-label">Usuarios bloqueados</div><div className="setting-hint">{blockedPlayers.length ? 'No pueden verte ni escribirte' : 'No has bloqueado a nadie'}</div></div></div>
+            {blockedPlayers.map((x) => (
+              <div key={x.id} className="blocked-row">
+                <img loading="lazy" decoding="async" className="avatar" src={x.avatar} alt="" /><span className="grow">{x.name}</span>
+                <button className="link-btn" onClick={() => onUnblock(x.id)}>Desbloquear</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {!installer.installed && (
+          <>
+            <h3 className="section-title">Aplicación</h3>
+            <div className="panel install">
+              <img src="/icon-192.png" alt="" width="48" height="48" />
+              <div className="grow">
+                <div className="setting-label">Instala ManaMatch</div>
+                <div className="setting-hint">
+                  {installer.canPrompt ? 'Tenla en tu pantalla de inicio, a pantalla completa y sin conexión.'
+                    : installer.isIOS ? <>En Safari pulsa <b>Compartir</b> {I.share} y luego <b>Añadir a pantalla de inicio</b>.</>
+                      : 'Abre el menú del navegador y elige «Instalar aplicación» o «Añadir a pantalla de inicio».'}
+                </div>
+              </div>
+              {installer.canPrompt && <button id="install-app" className="primary small" onClick={installer.install}>{I.download}Instalar</button>}
+            </div>
+          </>
+        )}
+
+        {account && (
+          <>
+            <h3 className="section-title">Cuenta</h3>
+            <div className="list">
+              <button id="sign-out" className="row" onClick={onSignOut}>
+                <span className="row-icon">{I.user}</span>
+                <div className="grow"><div className="title">Cerrar sesión</div><div className="sub">{account}</div></div>
+                <span className="chev">{I.chevron}</span>
+              </button>
+            </div>
+          </>
+        )}
+
+        <button id="reset-profile" className="danger-btn" onClick={onReset}>{I.reset}Restablecer perfil de ejemplo</button>
+        <button id="wipe-data" className="danger-btn" onClick={onWipe}>{I.trash}Borrar mis datos de este dispositivo</button>
+      </div>
+    </div>
   );
 }
 
@@ -1469,9 +1652,11 @@ export default function App() {
   const [reporting, setReporting] = useState(null);
   const [blocking, setBlocking] = useState(null);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [normsOpen, setNormsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [wiping, setWiping] = useState(false);
   const [me, setMe] = useStoredState('manamatch-me', DEFAULT_ME, migrateMe);
-  const [theme, setTheme] = useStoredState('manamatch-theme', 'system');
+  const [theme, setTheme] = useStoredState('manamatch-theme', 'dark');
   const [blocked, setBlocked] = useStoredState('manamatch-blocked', []);
   const [accepted, setAccepted] = useStoredState('manamatch-rules', false);
   useAppearance(theme, me.game);
@@ -1489,6 +1674,8 @@ export default function App() {
   useBack(!!reporting, () => setReporting(null));
   useBack(!!blocking, () => setBlocking(null));
   useBack(rulesOpen, () => setRulesOpen(false));
+  useBack(settingsOpen, () => setSettingsOpen(false));
+  useBack(normsOpen, () => setNormsOpen(false));
   useBack(wiping, () => setWiping(false));
 
   const notBlocked = (p) => !blocked.includes(p.id);
@@ -1555,25 +1742,36 @@ export default function App() {
       <section className="screen" key={tab + (chatWith?.id ?? '') + (tab === 'discover' ? me.game : '')}>
         {tab !== 'discover' && !inChat && (
           <header className="screen-head">
-            <span className="eyebrow">ManaMatch · {GAMES[me.game].name}</span>
-            <h1 className="screen-title">{TABS.find((t) => t[0] === tab)[2]}</h1>
+            <div>
+              <span className="eyebrow">ManaMatch · {GAMES[me.game].name}</span>
+              <h1 className="screen-title">{TABS.find((t) => t[0] === tab)[2]}</h1>
+            </div>
+            {tab === 'me' && <button id="open-settings" className="icon-btn head-action" onClick={() => setSettingsOpen(true)} aria-label="Ajustes" title="Ajustes">{I.gear}</button>}
           </header>
         )}
         {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} />}
-        {tab === 'nearby' && <Nearby players={PLAYERS.filter(notBlocked)} onInfo={setProfile} />}
+        {tab === 'nearby' && <Nearby players={PLAYERS.filter((p) => notBlocked(p) && p.dist <= me.radius && (!me.onlyVerified || p.verified))} onInfo={setProfile} />}
         {tab === 'chat' && (chatWith
           ? <Chat p={chatWith} me={me} msgs={chats[chatWith.id] || []} onSend={(m) => send(chatWith, m)} onBack={() => setChatWith(null)} onInfo={setProfile} onReport={() => setReporting(chatWith)} />
           : <Matches matches={visibleMatches} chats={chats} openChat={openChat} />)}
         {tab === 'me' && (
           <MyProfile
-            me={me} setMe={setMe} matchCount={visibleMatches.length} theme={theme} setTheme={setTheme}
-            blocked={blocked} onUnblock={(id) => setBlocked((b) => b.filter((x) => x !== id))}
-            onEdit={() => setEditing('profile')} onAddDeck={() => setEditing('deck')} onRules={() => setRulesOpen(true)} onWipe={() => setWiping(true)} flash={flash} installer={installer}
-            onReset={() => { setMe(DEFAULT_ME); flash('Perfil restablecido', I.reset); }}
-            account={session?.user.email} onSignOut={() => supabase.auth.signOut()}
+            me={me} setMe={setMe} matchCount={visibleMatches.length} flash={flash}
+            onEdit={() => setEditing('profile')} onAddDeck={() => setEditing('deck')}
           />
         )}
       </section>
+
+      {settingsOpen && (
+        <SettingsScreen
+          me={me} setMe={setMe} theme={theme} setTheme={setTheme} installer={installer}
+          blocked={blocked} onUnblock={(id) => setBlocked((b) => b.filter((x) => x !== id))}
+          onRules={() => setRulesOpen(true)} onNorms={() => setNormsOpen(true)} onWipe={() => setWiping(true)}
+          onReset={() => { setMe(DEFAULT_ME); flash('Perfil restablecido', I.reset); }}
+          account={session?.user.email} onSignOut={() => supabase.auth.signOut()}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
 
       {profile && (
         <ProfileSheet
@@ -1621,6 +1819,8 @@ export default function App() {
           }}
         />
       )}
+
+      {normsOpen && <NormsScreen onClose={() => setNormsOpen(false)} />}
 
       {(!accepted || rulesOpen) && (
         <RulesScreen firstTime={!accepted} onAccept={() => setAccepted(true)} onClose={() => setRulesOpen(false)} />

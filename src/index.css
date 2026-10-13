@@ -436,6 +436,8 @@ button.tag:active { transform: scale(0.95); }
 .setting { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
 .settings .setting + .setting { border-top: 1px solid var(--border); }
 .panel > .setting:first-child { padding-top: 0; }
+/* Los paneles de ajustes tienen poco relleno propio: la primera fila conserva el suyo para que arriba y abajo quede el mismo margen */
+.panel.settings > .setting:first-child, .panel.blocked > .setting:first-child { padding-top: 12px; }
 .setting-icon {
   width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0;
   color: var(--hot); background: color-mix(in srgb, var(--hot) 12%, transparent);
@@ -1761,15 +1763,15 @@ body { background: var(--body-bg); }
 .primary, .ghost, .primary.small, .ghost.small { border-radius: 999px; }
 .edit-cta { padding-top: 15px; padding-bottom: 15px; }
 
-/* 4. Paso neutro, como el botón ✕ blanco de la referencia */
-.hand-card.nope { --c: #E9E6F3; }
-.impact.nope { --c: #E9E6F3; }
-.stamp.nope { color: #F8F7FC; }
+/* 4. Paso en rojo: la carta, el impacto al lanzarla y el sello sobre el jugador */
+.hand-card.nope { --c: #EF4444; }
+.impact.nope { --c: #EF4444; }
+.stamp.nope { color: #EF4444; }
 
-/* 5. Navegación activa (día): recuadro morado relleno con icono blanco */
-:root[data-theme="light"] .topnav button.active { background: #8B5CF6; color: #fff; box-shadow: 0 6px 16px rgba(139, 92, 246, 0.35); }
-:root[data-theme="light"] .topnav button.active svg { filter: none; fill: none; }
-:root[data-theme="light"] .topnav button.active::after { display: none; }
+/* Pestaña activa: cuadro relleno con el color de acento en los dos temas (morado de día, lima de noche) */
+.topnav button.active { background: var(--accent); color: var(--on-accent); box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 35%, transparent); }
+.topnav button.active svg { filter: none; fill: none; }
+.topnav button.active::after { display: none; }
 
 /* 6. Fotos redondas en listas y chat */
 .avatar, .chat-who .avatar, .blocked-row .avatar { border-radius: 50%; }
@@ -1961,3 +1963,95 @@ body { background: var(--body-bg); }
 .rule-slide.on .art-stamp { animation: stamp 0.45s 0.4s cubic-bezier(.3, 1.6, .5, 1) both; }
 @keyframes stamp { from { transform: rotate(-12deg) scale(2.6); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .rule-slide.on .art *, .rule-slide.on .art::after { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; } }
+
+/* ---------- Normas y sanciones (carrusel) ---------- */
+/* Pantallas con más texto: el contenido empieza arriba y se puede desplazar */
+.rule-slide.dense { justify-content: flex-start; }
+.rule-slide.dense .rules-title { font-size: 1.8rem; margin-bottom: 14px; }
+/* Gravedad: lima (leve), morado (grave) y rojo (muy grave) */
+.rule-hero.sev-1 { color: #171522; background: linear-gradient(145deg, #DDFBA6, #C4F56A 55%, #A3D944); box-shadow: 0 18px 40px rgba(163, 217, 68, 0.4); }
+.rule-hero.sev-3 { background: linear-gradient(145deg, #F87171, #EF4444 55%, #C42B2B); box-shadow: 0 18px 40px rgba(239, 68, 68, 0.35); }
+.norm-list.sev-1 { --sev: #8fc23a; }
+.norm-list.sev-2 { --sev: #8B5CF6; }
+.norm-list.sev-3 { --sev: #EF4444; }
+.norm-dot { width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; flex-shrink: 0; background: var(--sev); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sev) 20%, transparent); }
+/* Escalera de sanciones: cada reincidencia sube un escalón */
+.ladder { display: flex; gap: 6px; width: 100%; margin-top: 14px; }
+.ladder-step {
+  flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 9px 8px; border-radius: 12px; text-align: center;
+  background: color-mix(in srgb, var(--sev-c) calc(10% + var(--n) * 12%), var(--card)); border: 1px solid color-mix(in srgb, var(--sev-c) 40%, transparent);
+}
+.ladder-step span { font-size: 0.66rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.ladder-step b { font-size: 0.78rem; line-height: 1.25; }
+.ladder.sev-1 { --sev-c: #C4F56A; }
+.ladder.sev-2 { --sev-c: #8B5CF6; }
+.ladder.sev-3 { --sev-c: #EF4444; }
+.ladder.sev-3 .ladder-step { padding: 12px; }
+.ladder.sev-3 .ladder-step b { font-size: 0.9rem; color: #EF4444; }
+.rule-slide.on .ladder-step { animation: fade 0.4s calc(0.35s + var(--n) * 0.15s) both; }
+.sanction-list li { align-items: center; }
+.sanction-list b { font-size: 0.9rem; color: var(--text); }
+.sanction-list p { margin: 2px 0 0; font-size: 0.8rem; line-height: 1.4; color: var(--muted); }
+.process-icon { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; flex-shrink: 0; color: #8B5CF6; background: rgba(139, 92, 246, 0.12); }
+.process-icon svg { width: 17px; height: 17px; margin: 0; color: inherit; }
+/* Mini cartas de sanción */
+.mini-card {
+  width: 30px; height: 42px; border-radius: 6px; display: grid; place-items: center; flex-shrink: 0;
+  font-family: var(--display); font-weight: 800; font-size: 0.95rem; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(23, 21, 34, 0.2);
+}
+.mini-card.s-warn { background: #C4F56A; color: #171522; }
+.mini-card.s-pause { background: #8B5CF6; color: #fff; }
+.mini-card.s-dq { background: #EF4444; color: #fff; }
+
+/* Animaciones de los iconos de normas */
+.art-scale svg { overflow: visible; }
+.art-beam { transform-origin: 12px 7px; transform-box: view-box; }
+.rule-slide.on .art-beam { animation: weigh 2.4s 0.2s ease-in-out both; }
+@keyframes weigh { 0% { transform: rotate(0); } 20% { transform: rotate(-14deg); } 45% { transform: rotate(10deg); } 70% { transform: rotate(-5deg); } 100% { transform: rotate(0); } }
+.art-spam { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.art-bubble { display: flex; gap: 3px; padding: 4px 7px; border-radius: 9px 9px 9px 3px; background: #171522; transform-origin: 0 100%; }
+.art-bubble i { width: 4px; height: 4px; border-radius: 50%; background: #C4F56A; }
+.rule-slide.on .art-bubble { animation: pop 0.35s calc(0.2s + var(--i) * 0.22s) var(--ease-spring) both; }
+.rule-slide.on .art-bubble i { animation: typing 1s calc(0.9s + var(--i) * 0.1s) ease-in-out infinite; }
+.rule-slide.on .art-bubble i:nth-child(2) { animation-delay: calc(1.05s + var(--i) * 0.1s); }
+.rule-slide.on .art-bubble i:nth-child(3) { animation-delay: calc(1.2s + var(--i) * 0.1s); }
+@keyframes typing { 50% { transform: translateY(-3px); opacity: 0.5; } }
+.art-slash { stroke: #C4F56A; stroke-width: 2.8; stroke-dasharray: 1; }
+.rule-slide.on .art-heart svg { animation: heartbeat 0.9s 0.15s ease-in-out both; }
+.rule-slide.on .art-slash { animation: draw 0.45s 0.85s ease-out both; }
+@keyframes heartbeat { 0%, 100% { transform: scale(1); } 25% { transform: scale(1.18); } 45% { transform: scale(0.95); } 65% { transform: scale(1.12); } }
+.art-alert { color: #fff; }
+.art-pulse { position: absolute; inset: -6px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.7); opacity: 0; }
+.rule-slide.on .art-alert > svg { animation: shake 0.6s 0.3s ease-in-out both; }
+.rule-slide.on .art-pulse { animation: alarm 1.6s 0.4s ease-out infinite; }
+.rule-slide.on .art-pulse + .art-pulse { animation-delay: 1.2s; }
+@keyframes shake { 20%, 60% { transform: rotate(-10deg); } 40%, 80% { transform: rotate(10deg); } }
+@keyframes alarm { from { transform: scale(0.6); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+.art-cards { width: 60px; }
+.art-cards .mini-card { position: absolute; left: 50%; top: 50%; width: 24px; height: 34px; margin: -17px 0 0 -12px; font-size: 0.75rem; border-width: 1.5px; transform: rotate(calc((var(--i) - 1) * 20deg)) translateX(calc((var(--i) - 1) * 14px)); transform-origin: 50% 120%; }
+.rule-slide.on .art-cards .mini-card { animation: deal-fan 0.5s calc(0.2s + var(--i) * 0.15s) var(--ease-spring) both; }
+@keyframes deal-fan { from { transform: translateY(-30px) rotate(0); opacity: 0; } }
+.art-hand { transform-origin: 12px 12px; transform-box: view-box; stroke: #C4F56A; stroke-width: 2.4; }
+.rule-slide.on .art-hand { animation: tick 1.6s 0.2s cubic-bezier(.3, .1, .2, 1) both; }
+.rule-slide.on .art-hand.short { animation-duration: 1.6s; animation-name: tick-short; }
+@keyframes tick { from { transform: rotate(-720deg); } }
+@keyframes tick-short { from { transform: rotate(-60deg); } }
+@media (prefers-reduced-motion: reduce) { .rule-slide.on .art *, .rule-slide.on .ladder-step { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; } }
+
+/* Estado del buscador de cartas: buscando, sin resultados o error */
+.suggest-state { display: flex; align-items: center; gap: 10px; padding: 12px 14px; font-size: 0.82rem; font-weight: 600; color: var(--muted); }
+.spinner { width: 16px; height: 16px; flex-shrink: 0; border-radius: 50%; border: 2px solid var(--border-hi); border-top-color: var(--hot); animation: spin 0.8s linear infinite; }
+
+/* Cabecera de pantalla con acción a la derecha (rueda de ajustes en el perfil) */
+.screen-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.head-action { flex-shrink: 0; margin-bottom: 2px; }
+.head-action svg { width: 21px; height: 21px; }
+.head-action:hover svg { transform: rotate(45deg); transition: transform 0.4s var(--ease-spring); }
+
+/* Página completa de ajustes: tapa la app y vuelve al perfil con la flecha */
+.page { position: absolute; inset: 0; z-index: 15; display: flex; flex-direction: column; background: var(--bg); animation: page-in 0.3s var(--ease-spring); }
+@keyframes page-in { from { transform: translateX(30%); opacity: 0; } }
+.page-bar { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: calc(12px + var(--safe-top, 0px)) 14px 8px; }
+.page-bar h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 1.3rem; }
+.page-body { padding-top: 0; }
+.page-body > .section-title:first-child { margin-top: 6px; }
