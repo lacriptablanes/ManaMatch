@@ -2232,3 +2232,10 @@ body { background: var(--body-bg); }
 .attend.done.noshow > svg { color: var(--error); }
 /* Que la lista de mensajes no encoja las tarjetas (partida propuesta, asistencia) */
 .msgs > * { flex-shrink: 0; }
+
+/* Selector de idioma en Ajustes */
+.lang-panel { margin-top: 10px; }
+.lang-select {
+  flex: none; min-width: 128px; padding: 9px 12px; border-radius: 12px; font: inherit; font-weight: 600;
+  color: var(--text); background: var(--input-bg); border: 1px solid var(--border-hi);
+}

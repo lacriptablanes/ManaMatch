@@ -4,6 +4,7 @@ import { PLAYERS, STORES, pokeImg, opImg } from './data';
 import { GAMES, GAME_IDS, placeholderArt } from './games';
 import { CATALOG, GAME_CATEGORIES, MAX_GAMES, gameName, isGameId } from './catalog';
 import { compat, byCompat, reliability } from './compat';
+import { t, useLang, setLang, getLang, LANGS, locale } from './i18n';
 import { supabase } from './supabase';
 import {
   loadMe, saveMe, uploadAvatar, removeAvatars, isAvatarPath, avatarUrl, ageFrom, isCardUpload,
@@ -51,6 +52,7 @@ const I = {
   eye: svg(<><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>),
   shield: svg(<><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></>),
   search: svg(<><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></>),
+  globe: svg(<><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z" /></>),
   reset: svg(<><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></>),
   palette: svg(<><path d="M12 3a9 9 0 0 0 0 18c1.5 0 2-1 2-2s-1-1.5-1-2.5 1-1.5 2-1.5h2a4 4 0 0 0 4-4c0-4.5-4-8-9-8z" /><circle cx="7.5" cy="11" r="1.2" fill="currentColor" /><circle cx="10" cy="7" r="1.2" fill="currentColor" /><circle cx="15" cy="7.5" r="1.2" fill="currentColor" /></>),
   flag: svg(<><path d="M5 21V4" /><path d="M5 4h11l-2 4 2 4H5" /></>),
@@ -164,7 +166,7 @@ const REPORT_REASONS = [
 ];
 
 /* Distancia aproximada: nunca mostramos la posición exacta de un jugador */
-const fuzzyDist = (km) => km < 1 ? 'A menos de 1 km' : km < 2 ? 'A 1–2 km' : km < 5 ? 'A 2–5 km' : 'A más de 5 km';
+const fuzzyDist = (km) => t(km < 1 ? 'A menos de 1 km' : km < 2 ? 'A 1–2 km' : km < 5 ? 'A 2–5 km' : 'A más de 5 km');
 /* Moderación básica del chat. En producción se repetiría en el servidor con un modelo de moderación. */
 const CONTACT_RE = /(\+?\d[\d\s.-]{7,}\d)|(^|\s)@[a-z0-9_.]{3,}|[\w.-]+@[\w-]+\.\w+|\b(whats?app|wasap|telegram|insta(gram)?|snap(chat)?|tiktok|mi n[uú]mero|tel[eé]fono)\b/i;
 /* Normaliza para que no se pueda esquivar con tildes, mayúsculas, números o letras repetidas ("F0LLAAAR") */
@@ -324,7 +326,7 @@ const frameOf = (game, colors) => {
 };
 const toggleIn = (arr, v) => arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
 const Pips = ({ game, colors }) => (
-  <div className="pips">{colors.filter((c) => GAMES[game].palette[c]).map((c) => <span key={c} className="pip" title={GAMES[game].palette[c].label} style={{ '--c': GAMES[game].palette[c].color }} />)}</div>
+  <div className="pips">{colors.filter((c) => GAMES[game].palette[c]).map((c) => <span key={c} className="pip" title={t(GAMES[game].palette[c].label)} style={{ '--c': GAMES[game].palette[c].color }} />)}</div>
 );
 const Empty = ({ icon, title, text }) => (
   <div className="empty">
@@ -348,10 +350,10 @@ const Segmented = ({ value, options, onChange, name }) => (
   </div>
 );
 const ChipPicker = ({ options, value, onChange, toggle }) => (
-  <div className="tags">{options.map((o) => <button type="button" key={o} className={`tag ${value.includes(o) ? 'on' : ''}`} aria-pressed={value.includes(o)} onClick={() => (toggle ? toggle(o) : onChange(toggleIn(value, o)))}>{o}</button>)}</div>
+  <div className="tags">{options.map((o) => <button type="button" key={o} className={`tag ${value.includes(o) ? 'on' : ''}`} aria-pressed={value.includes(o)} onClick={() => (toggle ? toggle(o) : onChange(toggleIn(value, o)))}>{t(o)}</button>)}</div>
 );
 const ModNote = ({ kind }) => kind && (
-  <div className={`mod-note ${kind === 'rate' ? 'contact' : kind}`} role="alert">{kind === 'conduct' ? I.ban : I.alert}<span>{MOD_TEXT[kind]}</span></div>
+  <div className={`mod-note ${kind === 'rate' ? 'contact' : kind}`} role="alert">{kind === 'conduct' ? I.ban : I.alert}<span>{t(MOD_TEXT[kind])}</span></div>
 );
 const gameIcon = (g) => GAME_ICON[g] ?? I.deck;
 const GameTag = ({ game }) => <span className={`game-tag g-${game}`}>{gameIcon(game)}{GAMES[game].name}</span>;
@@ -381,15 +383,15 @@ function GamePicker({ value, onChange }) {
   return (
     <div className="game-picker">
       <div className="picker-head">
-        <p>Elige los juegos a los que juegas. Te mostraremos antes a la gente con más juegos en común.</p>
+        <p>{t('Elige los juegos a los que juegas. Te mostraremos antes a la gente con más juegos en común.')}</p>
         <span className={`picker-count${full ? ' full' : ''}`} aria-live="polite">({value.length}/{MAX_GAMES})</span>
       </div>
       <label className="picker-search">{I.search}
-        <input type="search" value={q} placeholder="Buscar juego" aria-label="Buscar juego" onChange={(e) => setQ(e.target.value)} />
+        <input type="search" value={q} placeholder={t('Buscar juego')} aria-label={t('Buscar juego')} onChange={(e) => setQ(e.target.value)} />
       </label>
       {groups.map(([cat, games]) => (
         <div key={cat} className="picker-group">
-          <h4>{cat}</h4>
+          <h4>{t(cat)}</h4>
           <div className="tags">
             {games.map((g) => {
               const on = value.includes(g.id);
@@ -401,7 +403,7 @@ function GamePicker({ value, onChange }) {
           </div>
         </div>
       ))}
-      {!groups.length && <p className="field-hint">No encontramos «{q}». Pronto añadiremos más juegos.</p>}
+      {!groups.length && <p className="field-hint">{t('No encontramos «{q}». Pronto añadiremos más juegos.', { q })}</p>}
     </div>
   );
 }
@@ -409,9 +411,9 @@ function GamePicker({ value, onChange }) {
 /* Insignia de fiabilidad: solo positiva o "nuevo"; los que fallan no se señalan en público */
 const RelBadge = ({ p, compact }) => {
   const r = reliability(p);
-  if (r.level === 'reliable') return <span className="rel-badge reliable" title={`${r.played} partidas confirmadas por sus rivales`}>{I.shield}Fiable{!compact && ` · ${r.played} partidas`}</span>;
-  if (r.level === 'new') return <span className="rel-badge new">{I.sparkle ?? I.plus}Nuevo{!compact && ' en ManaMatch'}</span>;
-  return compact ? null : <span className="rel-badge">{I.check}{r.played} partidas jugadas</span>;
+  if (r.level === 'reliable') return <span className="rel-badge reliable" title={t('{n} partidas confirmadas por sus rivales', { n: r.played })}>{I.shield}{t('Fiable')}{!compact && ` · ${t('{n} partidas', { n: r.played })}`}</span>;
+  if (r.level === 'new') return <span className="rel-badge new">{I.plus}{compact ? t('Nuevo') : t('Nuevo en ManaMatch')}</span>;
+  return compact ? null : <span className="rel-badge">{I.check}{t('{n} partidas jugadas', { n: r.played })}</span>;
 };
 
 /* Juegos de otro jugador, con los que compartís resaltados primero */
@@ -507,32 +509,32 @@ function TableCard({ p, me, leaving, onInfo }) {
       onPointerMove={tilt} onPointerLeave={untilt} onPointerCancel={untilt}
     >
       <div className="art-frame">
-        <img className={`hero-art${imgCls(p.game, p.favCard)}`} src={artOf(p.game, p.favCard)} alt={`Carta ${p.favCard.name}`} draggable="false" />
+        <img className={`hero-art${imgCls(p.game, p.favCard)}`} src={artOf(p.game, p.favCard)} alt={t('Carta {name}', { name: p.favCard.name })} draggable="false" />
         <div className="foil" />
         <div className="hero-top">
           <span className="glass-chip game-chip">{gameIcon(p.game)}{GAMES[p.game].name}</span>
           <span className="glass-chip dist-chip">{I.pin}{fuzzyDist(p.dist)}</span>
         </div>
       </div>
-      <div className="hero-body" role="button" tabIndex={0} aria-label={`Ver la ficha de ${p.name}`}
+      <div className="hero-body" role="button" tabIndex={0} aria-label={t('Ver la ficha de {name}', { name: p.name })}
         onClick={onInfo} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onInfo(); } }}>
-        <Hex src={p.avatar} alt={p.name} size={100} badge={p.formats[0]} colors={list} />
-        <h2 className="hero-name">{p.name}{p.verified && <span className="verified" title={`Verificado en ${storeName(p.stores[0])}`}>{I.check}</span>}</h2>
-        <div className="hero-deck">{I.deck}<b>{deck.name}</b><i className="dot-sep" />{deck.format}</div>
+        <Hex src={p.avatar} alt={p.name} size={100} badge={t(p.formats[0])} colors={list} />
+        <h2 className="hero-name">{p.name}{p.verified && <span className="verified" title={t('Verificado en {store}', { store: storeName(p.stores[0]) })}>{I.check}</span>}</h2>
+        <div className="hero-deck">{I.deck}<b>{deck.name}</b><i className="dot-sep" />{t(deck.format)}</div>
         <div className="hero-tags">
           <Pips game={p.game} colors={p.colors} />
           {p.favCard.name && <span className="hero-fav">{gameIcon(p.game)}{p.favCard.name}</span>}
         </div>
-        <div className="hero-sub">{I.store}{storeName(p.stores[0])}<i className="dot-sep" />{p.level}</div>
+        <div className="hero-sub">{I.store}{storeName(p.stores[0])}<i className="dot-sep" />{t(p.level)}</div>
         <div className="hero-chips">
-          <div className="hero-shared" title="Compatibilidad contigo">
-            <b>{c.score}%</b>{shared > 0 ? (shared === 1 ? '1 juego en común' : `${shared} juegos en común`) : 'compatible'}
+          <div className="hero-shared" title={t('Compatibilidad contigo')}>
+            <b>{c.score}%</b>{shared > 0 ? (shared === 1 ? t('1 juego en común') : t('{n} juegos en común', { n: shared })) : t('compatible')}
           </div>
           <RelBadge p={p} compact />
         </div>
       </div>
-      <div className={`stamp like${leaving === 'like' || leaving === 'super' ? ' show' : ''}`}>¡Duelo!</div>
-      <div className={`stamp nope${leaving === 'nope' ? ' show' : ''}`}>Paso</div>
+      <div className={`stamp like${leaving === 'like' || leaving === 'super' ? ' show' : ''}`}>{t('¡Duelo!')}</div>
+      <div className={`stamp nope${leaving === 'nope' ? ' show' : ''}`}>{t('Paso')}</div>
     </article>
   );
 }
@@ -541,21 +543,24 @@ function TableCard({ p, me, leaving, onInfo }) {
 function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock }) {
   const c = compat(me, p);
   const shared = c.shared.length;
-  const dayName = (k) => DAYS.find(([d]) => d === k)?.[1].toLowerCase();
+  const dayName = (k) => t(DAYS.find(([d]) => d === k)?.[1] ?? k).toLowerCase();
+  const list2 = (xs) => xs.join(', ');
   const reasons = [
-    shared > 0 && [I.deck, `Jugáis a ${c.shared.map(gameName).join(', ')}`],
-    c.sharedFormats.length > 0 && [I.sword, `Mismos formatos: ${c.sharedFormats.join(', ')}`],
-    c.sameLevel && [I.check, `Mismo nivel: ${p.level}`],
-    c.sharedDays.length > 0 && [I.clock, `Coincidís los ${c.sharedDays.map(dayName).join(', ')}${c.sharedSlots.length ? ` por la ${c.sharedSlots.join(', ').toLowerCase()}` : ''}`],
-    c.sharedStores.length > 0 && [I.store, `Vais a ${c.sharedStores.map(storeName).join(', ')}`],
+    shared > 0 && [I.deck, t('Jugáis a {games}', { games: list2(c.shared.map(gameName)) })],
+    c.sharedFormats.length > 0 && [I.sword, t('Mismos formatos: {formats}', { formats: list2(c.sharedFormats.map((f) => t(f))) })],
+    c.sameLevel && [I.check, t('Mismo nivel: {level}', { level: t(p.level) })],
+    c.sharedDays.length > 0 && [I.clock, c.sharedSlots.length
+      ? t('Coincidís los {days} por la {slots}', { days: list2(c.sharedDays.map(dayName)), slots: list2(c.sharedSlots.map((x) => t(x).toLowerCase())) })
+      : t('Coincidís los {days}', { days: list2(c.sharedDays.map(dayName)) })],
+    c.sharedStores.length > 0 && [I.store, t('Vais a {stores}', { stores: list2(c.sharedStores.map(storeName)) })],
   ].filter(Boolean);
   const { list } = frameOf(p.game, p.colors);
   const pal = GAMES[p.game].palette;
   return (
     <>
       <div className="sheet-bg" onClick={onClose} />
-      <section className={`sheet g-${p.game}`} aria-label={`Perfil de ${p.name}`}>
-        <button id="close-profile" className="icon-btn glass close" onClick={onClose} aria-label="Cerrar">{I.close}</button>
+      <section className={`sheet g-${p.game}`} aria-label={t('Perfil de {name}', { name: p.name })}>
+        <button id="close-profile" className="icon-btn glass close" onClick={onClose} aria-label={t('Cerrar')}>{I.close}</button>
         {/* La cabecera se desplaza con el contenido para no tapar el texto al hacer scroll */}
         <div className="sheet-scroll">
         <div className="sheet-hero">
@@ -567,69 +572,69 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock
             <Hex src={p.avatar} alt={p.name} size={84} colors={list} ring={false} />
             <div>
               <GameTag game={p.game} />
-              <h2 className="sheet-name">{p.name}{p.verified && <span className="verified" title="Verificado">{I.check}</span>}</h2>
-              <div className="sheet-sub">{[p.level, ...p.formats.filter((f) => f !== p.level)].join(' · ')}</div>
+              <h2 className="sheet-name">{p.name}{p.verified && <span className="verified" title={t('Verificado')}>{I.check}</span>}</h2>
+              <div className="sheet-sub">{[p.level, ...p.formats.filter((f) => f !== p.level)].map((x) => t(x)).join(' · ')}</div>
             </div>
           </div>
           <div className="info-pills">
-            {p.verified && <span className="info-pill ok">{I.shield}Verificado en {storeName(p.stores[0])}</span>}
+            {p.verified && <span className="info-pill ok">{I.shield}{t('Verificado en {store}', { store: storeName(p.stores[0]) })}</span>}
             <RelBadge p={p} />
             <span className="info-pill">{I.pin}{fuzzyDist(p.dist)}</span>
-            <span className="info-pill">{I.clock}{p.availability}</span>
+            <span className="info-pill">{I.clock}{t(p.availability)}</span>
           </div>
           <p className="bio">{p.bio}</p>
 
           <div className="compat-box">
             <div className="compat-ring" style={{ '--v': c.score }}><b>{c.score}%</b></div>
             <div className="grow">
-              <div className="compat-title">Compatibilidad</div>
+              <div className="compat-title">{t('Compatibilidad')}</div>
               {reasons.length ? (
                 <ul className="compat-reasons">{reasons.map(([icon, text]) => <li key={text}>{icon}<span>{text}</span></li>)}</ul>
-              ) : <p className="compat-none">No tenéis mucho en común todavía, pero un duelo nunca se sabe.</p>}
+              ) : <p className="compat-none">{t('No tenéis mucho en común todavía, pero un duelo nunca se sabe.')}</p>}
             </div>
           </div>
 
           {p.interests?.length > 0 && <>
-            <h3 className="section-title">Juegos{shared > 0 && <small className="title-note">{shared} en común</small>}</h3>
+            <h3 className="section-title">{t('Juegos')}{shared > 0 && <small className="title-note">{t('{n} en común', { n: shared })}</small>}</h3>
             <GameList me={me} p={p} />
           </>}
 
-          <h3 className="section-title">Mazos</h3>
+          <h3 className="section-title">{t('Mazos')}</h3>
           <div className="decks">
             {p.decks.map((d) => (
               <div key={d.name} className="deck-card">
                 <img loading="lazy" decoding="async" className={imgCls(p.game, d.card).trim()} src={artOf(p.game, d.card)} alt="" />
-                <span className="deck-format">{d.format}</span>
-                <div><b>{d.name}</b><small>{GAMES[p.game].keyCard(d.format)}{d.card.name && `: ${d.card.name}`}</small></div>
+                <span className="deck-format">{t(d.format)}</span>
+                <div><b>{d.name}</b><small>{t(GAMES[p.game].keyCard(d.format))}{d.card.name && `: ${d.card.name}`}</small></div>
                 {d.card.upload && !isHidden(d.card) && (
-                  <button type="button" className="img-flag mini" onClick={() => onReportImage(d.card.upload)} aria-label={`Denunciar la imagen del mazo ${d.name}`}>{I.flag}</button>
+                  <button type="button" className="img-flag mini" onClick={() => onReportImage(d.card.upload)} aria-label={t('Denunciar la imagen del mazo {name}', { name: d.name })}>{I.flag}</button>
                 )}
               </div>
             ))}
           </div>
 
-          {p.colors.length > 0 && !GAMES[p.game].generic && <h3 className="section-title">{GAMES[p.game].paletteLabel}</h3>}
+          {p.colors.length > 0 && !GAMES[p.game].generic && <h3 className="section-title">{t(GAMES[p.game].paletteLabel)}</h3>}
           <div className="tags">
-            {p.colors.filter((c) => pal[c]).map((c) => <span key={c} className="tag color-tag"><span className="pip" style={{ '--c': pal[c].color }} />{pal[c].label}</span>)}
+            {p.colors.filter((c) => pal[c]).map((c) => <span key={c} className="tag color-tag"><span className="pip" style={{ '--c': pal[c].color }} />{t(pal[c].label)}</span>)}
           </div>
 
-          <h3 className="section-title">{GAMES[p.game].favLabel}</h3>
+          <h3 className="section-title">{t(GAMES[p.game].favLabel)}</h3>
           <div className="fav-wrap">
             <img loading="lazy" decoding="async" className="fav-full" src={fullOf(p.game, p.favCard)} alt={p.favCard.name} />
             {p.favCard.upload && !isHidden(p.favCard) && (
-              <button type="button" className="img-flag" onClick={() => onReportImage(p.favCard.upload)} aria-label="Denunciar esta imagen">{I.flag}Denunciar imagen</button>
+              <button type="button" className="img-flag" onClick={() => onReportImage(p.favCard.upload)} aria-label={t('Denunciar esta imagen')}>{I.flag}{t('Denunciar imagen')}</button>
             )}
           </div>
-          {p.favCard.upload && <p className="field-hint upload-note">Imagen subida por {p.name}</p>}
+          {p.favCard.upload && <p className="field-hint upload-note">{t('Imagen subida por {name}', { name: p.name })}</p>}
 
-          <h3 className="section-title">Dónde juega</h3>
+          <h3 className="section-title">{t('Dónde juega')}</h3>
           <div className="list">
             {p.stores.map((id) => {
               const s = STORES.find((x) => x.id === id);
               return (
                 <div key={id} className="row">
                   <span className="row-icon">{I.store}</span>
-                  <div className="grow"><div className="title">{s.name}</div><div className="sub">{s.events}</div></div>
+                  <div className="grow"><div className="title">{s.name}</div><div className="sub">{t(s.events)}</div></div>
                   <span className="dist">{s.dist} km</span>
                 </div>
               );
@@ -637,14 +642,14 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock
           </div>
 
           <div className="safety-actions">
-            <button id="block-user" className="ghost small" onClick={onBlock}>{I.ban}Bloquear</button>
-            <button id="report-user" className="ghost small danger" onClick={onReport}>{I.flag}Denunciar</button>
+            <button id="block-user" className="ghost small" onClick={onBlock}>{I.ban}{t('Bloquear')}</button>
+            <button id="report-user" className="ghost small danger" onClick={onReport}>{I.flag}{t('Denunciar')}</button>
           </div>
         </div>
         </div>
         {onLike && (
           <div className="sheet-cta">
-            <button id="like-from-profile" className="primary" onClick={onLike}>{I.sword}Retar a una partida</button>
+            <button id="like-from-profile" className="primary" onClick={onLike}>{I.sword}{t('Retar a una partida')}</button>
           </div>
         )}
       </section>
@@ -663,23 +668,23 @@ function Attendance({ p, meetup, value, onChange, onReport }) {
   const [now] = useState(() => Date.now());
   const future = meetup.date && new Date(meetup.date).getTime() > now;
   if (value) {
-    const text = value === 'came' ? `Has confirmado que ${p.name} vino. ¡Gracias por cuidar la comunidad!`
-      : value === 'noshow' ? `Has indicado que ${p.name} no se presentó.` : 'Partida cancelada: no cuenta para nadie.';
+    const text = value === 'came' ? t('Has confirmado que {name} vino. ¡Gracias por cuidar la comunidad!', { name: p.name })
+      : value === 'noshow' ? t('Has indicado que {name} no se presentó.', { name: p.name }) : t('Partida cancelada: no cuenta para nadie.');
     return (
       <div className={`attend done ${value}`} role="status">
         {value === 'came' ? I.shield : value === 'noshow' ? I.alert : I.cal}<span>{text}</span>
-        {value === 'noshow' && <button type="button" className="link-btn" onClick={onReport}>Denunciar</button>}
-        <button type="button" className="link-btn" onClick={() => onChange(null)}>Cambiar</button>
+        {value === 'noshow' && <button type="button" className="link-btn" onClick={onReport}>{t('Denunciar')}</button>}
+        <button type="button" className="link-btn" onClick={() => onChange(null)}>{t('Cambiar')}</button>
       </div>
     );
   }
   return (
     <div className="attend">
-      <div className="attend-q">{I.store}<b>{future ? `Después de la partida en ${store}, confirma si ${p.name} vino` : `¿Os visteis en ${store}?`}</b></div>
-      <p>Tu respuesta es privada. Con varias partidas confirmadas, los jugadores consiguen la insignia <b>Fiable</b>.</p>
+      <div className="attend-q">{I.store}<b>{future ? t('Después de la partida en {store}, confirma si {name} vino', { store, name: p.name }) : t('¿Os visteis en {store}?', { store })}</b></div>
+      <p>{t('Tu respuesta es privada. Con varias partidas confirmadas, los jugadores consiguen la insignia «Fiable».')}</p>
       {!future && (
         <div className="attend-btns">
-          {ATTEND.map(([id, label, icon]) => <button key={id} type="button" className={`ghost small ${id}`} onClick={() => onChange(id)}>{icon}{label}</button>)}
+          {ATTEND.map(([id, label, icon]) => <button key={id} type="button" className={`ghost small ${id}`} onClick={() => onChange(id)}>{icon}{t(label)}</button>)}
         </div>
       )}
     </div>
@@ -695,28 +700,28 @@ function ReportSheet({ p, onClose, onSubmit }) {
   return (
     <>
       <div className="sheet-bg top" onClick={onClose} />
-      <section className="sheet edit-sheet top" aria-label={`Denunciar a ${p.name}`}>
+      <section className="sheet edit-sheet top" aria-label={t('Denunciar a {name}', { name: p.name })}>
         <header className="sheet-bar">
-          <button className="icon-btn" onClick={onClose} aria-label="Cerrar">{I.close}</button>
-          <h2>{p.image ? 'Denunciar imagen' : `Denunciar a ${p.name}`}</h2>
+          <button className="icon-btn" onClick={onClose} aria-label={t('Cerrar')}>{I.close}</button>
+          <h2>{p.image ? t('Denunciar imagen') : t('Denunciar a {name}', { name: p.name })}</h2>
           <span style={{ width: 44 }} />
         </header>
         <div className="body form">
-          <p className="sheet-intro">{p.image && 'La dejarás de ver al momento y, con varias denuncias, se oculta para todos. '}Tu denuncia es anónima: {p.name} no sabrá quién la ha enviado. El equipo la revisa en menos de 24 horas.</p>
-          <fieldset><legend>¿Qué ha pasado?</legend>
+          <p className="sheet-intro">{p.image && `${t('La dejarás de ver al momento y, con varias denuncias, se oculta para todos.')} `}{t('Tu denuncia es anónima: {name} no sabrá quién la ha enviado. El equipo la revisa en menos de 24 horas.', { name: p.name })}</p>
+          <fieldset><legend>{t('¿Qué ha pasado?')}</legend>
             <div className="list">
               {REPORT_REASONS.map((r) => (
                 <button type="button" key={r} role="radio" aria-checked={reason === r} className={`row pick radio ${reason === r ? 'on' : ''}`} onClick={() => setReason(r)}>
-                  <span className="radio-dot" /><div className="grow"><div className="title">{r}</div></div>
+                  <span className="radio-dot" /><div className="grow"><div className="title">{t(r)}</div></div>
                 </button>
               ))}
             </div>
           </fieldset>
-          <label>Cuéntanos más (opcional)<textarea id="report-details" rows="3" maxLength={500} value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Qué dijo o hizo, cuándo…" /></label>
-          <Switch id="report-block" icon={I.ban} label={`Bloquear también a ${p.name}`} hint="No podrá verte ni escribirte" on={alsoBlock} onChange={setAlsoBlock} />
+          <label>{t('Cuéntanos más (opcional)')}<textarea id="report-details" rows="3" maxLength={500} value={details} onChange={(e) => setDetails(e.target.value)} placeholder={t('Qué dijo o hizo, cuándo…')} /></label>
+          <Switch id="report-block" icon={I.ban} label={t('Bloquear también a {name}', { name: p.name })} hint={t('No podrá verte ni escribirte')} on={alsoBlock} onChange={setAlsoBlock} />
         </div>
         <div className="sheet-cta">
-          <button id="send-report" className="primary danger-fill" disabled={!reason} onClick={() => onSubmit({ reason, details, alsoBlock })}>{I.flag}Enviar denuncia</button>
+          <button id="send-report" className="primary danger-fill" disabled={!reason} onClick={() => onSubmit({ reason, details, alsoBlock })}>{I.flag}{t('Enviar denuncia')}</button>
         </div>
       </section>
     </>
@@ -733,7 +738,7 @@ function Confirm({ title, text, confirm, onConfirm, onClose, icon = I.ban, id = 
         <h3>{title}</h3>
         <p>{text}</p>
         <div className="btn-row">
-          <button className="ghost" onClick={onClose}>Cancelar</button>
+          <button className="ghost" onClick={onClose}>{t('Cancelar')}</button>
           <button id={id} className="primary danger-fill" onClick={onConfirm}>{confirm}</button>
         </div>
       </div>
@@ -795,7 +800,7 @@ function LoginScreen() {
   };
   const busy = state === 'google' || state === 'sending';
   return (
-    <div className="login" role="dialog" aria-label="Iniciar sesión">
+    <div className="login" role="dialog" aria-label={t('Iniciar sesión')}>
       <div className="login-rain" aria-hidden="true">
         {LOGIN_ROWS.map((row, r) => (
           <div key={r} className={`rain-row ${r ? 'down' : 'up'}`}>
@@ -805,25 +810,25 @@ function LoginScreen() {
       </div>
       <div className="sparks">{Array.from({ length: 24 }, (_, i) => <i key={i} style={{ '--i': i, '--c': LOGIN_SPARKS[i % LOGIN_SPARKS.length] }} />)}</div>
       <div className="duel-icon" aria-hidden="true">{SWORD}{SWORD}</div>
-      <p className="its">Bienvenido a</p>
+      <p className="its">{t('Bienvenido a')}</p>
       <h1 className="match-title" data-text="MANAMATCH">MANAMATCH</h1>
-      <p className="swiped">Encuentra rivales de Magic, Pokémon y One Piece cerca de ti.<br />Solo para mayores de 18.</p>
+      <p className="swiped">{t('Encuentra rivales de Magic, Pokémon, One Piece y muchos más juegos cerca de ti.')}<br />{t('Solo para mayores de 18.')}</p>
 
-      <button id="login-google" type="button" className="login-google" disabled={busy} onClick={google}>{GOOGLE_G}{state === 'google' ? 'Abriendo Google…' : 'Continuar con Google'}</button>
+      <button id="login-google" type="button" className="login-google" disabled={busy} onClick={google}>{GOOGLE_G}{state === 'google' ? t('Abriendo Google…') : t('Continuar con Google')}</button>
 
-      <div className="login-or"><span>o con tu correo</span></div>
+      <div className="login-or"><span>{t('o con tu correo')}</span></div>
 
       {state === 'sent' ? (
-        <p className="login-note" role="status">{I.check}<span>Te hemos enviado un enlace a <b>{email.trim()}</b>. Ábrelo desde este dispositivo para entrar.</span></p>
+        <p className="login-note" role="status">{I.check}<span>{t('Te hemos enviado un enlace a {email}. Ábrelo desde este dispositivo para entrar.', { email: email.trim() })}</span></p>
       ) : (
         <form className="match-reply" onSubmit={sendLink}>
-          <input id="login-email" type="email" required autoComplete="email" aria-label="Correo electrónico" placeholder="tu@correo.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <button id="login-email-send" disabled={busy || !email.trim()}>{state === 'sending' ? 'Enviando…' : 'Enviar enlace'}</button>
+          <input id="login-email" type="email" required autoComplete="email" aria-label={t('Correo electrónico')} placeholder={t('tu@correo.com')} value={email} onChange={(e) => setEmail(e.target.value)} />
+          <button id="login-email-send" disabled={busy || !email.trim()}>{state === 'sending' ? t('Enviando…') : t('Enviar enlace')}</button>
         </form>
       )}
-      {state === 'error' && <p className="login-note error" role="alert">{I.alert}<span>No se ha podido iniciar sesión. Inténtalo de nuevo en unos minutos.</span></p>}
+      {state === 'error' && <p className="login-note error" role="alert">{I.alert}<span>{t('No se ha podido iniciar sesión. Inténtalo de nuevo en unos minutos.')}</span></p>}
 
-      <p className="login-legal">{I.shield}Nunca publicamos en tu nombre</p>
+      <p className="login-legal">{I.shield}{t('Nunca publicamos en tu nombre')}</p>
     </div>
   );
 }
@@ -870,7 +875,7 @@ function useCarousel(count) {
   const slide = (i) => `rule-slide ${page === i ? 'on' : ''}`;
   const dots = (
     <div className="rules-dots">
-      {Array.from({ length: count }, (_, i) => <button key={i} type="button" className={page === i ? 'on' : ''} aria-label={`Ir a la pantalla ${i + 1}`} aria-current={page === i} onClick={() => go(i)} />)}
+      {Array.from({ length: count }, (_, i) => <button key={i} type="button" className={page === i ? 'on' : ''} aria-label={t('Ir a la pantalla {n}', { n: i + 1 })} aria-current={page === i} onClick={() => go(i)} />)}
     </div>
   );
   return { page, last: count - 1, track, go, onScroll, slide, dots };
@@ -882,33 +887,33 @@ function RulesScreen({ firstTime, onAccept, onClose }) {
   const [agree, setAgree] = useState(false);
   const { page, last, track, go, onScroll, slide, dots } = useCarousel(RULES.length + 2);
   return (
-    <div className="rules" role="dialog" aria-label="Código de conducta">
-      {!firstTime && <button className="icon-btn rules-close" onClick={onClose} aria-label="Cerrar">{I.close}</button>}
+    <div className="rules" role="dialog" aria-label={t('Código de conducta')}>
+      {!firstTime && <button className="icon-btn rules-close" onClick={onClose} aria-label={t('Cerrar')}>{I.close}</button>}
       <div className="rules-slides" ref={track} onScroll={onScroll}>
         <section className={slide(0)}>
           <div className="rule-hero">{I.sword}</div>
-          <span className="eyebrow">{firstTime ? 'Bienvenido a ManaMatch' : 'ManaMatch'}</span>
-          <h1 className="rules-title">Código de conducta</h1>
-          <p className="rules-lead">Encuentra rivales de Magic, Pokémon y One Piece cerca de ti. <b>No es una app de citas:</b> aquí se viene a jugar.</p>
-          <p className="slide-hint">Desliza para ver las {RULES.length} normas</p>
+          <span className="eyebrow">{firstTime ? t('Bienvenido a ManaMatch') : 'ManaMatch'}</span>
+          <h1 className="rules-title">{t('Código de conducta')}</h1>
+          <p className="rules-lead">{t('Encuentra rivales de Magic, Pokémon, One Piece y muchos más juegos cerca de ti.')} <b>{t('No es una app de citas:')}</b> {t('aquí se viene a jugar.')}</p>
+          <p className="slide-hint">{t('Desliza para ver las {n} normas', { n: RULES.length })}</p>
         </section>
         {RULES.map(([icon, title, text, anim], i) => (
-          <section key={title} className={slide(i + 1)} aria-label={`Norma ${i + 1} de ${RULES.length}`}>
+          <section key={title} className={slide(i + 1)} aria-label={t('Norma {n} de {total}', { n: i + 1, total: RULES.length })}>
             <div className="rule-hero"><RuleArt anim={anim} icon={icon} /><span className="rule-num">{i + 1}</span></div>
-            <span className="eyebrow">Norma {i + 1} de {RULES.length}</span>
-            <h2 className="rules-title">{title}</h2>
-            <p className="rules-lead">{text}</p>
+            <span className="eyebrow">{t('Norma {n} de {total}', { n: i + 1, total: RULES.length })}</span>
+            <h2 className="rules-title">{t(title)}</h2>
+            <p className="rules-lead">{t(text)}</p>
           </section>
         ))}
         <section className={`${slide(last)} final`}>
           <div className="rule-hero small"><RuleArt anim="shield" /></div>
-          <span className="eyebrow">Antes de jugar</span>
-          <h2 className="rules-title">Consejos de seguridad</h2>
-          <ul className="tip-list">{SAFETY_TIPS.map((t) => <li key={t}>{I.check}<span>{t}</span></li>)}</ul>
+          <span className="eyebrow">{t('Antes de jugar')}</span>
+          <h2 className="rules-title">{t('Consejos de seguridad')}</h2>
+          <ul className="tip-list">{SAFETY_TIPS.map((tip) => <li key={tip}>{I.check}<span>{t(tip)}</span></li>)}</ul>
           {firstTime && (
             <div className="rules-checks">
-              <button type="button" role="checkbox" aria-checked={adult} className={`check-row ${adult ? 'on' : ''}`} onClick={() => setAdult(!adult)}><span className="box">{adult && I.check}</span>Tengo 18 años o más</button>
-              <button type="button" role="checkbox" aria-checked={agree} className={`check-row ${agree ? 'on' : ''}`} onClick={() => setAgree(!agree)}><span className="box">{agree && I.check}</span>Acepto el código de conducta</button>
+              <button type="button" role="checkbox" aria-checked={adult} className={`check-row ${adult ? 'on' : ''}`} onClick={() => setAdult(!adult)}><span className="box">{adult && I.check}</span>{t('Tengo 18 años o más')}</button>
+              <button type="button" role="checkbox" aria-checked={agree} className={`check-row ${agree ? 'on' : ''}`} onClick={() => setAgree(!agree)}><span className="box">{agree && I.check}</span>{t('Acepto el código de conducta')}</button>
             </div>
           )}
         </section>
@@ -916,10 +921,10 @@ function RulesScreen({ firstTime, onAccept, onClose }) {
       <div className="rules-cta">
         {dots}
         {page < last
-          ? <button id="rules-next" className="primary" onClick={() => go(page + 1)}>{page === 0 ? 'Empezar' : 'Siguiente'}{I.chevron}</button>
+          ? <button id="rules-next" className="primary" onClick={() => go(page + 1)}>{page === 0 ? t('Empezar') : t('Siguiente')}{I.chevron}</button>
           : firstTime
-            ? <button id="accept-rules" className="primary" disabled={!adult || !agree} onClick={onAccept}>{I.sword}Entrar a jugar</button>
-            : <button className="primary" onClick={onClose}>Entendido</button>}
+            ? <button id="accept-rules" className="primary" disabled={!adult || !agree} onClick={onAccept}>{I.sword}{t('Entrar a jugar')}</button>
+            : <button className="primary" onClick={onClose}>{t('Entendido')}</button>}
       </div>
     </div>
   );
@@ -1006,27 +1011,27 @@ function NormArt({ art }) {
 function NormsScreen({ onClose }) {
   const { page, last, track, go, onScroll, slide, dots } = useCarousel(NORMS.length + 3);
   return (
-    <div className="rules norms" role="dialog" aria-label="Normas y sanciones">
-      <button className="icon-btn rules-close" onClick={onClose} aria-label="Cerrar">{I.close}</button>
+    <div className="rules norms" role="dialog" aria-label={t('Normas y sanciones')}>
+      <button className="icon-btn rules-close" onClick={onClose} aria-label={t('Cerrar')}>{I.close}</button>
       <div className="rules-slides" ref={track} onScroll={onScroll}>
         <section className={slide(0)}>
           <div className="rule-hero"><NormArt art="scale" /></div>
-          <span className="eyebrow">Comunidad ManaMatch</span>
-          <h1 className="rules-title">Normas y sanciones</h1>
-          <p className="rules-lead">Las infracciones van en tres niveles. <b>Cuanto más grave, más dura la sanción</b>, y si se repite, sube un escalón.</p>
-          <p className="slide-hint">Desliza para verlas</p>
+          <span className="eyebrow">{t('Comunidad ManaMatch')}</span>
+          <h1 className="rules-title">{t('Normas y sanciones')}</h1>
+          <p className="rules-lead">{t('Las infracciones van en tres niveles.')} <b>{t('Cuanto más grave, más dura la sanción')}</b>{t(', y si se repite, sube un escalón.')}</p>
+          <p className="slide-hint">{t('Desliza para verlas')}</p>
         </section>
         {NORMS.map(({ level, sev, art, items, ladder }, i) => (
-          <section key={level} className={`${slide(i + 1)} dense`} aria-label={`Infracciones ${level.toLowerCase()}`}>
+          <section key={level} className={`${slide(i + 1)} dense`} aria-label={t('Infracciones {level}', { level: t(level).toLowerCase() })}>
             <div className={`rule-hero small sev-${sev}`}><NormArt art={art} /></div>
-            <span className="eyebrow">Nivel {i + 1} de {NORMS.length}</span>
-            <h2 className="rules-title">{level}</h2>
-            <ul className={`tip-list norm-list sev-${sev}`}>{items.map((t) => <li key={t}><span className="norm-dot" /><span>{t}</span></li>)}</ul>
-            <div className={`ladder sev-${sev}`} aria-label="Sanción">
+            <span className="eyebrow">{t('Nivel {n} de {total}', { n: i + 1, total: NORMS.length })}</span>
+            <h2 className="rules-title">{t(level)}</h2>
+            <ul className={`tip-list norm-list sev-${sev}`}>{items.map((it) => <li key={it}><span className="norm-dot" /><span>{t(it)}</span></li>)}</ul>
+            <div className={`ladder sev-${sev}`} aria-label={t('Sanción')}>
               {ladder.map((step, n) => (
                 <div key={step} className="ladder-step" style={{ '--n': n }}>
-                  {ladder.length > 1 && <span>{n + 1}.ª vez</span>}
-                  <b>{step}</b>
+                  {ladder.length > 1 && <span>{t('{n}.ª vez', { n: n + 1 })}</span>}
+                  <b>{t(step)}</b>
                 </div>
               ))}
             </div>
@@ -1034,26 +1039,26 @@ function NormsScreen({ onClose }) {
         ))}
         <section className={`${slide(NORMS.length + 1)} dense`}>
           <div className="rule-hero small"><NormArt art="cards" /></div>
-          <span className="eyebrow">Como en los torneos</span>
-          <h2 className="rules-title">Sanciones</h2>
+          <span className="eyebrow">{t('Como en los torneos')}</span>
+          <h2 className="rules-title">{t('Sanciones')}</h2>
           <ul className="tip-list sanction-list">
-            {SANCTIONS.map(([id, name, text]) => <li key={id}><span className={`mini-card s-${id}`}>{SANCTION_MARK[id]}</span><div><b>{name}</b><p>{text}</p></div></li>)}
+            {SANCTIONS.map(([id, name, text]) => <li key={id}><span className={`mini-card s-${id}`}>{SANCTION_MARK[id]}</span><div><b>{t(name)}</b><p>{t(text)}</p></div></li>)}
           </ul>
         </section>
         <section className={`${slide(last)} dense`}>
           <div className="rule-hero small"><NormArt art="clock" /></div>
-          <span className="eyebrow">Justo y transparente</span>
-          <h2 className="rules-title">Cómo funciona</h2>
+          <span className="eyebrow">{t('Justo y transparente')}</span>
+          <h2 className="rules-title">{t('Cómo funciona')}</h2>
           <ul className="tip-list sanction-list">
-            {NORMS_PROCESS.map(([icon, title, text]) => <li key={title}><span className="process-icon">{icon}</span><div><b>{title}</b><p>{text}</p></div></li>)}
+            {NORMS_PROCESS.map(([icon, title, text]) => <li key={title}><span className="process-icon">{icon}</span><div><b>{t(title)}</b><p>{t(text)}</p></div></li>)}
           </ul>
         </section>
       </div>
       <div className="rules-cta">
         {dots}
         {page < last
-          ? <button id="norms-next" className="primary" onClick={() => go(page + 1)}>{page === 0 ? 'Empezar' : 'Siguiente'}{I.chevron}</button>
-          : <button id="norms-done" className="primary" onClick={onClose}>Entendido</button>}
+          ? <button id="norms-next" className="primary" onClick={() => go(page + 1)}>{page === 0 ? t('Empezar') : t('Siguiente')}{I.chevron}</button>
+          : <button id="norms-done" className="primary" onClick={onClose}>{t('Entendido')}</button>}
       </div>
     </div>
   );
@@ -1127,7 +1132,7 @@ function ThrowCard({ card, index, total, disabled, targetRef, onPlay, onTap }) {
     <button
       ref={ref} type="button" id={`card-${card.id}`} disabled={disabled}
       className={`hand-card ${card.id} ${phase}`}
-      aria-label={`Carta ${card.label}: ${card.hint}. Lánzala hacia arriba para jugarla.`} title={card.label}
+      aria-label={t('Carta {label}: {hint}. Lánzala hacia arriba para jugarla.', { label: t(card.label), hint: t(card.hint) })} title={t(card.label)}
       style={{ transform: `translate(${pos.x}px, ${pos.y}px) rotate(${pos.r}deg) scale(${pos.s})`, zIndex: phase === 'drag' || phase === 'fly' ? 20 : index + 1 }}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
       // Teclado (detail === 0): Intro o Espacio lanzan la carta directamente
@@ -1135,7 +1140,7 @@ function ThrowCard({ card, index, total, disabled, targetRef, onPlay, onTap }) {
     >
       <span className="hc-frame">
         <span className="hc-gem"><svg className="hc-hex" viewBox="0 0 100 112" aria-hidden="true"><path d={HEX_PHOTO} /></svg>{card.icon}</span>
-        <span className="hc-name">{card.label}</span>
+        <span className="hc-name">{t(card.label)}</span>
       </span>
     </button>
   );
@@ -1171,12 +1176,12 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind }) {
   return (
     <>
       <div className="filters">
-        {[['all', 'Todos', null], ...me.interests.map((g) => [g, GAMES[g].name, gameIcon(g)])].map(([id, label, icon]) => (
+        {[['all', t('Todos'), null], ...me.interests.map((g) => [g, GAMES[g].name, gameIcon(g)])].map(([id, label, icon]) => (
           <button key={id} id={`filter-${id}`} className={filter === id ? 'on' : ''} onClick={() => setFilter(id)}>{icon}{label}</button>
         ))}
       </div>
       <div className="deck" ref={tableRef}>
-        {!top && <Empty icon={gameIcon(filter) ?? I.crystal} title="No hay más jugadores" text="Prueba con otro juego, amplía tu radio de búsqueda o vuelve más tarde." />}
+        {!top && <Empty icon={gameIcon(filter) ?? I.crystal} title={t('No hay más jugadores')} text={t('Prueba con otro juego, amplía tu radio de búsqueda o vuelve más tarde.')} />}
         {next && (
           <article className="swipe-card behind">
             <div className="art-frame"><img className={`hero-art${imgCls(next.game, next.favCard)}`} src={artOf(next.game, next.favCard)} alt="" /></div>
@@ -1188,8 +1193,8 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind }) {
             <span className="impact-ring" /><span className="impact-icon">{HAND.find((c) => c.id === impact.id).icon}</span>
           </div>
         )}
-        <div className="hand" role="group" aria-label="Tu mano: lanza una carta hacia arriba para jugarla">
-          {(top || canRewind) && (!tipSeen || tapHint) && <div className="hand-tip" role="status">{I.sword}Arrastra una carta hacia arriba y lánzala</div>}
+        <div className="hand" role="group" aria-label={t('Tu mano: lanza una carta hacia arriba para jugarla')}>
+          {(top || canRewind) && (!tipSeen || tapHint) && <div className="hand-tip" role="status">{I.sword}{t('Arrastra una carta hacia arriba y lánzala')}</div>}
           {HAND.map((c, i) => (
             <ThrowCard
               key={c.id} card={c} index={i} total={HAND.length} targetRef={tableRef} onPlay={play} onTap={showTapHint}
@@ -1219,7 +1224,7 @@ const storePos = (km, i, n) => {
 function Nearby({ players, onInfo }) {
   return (
     <>
-      <div className="radar" role="img" aria-label="Radar de jugadores cercanos">
+      <div className="radar" role="img" aria-label={t('Radar de jugadores cercanos')}>
         <div className="me" />
         {players.map((p) => (
           <button key={p.id} className="dot" style={{ ...fuzzyPos(p), '--c': frameOf(p.game, p.colors).glow }} onClick={() => onInfo(p)} title={`${p.name} · ${GAMES[p.game].name} · ${fuzzyDist(p.dist)}`}>
@@ -1229,10 +1234,10 @@ function Nearby({ players, onInfo }) {
         ))}
         {STORES.map((s, i) => <span key={s.id} className="shop" title={s.name} style={storePos(s.dist, i, STORES.length)}>{I.store}</span>)}
       </div>
-      <div className="legend"><span><i className="lg-player" />Jugadores (zona aproximada)</span><span><i className="lg-store" />Tiendas</span></div>
-      <p className="privacy-note">{I.shield}Por tu seguridad, nunca mostramos dónde está un jugador: solo su rango de distancia.</p>
+      <div className="legend"><span><i className="lg-player" />{t('Jugadores (zona aproximada)')}</span><span><i className="lg-store" />{t('Tiendas')}</span></div>
+      <p className="privacy-note">{I.shield}{t('Por tu seguridad, nunca mostramos dónde está un jugador: solo su rango de distancia.')}</p>
 
-      <h3 className="section-title">Tiendas cercanas</h3>
+      <h3 className="section-title">{t('Tiendas cercanas')}</h3>
       <div className="list">
         {STORES.map((s) => {
           const regulars = players.filter((p) => p.stores.includes(s.id));
@@ -1241,10 +1246,10 @@ function Nearby({ players, onInfo }) {
               <span className="row-icon">{I.store}</span>
               <div className="grow">
                 <div className="title">{s.name}</div>
-                <div className="sub">{s.events}</div>
+                <div className="sub">{t(s.events)}</div>
                 <div className="regulars">
                   <div className="stack">{regulars.slice(0, 3).map((p) => <img loading="lazy" decoding="async" key={p.id} src={p.avatar} alt={p.name} />)}</div>
-                  <span>{regulars.length} {regulars.length === 1 ? 'habitual' : 'habituales'}</span>
+                  <span>{regulars.length === 1 ? t('1 habitual') : t('{n} habituales', { n: regulars.length })}</span>
                 </div>
               </div>
               <span className="dist">{s.dist} km</span>
@@ -1258,10 +1263,10 @@ function Nearby({ players, onInfo }) {
 
 /* ================= Matches + Chat ================= */
 function Matches({ matches, chats, openChat }) {
-  if (!matches.length) return <Empty icon={I.chat} title="Aún no tienes rivales" text="Desliza a la derecha para retar a alguien y proponer una partida." />;
+  if (!matches.length) return <Empty icon={I.chat} title={t('Aún no tienes rivales')} text={t('Lanza la carta ¡Duelo! para retar a alguien y proponer una partida.')} />;
   return (
     <>
-      <h3 className="section-title">Nuevos rivales</h3>
+      <h3 className="section-title">{t('Nuevos rivales')}</h3>
       <div className="new-matches">
         {matches.map((p) => (
           <button key={p.id} className="nm" onClick={() => openChat(p)}>
@@ -1270,7 +1275,7 @@ function Matches({ matches, chats, openChat }) {
           </button>
         ))}
       </div>
-      <h3 className="section-title">Conversaciones</h3>
+      <h3 className="section-title">{t('Conversaciones')}</h3>
       <div className="list">
         {matches.map((p) => {
           const last = chats[p.id]?.at(-1);
@@ -1279,7 +1284,7 @@ function Matches({ matches, chats, openChat }) {
               <img loading="lazy" decoding="async" className="avatar" src={p.avatar} alt="" />
               <div className="grow">
                 <div className="title">{p.name} <span className={`mini-game g-${p.game}`}>{gameIcon(p.game)}</span></div>
-                <div className={`sub ${last ? '' : 'new'}`}>{last ? (last.type === 'meetup' ? '📅 Partida propuesta' : last.text) : '¡Duelo aceptado! Propón una partida'}</div>
+                <div className={`sub ${last ? '' : 'new'}`}>{last ? (last.type === 'meetup' ? `📅 ${t('Partida propuesta')}` : last.text) : t('¡Duelo aceptado! Propón una partida')}</div>
               </div>
               <span className="chev">{I.chevron}</span>
             </button>
@@ -1294,7 +1299,7 @@ function Matches({ matches, chats, openChat }) {
 const quickReplies = (p, me) => {
   const mine = me.profiles[p.game]?.formats ?? [];
   const shared = p.formats.find((f) => mine.includes(f)) || p.formats[0];
-  return [`¿Una partida de ${shared} esta semana?`, `¿Jugamos en ${storeName(p.stores[0])}?`, '¿Qué mazo vas a traer?'];
+  return [t('¿Una partida de {format} esta semana?', { format: t(shared) }), t('¿Jugamos en {store}?', { store: storeName(p.stores[0]) }), t('¿Qué mazo vas a traer?')];
 };
 
 /* Hook de envío con moderación: bloquea lo inapropiado y avisa (una vez) si se comparten contactos */
@@ -1334,44 +1339,44 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport, attended, onAtten
   return (
     <div className={`chat g-${p.game}`} style={{ '--them': theirs.glow, '--them-grad': theirs.grad }}>
       <div className="chat-head">
-        <button id="chat-back" className="icon-btn" onClick={onBack} aria-label="Volver">{I.back}</button>
+        <button id="chat-back" className="icon-btn" onClick={onBack} aria-label={t('Volver')}>{I.back}</button>
         <button className="chat-who" onClick={() => onInfo(p)}>
           <Hex src={p.avatar} alt="" size={46} colors={theirs.list} ring={false} />
           <div><b>{p.name}</b><span>{gameIcon(p.game)}{p.decks[0].name}</span></div>
         </button>
         <Pips game={p.game} colors={p.colors} />
-        <button id="chat-report" className="icon-btn" onClick={onReport} aria-label={`Denunciar o bloquear a ${p.name}`} title="Denunciar o bloquear">{I.flag}</button>
+        <button id="chat-report" className="icon-btn" onClick={onReport} aria-label={t('Denunciar o bloquear a {name}', { name: p.name })} title={t('Denunciar o bloquear')}>{I.flag}</button>
       </div>
       {safetyOpen && (
         <div className="safety-banner">
           {I.shield}
-          <span>Quedad siempre en una tienda y no compartas tu dirección. Si algo no va bien, denúncialo con la bandera.</span>
-          <button onClick={() => setSafetyOpen(false)} aria-label="Ocultar aviso">{I.close}</button>
+          <span>{t('Quedad siempre en una tienda y no compartas tu dirección. Si algo no va bien, denúncialo con la bandera.')}</span>
+          <button onClick={() => setSafetyOpen(false)} aria-label={t('Ocultar aviso')}>{I.close}</button>
         </div>
       )}
       <div className="msgs">
-        <div className="turn-divider"><span>{gameIcon(p.game)}Duelo de {GAMES[p.game].name} · {p.formats[0]}</span></div>
-        {!msgs.length && <div className="chat-start">Propón formato, tienda y día para vuestra partida.</div>}
+        <div className="turn-divider"><span>{gameIcon(p.game)}{t('Duelo de {game}', { game: GAMES[p.game].name })} · {t(p.formats[0])}</span></div>
+        {!msgs.length && <div className="chat-start">{t('Propón formato, tienda y día para vuestra partida.')}</div>}
         {msgs.map((m, i) => m.type === 'meetup' ? (
           <div key={i} className={`msg meetup ${m.from}`}>
-            <div className="ticket-head">{I.cal}<b>Partida propuesta</b></div>
+            <div className="ticket-head">{I.cal}<b>{t('Partida propuesta')}</b></div>
             <div className="ticket-body">
-              <div><small>Formato</small>{m.format}</div>
-              <div><small>Tienda</small>{storeName(m.store)}</div>
-              <div><small>Cuándo</small>{m.date ? new Date(m.date).toLocaleString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Por concretar'}</div>
+              <div><small>{t('Formato')}</small>{t(m.format)}</div>
+              <div><small>{t('Tienda')}</small>{storeName(m.store)}</div>
+              <div><small>{t('Cuándo')}</small>{m.date ? new Date(m.date).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : t('Por concretar')}</div>
             </div>
-            {m.from === 'them' && <div className="ticket-ok">{I.check}{p.name} ha aceptado</div>}
+            {m.from === 'them' && <div className="ticket-ok">{I.check}{t('{name} ha aceptado', { name: p.name })}</div>}
           </div>
         ) : <div key={i} className={`msg ${m.from}`}>{m.text}</div>)}
         {lastMeetup && <Attendance p={p} meetup={lastMeetup} value={attended} onChange={onAttend} onReport={onReport} />}
       </div>
       {planning && (
         <div className="panel form plan">
-          <label>Tienda<select id="plan-store" value={plan.store} onChange={(e) => setPlan({ ...plan, store: e.target.value })}>{STORES.map((s) => <option key={s.id} value={s.id}>{s.name}{p.stores.includes(s.id) ? ' ★' : ''}</option>)}</select></label>
-          <label>Formato<select id="plan-format" value={plan.format} onChange={(e) => setPlan({ ...plan, format: e.target.value })}>{formats.map((f) => <option key={f}>{f}</option>)}</select></label>
-          <label>Fecha y hora<input id="plan-date" type="datetime-local" value={plan.date} onChange={(e) => setPlan({ ...plan, date: e.target.value })} /></label>
-          <p className="field-hint">{I.store}Las partidas se proponen solo en tiendas: siempre en un sitio público.</p>
-          <div className="btn-row"><button className="ghost" onClick={() => setPlanning(false)}>Cancelar</button><button id="plan-send" className="primary" onClick={propose}>Proponer partida</button></div>
+          <label>{t('Tienda')}<select id="plan-store" value={plan.store} onChange={(e) => setPlan({ ...plan, store: e.target.value })}>{STORES.map((s) => <option key={s.id} value={s.id}>{s.name}{p.stores.includes(s.id) ? ' ★' : ''}</option>)}</select></label>
+          <label>{t('Formato')}<select id="plan-format" value={plan.format} onChange={(e) => setPlan({ ...plan, format: e.target.value })}>{formats.map((f) => <option key={f} value={f}>{t(f)}</option>)}</select></label>
+          <label>{t('Fecha y hora')}<input id="plan-date" type="datetime-local" value={plan.date} onChange={(e) => setPlan({ ...plan, date: e.target.value })} /></label>
+          <p className="field-hint">{I.store}{t('Las partidas se proponen solo en tiendas: siempre en un sitio público.')}</p>
+          <div className="btn-row"><button className="ghost" onClick={() => setPlanning(false)}>{t('Cancelar')}</button><button id="plan-send" className="primary" onClick={propose}>{t('Proponer partida')}</button></div>
         </div>
       )}
       {msgs.length < 3 && !planning && (
@@ -1379,9 +1384,9 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport, attended, onAtten
       )}
       <ModNote kind={warn} />
       <form className="composer" onSubmit={send}>
-        <button type="button" id="btn-plan" className={`icon-btn plan-btn ${planning ? 'on' : ''}`} aria-label="Proponer partida" onClick={() => setPlanning((v) => !v)}>{I.cal}</button>
-        <input id="chat-input" placeholder="Escribe un mensaje…" value={text} onChange={(e) => { setText(e.target.value); if (warn === 'conduct') clearWarn(); }} />
-        <button id="chat-send" className="icon-btn send" aria-label={warn === 'contact' ? 'Enviar igualmente' : 'Enviar'} disabled={!text.trim()}>{I.send}</button>
+        <button type="button" id="btn-plan" className={`icon-btn plan-btn ${planning ? 'on' : ''}`} aria-label={t('Proponer partida')} onClick={() => setPlanning((v) => !v)}>{I.cal}</button>
+        <input id="chat-input" placeholder={t('Escribe un mensaje…')} value={text} onChange={(e) => { setText(e.target.value); if (warn === 'conduct') clearWarn(); }} />
+        <button id="chat-send" className="icon-btn send" aria-label={warn === 'contact' ? t('Enviar igualmente') : t('Enviar')} disabled={!text.trim()}>{I.send}</button>
       </form>
     </div>
   );
@@ -1407,15 +1412,15 @@ function CardField({ id, game, value, onChange }) {
   return (
     <div className="card-field">
       {g.search
-        ? <CardInput id={id} game={game} value={value} onChange={onChange} placeholder="Busca una carta…" />
-        : <input id={id} value={value?.name ?? ''} maxLength={80} placeholder={`Nombre (opcional)`} onChange={(e) => onChange({ ...value, name: e.target.value })} />}
+        ? <CardInput id={id} game={game} value={value} onChange={onChange} placeholder={t('Busca una carta…')} />
+        : <input id={id} value={value?.name ?? ''} maxLength={80} placeholder={t('Nombre (opcional)')} onChange={(e) => onChange({ ...value, name: e.target.value })} />}
       <div className="upload-row">
-        <button type="button" className="ghost small" onClick={() => fileRef.current.click()}>{I.camera}{value?.upload ? 'Cambiar imagen' : 'Subir imagen'}</button>
-        {value?.upload && <button type="button" className="link-btn" onClick={() => { const { upload: _u, ...rest } = value; onChange(rest); }}>Quitar imagen</button>}
+        <button type="button" className="ghost small" onClick={() => fileRef.current.click()}>{I.camera}{value?.upload ? t('Cambiar imagen') : t('Subir imagen')}</button>
+        {value?.upload && <button type="button" className="link-btn" onClick={() => { const { upload: _u, ...rest } = value; onChange(rest); }}>{t('Quitar imagen')}</button>}
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={pickFile} />
       </div>
-      {err && <p className="upload-error" role="alert">{err}</p>}
-      <p className="field-hint">{I.shield}Sube solo imágenes del juego (una carta, tu ejército, tu mesa…). Las imágenes denunciadas se ocultan.</p>
+      {err && <p className="upload-error" role="alert">{t(err)}</p>}
+      <p className="field-hint">{I.shield}{t('Sube solo imágenes del juego (una carta, tu ejército, tu mesa…). Las imágenes denunciadas se ocultan.')}</p>
       {/* Fuera de la hoja de edición (en .phone): así queda por encima de todo y no se recorta */}
       {crop && createPortal(
         <CropSheet src={crop} onClose={closeCrop} onDone={(dataUrl) => { onChange({ ...value, name: value?.name ?? '', upload: dataUrl }); closeCrop(); }} />,
@@ -1459,14 +1464,14 @@ function CropSheet({ src, onDone, onClose }) {
   return (
     <>
       <div className="sheet-bg top" onClick={onClose} />
-      <section className="sheet edit-sheet top crop-sheet" aria-label="Encuadrar imagen">
+      <section className="sheet edit-sheet top crop-sheet" aria-label={t('Encuadrar imagen')}>
         <header className="sheet-bar">
-          <button className="icon-btn" onClick={onClose} aria-label="Cancelar">{I.close}</button>
-          <h2>Encuadra la imagen</h2>
+          <button className="icon-btn" onClick={onClose} aria-label={t('Cancelar')}>{I.close}</button>
+          <h2>{t('Encuadra la imagen')}</h2>
           <span style={{ width: 44 }} />
         </header>
         <div className="body">
-          <p className="sheet-intro">Arrastra para colocarla y usa el zoom. Así se verá en tu tarjeta.</p>
+          <p className="sheet-intro">{t('Arrastra para colocarla y usa el zoom. Así se verá en tu tarjeta.')}</p>
           <div className="crop-frame" style={{ width: CROP_W, height: CROP_H }} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
             <img ref={imgRef} src={src} alt="" draggable="false"
               onLoad={(e) => setNat({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
@@ -1474,11 +1479,11 @@ function CropSheet({ src, onDone, onClose }) {
             <span className="crop-grid" aria-hidden="true" />
           </div>
           <label className="crop-zoom">{I.search}
-            <input type="range" min="1" max="3" step="0.01" value={zoom} aria-label="Zoom" onChange={(e) => setZ(Number(e.target.value))} />
+            <input type="range" min="1" max="3" step="0.01" value={zoom} aria-label={t('Zoom')} onChange={(e) => setZ(Number(e.target.value))} />
           </label>
         </div>
         <div className="sheet-cta">
-          <button className="primary" disabled={!nat} onClick={done}>{I.check}Usar imagen</button>
+          <button className="primary" disabled={!nat} onClick={done}>{I.check}{t('Usar imagen')}</button>
         </div>
       </section>
     </>
@@ -1505,7 +1510,7 @@ function CardInput({ id, game, value, onChange, placeholder }) {
       </div>
       {open && (loading || failed || (done && !suggestions.length)) && (
         <p className="suggest suggest-state" role="status">
-          {loading ? <><span className="spinner" />Buscando cartas…</> : failed ? 'No se ha podido buscar. Revisa la conexión e inténtalo de nuevo.' : 'Sin resultados con ese nombre.'}
+          {loading ? <><span className="spinner" />{t('Buscando cartas…')}</> : failed ? t('No se ha podido buscar. Revisa la conexión e inténtalo de nuevo.') : t('Sin resultados con ese nombre.')}
         </p>
       )}
       {open && suggestions.length > 0 && (
@@ -1514,13 +1519,13 @@ function CardInput({ id, game, value, onChange, placeholder }) {
             <li key={s.name + (s.img ?? '')}>
               <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(s)}>
                 {s.img && <img src={s.img} alt="" loading="lazy" />}
-                <span><b>{s.name}</b>{s.sub && <small>{s.sub}</small>}</span>
+                <span><b>{s.name}</b>{s.sub && <small>{t(s.sub)}</small>}</span>
               </button>
             </li>
           ))}
         </ul>
       )}
-      {game === 'onepiece' && <p className="field-hint">Busca por nombre de líder o escribe el código de la carta (p. ej. OP05-060).</p>}
+      {game === 'onepiece' && <p className="field-hint">{t('Busca por nombre de líder o escribe el código de la carta (p. ej. OP05-060).')}</p>}
     </div>
   );
 }
@@ -1529,8 +1534,8 @@ function CardInput({ id, game, value, onChange, placeholder }) {
 // Aviso junto a la fecha de nacimiento: para qué se pide y que nadie más la ve
 const AgeNotice = () => (
   <div className="age-notice">
-    <p>{I.user}<span><b>Solo para mayores de 18 años.</b> La pedimos para comprobarlo.</span></p>
-    <p>{I.eye}<span><b>Tu edad no se muestra nunca.</b> Ni tu fecha de nacimiento ni tu edad aparecen en tu perfil.</span></p>
+    <p>{I.user}<span><b>{t('Solo para mayores de 18 años.')}</b> {t('La pedimos para comprobarlo.')}</span></p>
+    <p>{I.eye}<span><b>{t('Tu edad no se muestra nunca.')}</b> {t('Ni tu fecha de nacimiento ni tu edad aparecen en tu perfil.')}</span></p>
   </div>
 );
 const maxBirthDate = () => { const t = new Date(); t.setFullYear(t.getFullYear() - 18); return t.toISOString().slice(0, 10); };
@@ -1562,39 +1567,39 @@ function CreateProfileScreen({ onCreate }) {
     try { await onCreate({ ...d, name: d.name.trim() }); } catch { setState('error'); }
   };
   return (
-    <div className="rules onboarding" role="dialog" aria-label="Crear tu perfil">
-      {page > 0 && <button className="icon-btn rules-close back" onClick={() => go(page - 1)} aria-label="Paso anterior">{I.back}</button>}
+    <div className="rules onboarding" role="dialog" aria-label={t('Crear tu perfil')}>
+      {page > 0 && <button className="icon-btn rules-close back" onClick={() => go(page - 1)} aria-label={t('Paso anterior')}>{I.back}</button>}
       <div className="steps-viewport">
        <div className="steps-track" style={{ transform: `translateX(${-page * 100}%)` }}>
         <section {...step(0)}>
           <div className="rule-hero small"><RuleArt anim="adult" /></div>
-          <span className="eyebrow">Paso 1 de 3</span>
-          <h1 className="rules-title">Crea tu perfil</h1>
+          <span className="eyebrow">{t('Paso {n} de {total}', { n: 1, total: 3 })}</span>
+          <h1 className="rules-title">{t('Crea tu perfil')}</h1>
           <div className="form onboard-form">
-            <label>Nombre de jugador<input id="new-name" value={d.name} maxLength={24} autoComplete="nickname" placeholder="Cómo te verán los demás" onChange={(e) => set({ name: e.target.value })} /></label>
-            <label>Fecha de nacimiento<input id="new-birth" type="date" max={maxBirthDate()} value={d.birthDate} onChange={(e) => set({ birthDate: e.target.value })} /></label>
-            {d.birthDate && !ageOk && <p className="upload-error" role="alert">{age < 18 ? 'ManaMatch es solo para mayores de 18.' : 'Revisa la fecha de nacimiento.'}</p>}
+            <label>{t('Nombre de jugador')}<input id="new-name" value={d.name} maxLength={24} autoComplete="nickname" placeholder={t('Cómo te verán los demás')} onChange={(e) => set({ name: e.target.value })} /></label>
+            <label>{t('Fecha de nacimiento')}<input id="new-birth" type="date" max={maxBirthDate()} value={d.birthDate} onChange={(e) => set({ birthDate: e.target.value })} /></label>
+            {d.birthDate && !ageOk && <p className="upload-error" role="alert">{age < 18 ? t('ManaMatch es solo para mayores de 18.') : t('Revisa la fecha de nacimiento.')}</p>}
             <AgeNotice />
           </div>
         </section>
         <section {...step(1)}>
           <div className="rule-hero small"><RuleArt anim="clash" /></div>
-          <span className="eyebrow">Paso 2 de 3</span>
-          <h2 className="rules-title">¿A qué juegas?</h2>
+          <span className="eyebrow">{t('Paso {n} de {total}', { n: 2, total: 3 })}</span>
+          <h2 className="rules-title">{t('¿A qué juegas?')}</h2>
           <GamePicker value={d.interests} onChange={pickGames} />
         </section>
         <section {...step(2)}>
           <div className={`rule-hero small g-${d.game}`}><div className="art">{gameIcon(d.game)}</div></div>
-          <span className="eyebrow">Paso 3 de 3</span>
-          <h2 className="rules-title">Tu estilo de juego</h2>
+          <span className="eyebrow">{t('Paso {n} de {total}', { n: 3, total: 3 })}</span>
+          <h2 className="rules-title">{t('Tu estilo de juego')}</h2>
           <div className="form onboard-form">
-            {d.interests.length > 1 && <fieldset><legend>Juego principal</legend>
-              <GameTabs label="Juego principal" games={d.interests} value={d.game} onChange={(g) => set({ game: g })} />
+            {d.interests.length > 1 && <fieldset><legend>{t('Juego principal')}</legend>
+              <GameTabs label={t('Juego principal')} games={d.interests} value={d.game} onChange={(g) => set({ game: g })} />
             </fieldset>}
-            <fieldset><legend>Nivel</legend>
-              <Segmented name="Nivel" value={p.level} onChange={(v) => setProf({ level: v })} options={LEVELS.map((l) => [l, l])} />
+            <fieldset><legend>{t('Nivel')}</legend>
+              <Segmented name={t('Nivel')} value={p.level} onChange={(v) => setProf({ level: v })} options={LEVELS.map((l) => [l, t(l)])} />
             </fieldset>
-            <div className="field">{GAMES[d.game].favLabel} de {GAMES[d.game].name}
+            <div className="field">{t('{label} de {game}', { label: t(GAMES[d.game].favLabel), game: GAMES[d.game].name })}
               <CardField key={d.game} id="new-fav" game={d.game} value={p.favCard} onChange={(card) => setProf({ favCard: card })} />
             </div>
             <div className={`fav-preview g-${d.game}`}><img className={imgCls(d.game, p.favCard).trim()} src={artOf(d.game, p.favCard)} alt="" /><span>{p.favCard.name || GAMES[d.game].name}</span></div>
@@ -1602,18 +1607,18 @@ function CreateProfileScreen({ onCreate }) {
         </section>
         <section {...step(3)}>
           <Hex src={artOf(d.game, p.favCard)} alt="" size={130} colors={frameOf(d.game, p.colors).list} fullCard={isFullCard(d.game, p.favCard) ? d.game : false} />
-          <span className="eyebrow onboard-ready">Todo listo</span>
-          <h2 className="rules-title">{d.name.trim() || 'Jugador'}</h2>
-          <p className="rules-lead">{GAMES[d.game].name} · {p.level}. Tu foto, mazos, disponibilidad y tiendas los añades después desde tu perfil.</p>
-          {state === 'error' && <p className="upload-error" role="alert">No se ha podido crear el perfil. Revisa la conexión e inténtalo de nuevo.</p>}
+          <span className="eyebrow onboard-ready">{t('Todo listo')}</span>
+          <h2 className="rules-title">{d.name.trim() || t('Jugador')}</h2>
+          <p className="rules-lead">{GAMES[d.game].name} · {t(p.level)}. {t('Tu foto, mazos, disponibilidad y tiendas los añades después desde tu perfil.')}</p>
+          {state === 'error' && <p className="upload-error" role="alert">{t('No se ha podido crear el perfil. Revisa la conexión e inténtalo de nuevo.')}</p>}
         </section>
        </div>
       </div>
       <div className="rules-cta">
-        <div className="rules-dots" aria-label={`Paso ${Math.min(page + 1, 3)} de 3`}>{[0, 1, 2, 3].map((i) => <span key={i} className={page === i ? 'on' : ''} />)}</div>
+        <div className="rules-dots" aria-label={t('Paso {n} de {total}', { n: Math.min(page + 1, 3), total: 3 })}>{[0, 1, 2, 3].map((i) => <span key={i} className={page === i ? 'on' : ''} />)}</div>
         {page < last
-          ? <button id="onboard-next" className="primary" disabled={!stepOk} onClick={() => go(page + 1)}>Siguiente{I.chevron}</button>
-          : <button id="onboard-create" className="primary" disabled={state === 'saving'} onClick={create}>{I.sword}{state === 'saving' ? 'Creando…' : 'Crear perfil'}</button>}
+          ? <button id="onboard-next" className="primary" disabled={!stepOk} onClick={() => go(page + 1)}>{t('Siguiente')}{I.chevron}</button>
+          : <button id="onboard-create" className="primary" disabled={state === 'saving'} onClick={create}>{I.sword}{state === 'saving' ? t('Creando…') : t('Crear perfil')}</button>}
       </div>
     </div>
   );
@@ -1626,10 +1631,10 @@ function BootScreen({ error, onRetry }) {
       {error ? (
         <>
           <div className="dialog-icon">{I.wifiOff}</div>
-          <p>No hemos podido cargar tu perfil.</p>
-          <button className="primary" onClick={onRetry}>Reintentar</button>
+          <p>{t('No hemos podido cargar tu perfil.')}</p>
+          <button className="primary" onClick={onRetry}>{t('Reintentar')}</button>
         </>
-      ) : <><span className="spinner big" /><p>Cargando tu perfil…</p></>}
+      ) : <><span className="spinner big" /><p>{t('Cargando tu perfil…')}</p></>}
     </div>
   );
 }
@@ -1677,81 +1682,81 @@ function EditProfileSheet({ me, onSave, onClose }) {
   return (
     <>
       <div className="sheet-bg" onClick={onClose} />
-      <section className="sheet edit-sheet" aria-label="Editar perfil">
+      <section className="sheet edit-sheet" aria-label={t('Editar perfil')}>
         <header className="sheet-bar">
-          <button className="icon-btn" onClick={onClose} aria-label="Cerrar">{I.close}</button>
-          <h2>Editar perfil</h2>
+          <button className="icon-btn" onClick={onClose} aria-label={t('Cerrar')}>{I.close}</button>
+          <h2>{t('Editar perfil')}</h2>
           <span style={{ width: 44 }} />
         </header>
         <div className="body form">
-          <fieldset><legend>Perfil de juego que editas</legend>
-            <GameTabs label="Perfil de juego que editas" games={d.interests} value={d.game} onChange={(g) => set({ game: g })} />
-            <p className="field-hint">{I.palette}Cada juego de tu lista tiene su propio perfil: imagen favorita, formatos y mazos. El que guardes como activo es el que ven primero los demás.</p>
+          <fieldset><legend>{t('Perfil de juego que editas')}</legend>
+            <GameTabs label={t('Perfil de juego que editas')} games={d.interests} value={d.game} onChange={(g) => set({ game: g })} />
+            <p className="field-hint">{I.palette}{t('Cada juego de tu lista tiene su propio perfil: imagen favorita, formatos y mazos. El que guardes como activo es el que ven primero los demás.')}</p>
           </fieldset>
 
           <div className="photo-edit">
-            <Hex src={myAvatar(d)} alt="Tu imagen" size={96} colors={frameOf(d.game, p.colors).list} ring={false} fullCard={avatarIsCard(d)} />
+            <Hex src={myAvatar(d)} alt={t('Tu imagen')} size={96} colors={frameOf(d.game, p.colors).list} ring={false} fullCard={avatarIsCard(d)} />
             <div className="photo-actions">
-              <span className="photo-hint">Por defecto usamos tu carta favorita. La foto personal es opcional.</span>
-              <button type="button" id="upload-photo" className="ghost small" onClick={() => fileRef.current.click()}>{I.camera}Subir foto</button>
-              {d.avatar && <button type="button" className="link-btn" onClick={() => set({ avatar: '' })}>Volver a mi carta</button>}
+              <span className="photo-hint">{t('Por defecto usamos tu carta favorita. La foto personal es opcional.')}</span>
+              <button type="button" id="upload-photo" className="ghost small" onClick={() => fileRef.current.click()}>{I.camera}{t('Subir foto')}</button>
+              {d.avatar && <button type="button" className="link-btn" onClick={() => set({ avatar: '' })}>{t('Volver a mi carta')}</button>}
               <input ref={fileRef} type="file" accept="image/*" hidden onChange={upload} />
-              {uploadError && <span className="upload-error" role="alert">{uploadError}</span>}
+              {uploadError && <span className="upload-error" role="alert">{t(uploadError)}</span>}
             </div>
           </div>
 
-          <label>Nombre de jugador<input id="edit-name" value={d.name} maxLength={24} onChange={(e) => set({ name: e.target.value })} /></label>
-          {!d.name.trim() && <p className="upload-error" role="alert">Escribe un nombre de jugador.</p>}
-          <label>Fecha de nacimiento<input id="edit-birth" type="date" max={maxBirthDate()} value={d.birthDate} onChange={(e) => set({ birthDate: e.target.value })} /></label>
-          {d.birthDate && !ageOk && <p className="upload-error" role="alert">{age < 18 ? 'ManaMatch es solo para mayores de 18.' : 'Revisa la fecha de nacimiento.'}</p>}
+          <label>{t('Nombre de jugador')}<input id="edit-name" value={d.name} maxLength={24} onChange={(e) => set({ name: e.target.value })} /></label>
+          {!d.name.trim() && <p className="upload-error" role="alert">{t('Escribe un nombre de jugador.')}</p>}
+          <label>{t('Fecha de nacimiento')}<input id="edit-birth" type="date" max={maxBirthDate()} value={d.birthDate} onChange={(e) => set({ birthDate: e.target.value })} /></label>
+          {d.birthDate && !ageOk && <p className="upload-error" role="alert">{age < 18 ? t('ManaMatch es solo para mayores de 18.') : t('Revisa la fecha de nacimiento.')}</p>}
           <AgeNotice />
           <label>
-            <span className="label-row">Sobre ti como jugador <small>{d.bio.length}/160</small></span>
-            <textarea id="edit-bio" rows="3" maxLength={160} value={d.bio} placeholder="Qué juegas, qué buscas en una mesa…" onChange={(e) => set({ bio: e.target.value })} />
+            <span className="label-row">{t('Sobre ti como jugador')} <small>{d.bio.length}/160</small></span>
+            <textarea id="edit-bio" rows="3" maxLength={160} value={d.bio} placeholder={t('Qué juegas, qué buscas en una mesa…')} onChange={(e) => set({ bio: e.target.value })} />
           </label>
           <ModNote kind={bioFlag} />
 
-          <fieldset><legend>Tus juegos</legend>
+          <fieldset><legend>{t('Tus juegos')}</legend>
             <GamePicker value={d.interests} onChange={(v) => setD((x) => withProfiles({ ...x, interests: v }))} />
-            {!d.interests.length && <p className="upload-error" role="alert">Elige al menos un juego.</p>}
+            {!d.interests.length && <p className="upload-error" role="alert">{t('Elige al menos un juego.')}</p>}
           </fieldset>
 
-          <div className="field">{game.favLabel} de {game.name}
+          <div className="field">{t('{label} de {game}', { label: t(game.favLabel), game: game.name })}
             <CardField key={d.game} id="edit-fav" game={d.game} value={p.favCard} onChange={(c) => setProf({ favCard: c })} />
           </div>
           <div className={`fav-preview g-${d.game}`}><img className={imgCls(d.game, p.favCard).trim()} src={artOf(d.game, p.favCard)} alt="" /><span>{p.favCard.name || game.name}</span></div>
 
-          <fieldset><legend>Nivel de juego</legend>
-            <Segmented name="Nivel" value={p.level} onChange={(v) => setProf({ level: v })} options={LEVELS.map((l) => [l, l])} />
+          <fieldset><legend>{t('Nivel de juego')}</legend>
+            <Segmented name={t('Nivel')} value={p.level} onChange={(v) => setProf({ level: v })} options={LEVELS.map((l) => [l, t(l)])} />
           </fieldset>
 
-          {!game.generic && <fieldset><legend>{game.paletteLabel}</legend>
+          {!game.generic && <fieldset><legend>{t(game.paletteLabel)}</legend>
             <div className="mana-picker">
               {Object.entries(game.palette).map(([k, m]) => (
                 <button type="button" key={k} className={`mana ${p.colors.includes(k) ? 'on' : ''}`} style={{ '--c': m.color }} aria-pressed={p.colors.includes(k)} onClick={() => setProf((c) => ({ colors: toggleIn(c.colors, k) }))}>
-                  <span className="pip" style={{ '--c': m.color }} />{m.label}
+                  <span className="pip" style={{ '--c': m.color }} />{t(m.label)}
                 </button>
               ))}
             </div>
           </fieldset>}
 
-          <fieldset><legend>Formatos de {game.name} (al menos uno)</legend><ChipPicker options={game.formats} value={p.formats} onChange={(v) => setProf({ formats: v })} toggle={(o) => setProf((c) => ({ formats: toggleIn(c.formats, o) }))} /></fieldset>
+          <fieldset><legend>{t('Formatos de {game} (al menos uno)', { game: game.name })}</legend><ChipPicker options={game.formats} value={p.formats} onChange={(v) => setProf({ formats: v })} toggle={(o) => setProf((c) => ({ formats: toggleIn(c.formats, o) }))} /></fieldset>
 
-          <fieldset><legend>Disponibilidad</legend>
+          <fieldset><legend>{t('Disponibilidad')}</legend>
             <div className="days">
-              {DAYS.map(([k, full]) => <button type="button" key={k} title={full} aria-label={full} aria-pressed={d.days.includes(k)} className={`day ${d.days.includes(k) ? 'on' : ''}`} onClick={() => set((x) => ({ days: toggleIn(x.days, k) }))}>{k}</button>)}
+              {DAYS.map(([k, full]) => <button type="button" key={k} title={t(full)} aria-label={t(full)} aria-pressed={d.days.includes(k)} className={`day ${d.days.includes(k) ? 'on' : ''}`} onClick={() => set((x) => ({ days: toggleIn(x.days, k) }))}>{t(k)}</button>)}
             </div>
             <ChipPicker options={SLOTS} value={d.slots} onChange={(v) => set({ slots: v })} toggle={(o) => set((x) => ({ slots: toggleIn(x.slots, o) }))} />
           </fieldset>
 
-          <fieldset><legend>Tiendas habituales</legend>
+          <fieldset><legend>{t('Tiendas habituales')}</legend>
             <div className="list">
               {STORES.map((s) => {
                 const on = d.stores.includes(s.id);
                 return (
                   <button type="button" key={s.id} className={`row pick ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => set((x) => ({ stores: toggleIn(x.stores, s.id) }))}>
                     <span className="row-icon">{I.store}</span>
-                    <div className="grow"><div className="title">{s.name}</div><div className="sub">{s.dist} km · {s.events}</div></div>
+                    <div className="grow"><div className="title">{s.name}</div><div className="sub">{s.dist} km · {t(s.events)}</div></div>
                     <span className="check">{on && I.check}</span>
                   </button>
                 );
@@ -1760,7 +1765,7 @@ function EditProfileSheet({ me, onSave, onClose }) {
           </fieldset>
         </div>
         <div className="sheet-cta">
-          <button id="save-profile" className="primary" disabled={!valid} onClick={() => onSave({ ...d, name: d.name.trim() })}>{I.check}Guardar cambios</button>
+          <button id="save-profile" className="primary" disabled={!valid} onClick={() => onSave({ ...d, name: d.name.trim() })}>{I.check}{t('Guardar cambios')}</button>
         </div>
       </section>
     </>
@@ -1775,26 +1780,26 @@ function DeckSheet({ game, onSave, onClose }) {
   return (
     <>
       <div className="sheet-bg" onClick={onClose} />
-      <section className="sheet edit-sheet" aria-label="Añadir mazo">
+      <section className="sheet edit-sheet" aria-label={t('Añadir mazo')}>
         <header className="sheet-bar">
-          <button className="icon-btn" onClick={onClose} aria-label="Cerrar">{I.close}</button>
-          <h2>Nuevo mazo de {g.name}</h2>
+          <button className="icon-btn" onClick={onClose} aria-label={t('Cerrar')}>{I.close}</button>
+          <h2>{t('Nuevo mazo de {game}', { game: g.name })}</h2>
           <span style={{ width: 44 }} />
         </header>
         <div className="body form">
           <div className="deck-preview">
             {deck.card ? <img className={imgCls(game, deck.card).trim()} src={artOf(game, deck.card)} alt="" /> : <div className="deck-ph">{gameIcon(game)}</div>}
-            <span className="deck-format">{deck.format}</span>
-            <b>{deck.name || 'Nombre del mazo'}</b>
+            <span className="deck-format">{t(deck.format)}</span>
+            <b>{deck.name || t('Nombre del mazo')}</b>
           </div>
-          <label>Nombre<input id="deck-name" value={deck.name} maxLength={32} placeholder="Ej. Luffy Morado" onChange={(e) => setDeck({ ...deck, name: e.target.value })} /></label>
-          <label>Formato<select id="deck-format" value={deck.format} onChange={(e) => setDeck({ ...deck, format: e.target.value })}>{g.formats.map((f) => <option key={f}>{f}</option>)}</select></label>
-          <div className="field">{g.keyCard(deck.format)}
+          <label>{t('Nombre')}<input id="deck-name" value={deck.name} maxLength={32} placeholder={t('Ej. Luffy Morado')} onChange={(e) => setDeck({ ...deck, name: e.target.value })} /></label>
+          <label>{t('Formato')}<select id="deck-format" value={deck.format} onChange={(e) => setDeck({ ...deck, format: e.target.value })}>{g.formats.map((f) => <option key={f} value={f}>{t(f)}</option>)}</select></label>
+          <div className="field">{t(g.keyCard(deck.format))}
             <CardField id="deck-card" game={game} value={deck.card} onChange={(c) => setDeck((x) => ({ ...x, card: c }))} />
           </div>
         </div>
         <div className="sheet-cta">
-          <button id="save-deck" className="primary" disabled={!valid} onClick={() => onSave({ ...deck, id: crypto.randomUUID(), name: deck.name.trim(), card: deck.card ?? { name: '' } })}>{I.plus}Añadir mazo</button>
+          <button id="save-deck" className="primary" disabled={!valid} onClick={() => onSave({ ...deck, id: crypto.randomUUID(), name: deck.name.trim(), card: deck.card ?? { name: '' } })}>{I.plus}{t('Añadir mazo')}</button>
         </div>
       </section>
     </>
@@ -1808,63 +1813,63 @@ function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
   const set = (patch) => setMe((x) => ({ ...x, ...patch }));
   const p = prof(me);
   const setProf = (patch) => setMe((x) => ({ ...x, profiles: { ...x.profiles, [x.game]: { ...x.profiles[x.game], ...patch } } }));
-  const dayNames = DAYS.filter(([k]) => me.days.includes(k)).map(([, n]) => n.slice(0, 3)).join(', ');
+  const dayNames = DAYS.filter(([k]) => me.days.includes(k)).map(([, n]) => t(n).slice(0, 3)).join(', ');
   return (
     <>
       <div className="game-switch">
-        <span className="game-switch-label">Perfil activo</span>
-        <GameTabs label="Perfil de juego" games={me.interests} value={me.game} onChange={(g) => { set({ game: g }); flash(`Perfil de ${GAMES[g].name} activado`, gameIcon(g)); }} />
+        <span className="game-switch-label">{t('Perfil activo')}</span>
+        <GameTabs label={t('Perfil de juego')} games={me.interests} value={me.game} onChange={(g) => { set({ game: g }); flash(t('Perfil de {game} activado', { game: GAMES[g].name }), gameIcon(g)); }} />
       </div>
 
       <div className={`me-card g-${me.game}`}>
         <img className={`me-cover${imgCls(me.game, p.favCard)}`} src={artOf(me.game, p.favCard)} alt="" />
-        <button id="edit-profile" className="icon-btn glass me-edit" aria-label="Editar perfil" onClick={onEdit}>{I.edit}</button>
-        <button className="me-photo" onClick={onEdit} aria-label="Cambiar imagen">
-          <Hex src={myAvatar(me)} size={108} badge={p.formats[0]} colors={frameOf(me.game, p.colors).list} fullCard={avatarIsCard(me)} />
+        <button id="edit-profile" className="icon-btn glass me-edit" aria-label={t('Editar perfil')} onClick={onEdit}>{I.edit}</button>
+        <button className="me-photo" onClick={onEdit} aria-label={t('Cambiar imagen')}>
+          <Hex src={myAvatar(me)} size={108} badge={t(p.formats[0])} colors={frameOf(me.game, p.colors).list} fullCard={avatarIsCard(me)} />
           <span className="cam">{I.camera}</span>
         </button>
         <GameTag game={me.game} />
         <h2 className="me-name">{me.name}</h2>
-        <div className="me-sub">{p.level}</div>
+        <div className="me-sub">{t(p.level)}</div>
         {p.favCard.name && <div className="me-fav">{gameIcon(me.game)}{p.favCard.name}</div>}
         <Pips game={me.game} colors={p.colors} />
         {me.bio && <p className="me-bio">{me.bio}</p>}
-        <div className="me-avail">{I.clock}{dayNames || 'Sin días'}{me.slots.length > 0 && ` · ${me.slots.join(', ')}`}</div>
+        <div className="me-avail">{I.clock}{dayNames || t('Sin días')}{me.slots.length > 0 && ` · ${me.slots.map((x) => t(x)).join(', ')}`}</div>
         <div className="stats">
-          <div><b>{p.decks.length}</b><span>Mazos</span></div>
-          <div><b>{matchCount}</b><span>Rivales</span></div>
-          <div><b>{me.stores.length}</b><span>Tiendas</span></div>
+          <div><b>{p.decks.length}</b><span>{t('Mazos')}</span></div>
+          <div><b>{matchCount}</b><span>{t('Rivales')}</span></div>
+          <div><b>{me.stores.length}</b><span>{t('Tiendas')}</span></div>
         </div>
       </div>
-      <button className="primary edit-cta" onClick={onEdit}>{I.edit}Editar perfil</button>
+      <button className="primary edit-cta" onClick={onEdit}>{I.edit}{t('Editar perfil')}</button>
 
-      <h3 className="section-title">Mis juegos<small className="title-note">{me.interests.length}/{MAX_GAMES}</small></h3>
+      <h3 className="section-title">{t('Mis juegos')}<small className="title-note">{me.interests.length}/{MAX_GAMES}</small></h3>
       <div className="tags">
         {me.interests.map((g) => <span key={g} className="tag interest on">{gameName(g)}</span>)}
-        <button type="button" className="tag interest add" onClick={onEdit}>{I.plus}Añadir</button>
+        <button type="button" className="tag interest add" onClick={onEdit}>{I.plus}{t('Añadir')}</button>
       </div>
 
-      <h3 className="section-title">Mis mazos de {GAMES[me.game].name}</h3>
+      <h3 className="section-title">{t('Mis mazos de {game}', { game: GAMES[me.game].name })}</h3>
       <div className="decks">
         {p.decks.map((d) => (
           <div key={d.id ?? d.name} className="deck-card">
             <img loading="lazy" decoding="async" className={imgCls(me.game, d.card).trim()} src={artOf(me.game, d.card)} alt="" />
-            <span className="deck-format">{d.format}</span>
-            <button className="deck-del" aria-label={`Borrar ${d.name}`} onClick={() => setProf({ decks: p.decks.filter((x) => x !== d) })}>{I.trash}</button>
+            <span className="deck-format">{t(d.format)}</span>
+            <button className="deck-del" aria-label={t('Borrar {name}', { name: d.name })} onClick={() => setProf({ decks: p.decks.filter((x) => x !== d) })}>{I.trash}</button>
             <div><b>{d.name}</b></div>
           </div>
         ))}
-        <button id="add-deck" className="deck-card add" onClick={onAddDeck}><span className="add-icon">{I.plus}</span>Añadir mazo<small>Formato y {GAMES[me.game].keyCard(GAMES[me.game].formats[0]).toLowerCase()}</small></button>
+        <button id="add-deck" className="deck-card add" onClick={onAddDeck}><span className="add-icon">{I.plus}</span>{t('Añadir mazo')}<small>{t('Formato y {key}', { key: t(GAMES[me.game].keyCard(GAMES[me.game].formats[0])).toLowerCase() })}</small></button>
       </div>
 
-      <h3 className="section-title">Verificación</h3>
+      <h3 className="section-title">{t('Verificación')}</h3>
       <div className="panel verify">
         <span className="verify-icon">{I.qr}</span>
         <div className="grow">
-          <div className="setting-label">Verifícate en tu tienda</div>
-          <div className="setting-hint">Enseña tu código al personal de {storeName(me.stores[0]) || 'tu tienda'} y conseguirás la insignia de jugador verificado.</div>
+          <div className="setting-label">{t('Verifícate en tu tienda')}</div>
+          <div className="setting-hint">{t('Enseña tu código al personal de {store} y conseguirás la insignia de jugador verificado.', { store: storeName(me.stores[0]) || t('tu tienda') })}</div>
         </div>
-        <button className="ghost small" onClick={() => flash('Código listo: enséñalo en la tienda', I.qr)}>Ver código</button>
+        <button className="ghost small" onClick={() => flash(t('Código listo: enséñalo en la tienda'), I.qr)}>{t('Ver código')}</button>
       </div>
 
     </>
@@ -1887,23 +1892,23 @@ function ChangeEmailDialog({ current, onClose }) {
   return (
     <>
       <div className="sheet-bg top" onClick={onClose} />
-      <div className="dialog" role="dialog" aria-label="Cambiar correo">
+      <div className="dialog" role="dialog" aria-label={t('Cambiar correo')}>
         <div className="dialog-icon">{I.mail}</div>
-        <h3>Cambiar correo</h3>
+        <h3>{t('Cambiar correo')}</h3>
         {state === 'sent' ? (
           <>
-            <p>Te hemos enviado un enlace a <b>{current}</b> y otro a <b>{clean}</b>. Ábrelos los dos para confirmar el cambio.</p>
-            <button className="primary" onClick={onClose}>Entendido</button>
+            <p>{t('Te hemos enviado un enlace a {old} y otro a {new}. Ábrelos los dos para confirmar el cambio.', { old: current, new: clean })}</p>
+            <button className="primary" onClick={onClose}>{t('Entendido')}</button>
           </>
         ) : (
           <form className="form dialog-form" onSubmit={submit}>
-            <p>Ahora entras con <b>{current}</b>. Por seguridad, tendrás que confirmar desde las dos direcciones.</p>
-            <input id="new-email" type="email" required autoComplete="email" placeholder="nuevo@correo.com" value={email} onChange={(e) => { setEmail(e.target.value); setState(null); }} />
-            {same && <p className="upload-error" role="alert">Es el mismo correo que ya usas.</p>}
-            {state === 'error' && <p className="upload-error" role="alert">No se ha podido cambiar. Revisa el correo o inténtalo más tarde.</p>}
+            <p>{t('Ahora entras con {email}. Por seguridad, tendrás que confirmar desde las dos direcciones.', { email: current })}</p>
+            <input id="new-email" type="email" required autoComplete="email" placeholder={t('nuevo@correo.com')} value={email} onChange={(e) => { setEmail(e.target.value); setState(null); }} />
+            {same && <p className="upload-error" role="alert">{t('Es el mismo correo que ya usas.')}</p>}
+            {state === 'error' && <p className="upload-error" role="alert">{t('No se ha podido cambiar. Revisa el correo o inténtalo más tarde.')}</p>}
             <div className="btn-row">
-              <button type="button" className="ghost" onClick={onClose}>Cancelar</button>
-              <button id="send-new-email" className="primary" disabled={!clean || same || state === 'sending'}>{state === 'sending' ? 'Enviando…' : 'Cambiar'}</button>
+              <button type="button" className="ghost" onClick={onClose}>{t('Cancelar')}</button>
+              <button id="send-new-email" className="primary" disabled={!clean || same || state === 'sending'}>{state === 'sending' ? t('Enviando…') : t('Cambiar')}</button>
             </div>
           </form>
         )}
@@ -1918,7 +1923,8 @@ const DELETE_WORD = 'ELIMINAR';
 function DeleteAccountDialog({ uid, onClose }) {
   const [word, setWord] = useState('');
   const [state, setState] = useState(null); // null | 'deleting' | 'error'
-  const ok = word.trim().toUpperCase() === DELETE_WORD;
+  const confirmWord = t(DELETE_WORD);
+  const ok = word.trim().toUpperCase() === confirmWord.toUpperCase();
   const remove = async () => {
     setState('deleting');
     // Las fotos están en Storage y no se borran solas con la cuenta
@@ -1933,18 +1939,18 @@ function DeleteAccountDialog({ uid, onClose }) {
   return (
     <>
       <div className="sheet-bg top" onClick={state === 'deleting' ? undefined : onClose} />
-      <div className="dialog" role="alertdialog" aria-label="Eliminar mi cuenta">
+      <div className="dialog" role="alertdialog" aria-label={t('Eliminar mi cuenta')}>
         <div className="dialog-icon">{I.trash}</div>
-        <h3>¿Eliminar tu cuenta?</h3>
-        <p>Se borrarán para siempre tu perfil, tus mazos, tus duelos y tus mensajes. No se puede deshacer.</p>
+        <h3>{t('¿Eliminar tu cuenta?')}</h3>
+        <p>{t('Se borrarán para siempre tu perfil, tus mazos, tus duelos y tus mensajes. No se puede deshacer.')}</p>
         <div className="form dialog-form">
-          <label>Escribe <b>{DELETE_WORD}</b> para confirmar
+          <label>{t('Escribe {word} para confirmar', { word: confirmWord })}
             <input id="delete-word" autoComplete="off" autoCapitalize="characters" value={word} onChange={(e) => setWord(e.target.value)} />
           </label>
-          {state === 'error' && <p className="upload-error" role="alert">No se ha podido eliminar la cuenta. Inténtalo de nuevo en unos minutos.</p>}
+          {state === 'error' && <p className="upload-error" role="alert">{t('No se ha podido eliminar la cuenta. Inténtalo de nuevo en unos minutos.')}</p>}
           <div className="btn-row">
-            <button type="button" className="ghost" disabled={state === 'deleting'} onClick={onClose}>Cancelar</button>
-            <button id="confirm-delete-account" className="primary danger-fill" disabled={!ok || state === 'deleting'} onClick={remove}>{state === 'deleting' ? 'Eliminando…' : 'Eliminar'}</button>
+            <button type="button" className="ghost" disabled={state === 'deleting'} onClick={onClose}>{t('Cancelar')}</button>
+            <button id="confirm-delete-account" className="primary danger-fill" disabled={!ok || state === 'deleting'} onClick={remove}>{state === 'deleting' ? t('Eliminando…') : t('Eliminar')}</button>
           </div>
         </div>
       </div>
@@ -1962,59 +1968,68 @@ function SettingsScreen({ me, setMe, theme, setTheme, blocked, onUnblock, onRese
   const setNotif = (k, v) => setMe((x) => ({ ...x, notif: { ...x.notif, [k]: v } }));
   const blockedPlayers = PLAYERS.filter((x) => blocked.includes(x.id));
   return (
-    <div className="page" role="dialog" aria-label="Ajustes">
+    <div className="page" role="dialog" aria-label={t('Ajustes')}>
       <header className="page-bar">
-        <button id="close-settings" className="icon-btn" onClick={onClose} aria-label="Volver al perfil">{I.back}</button>
-        <h2>Ajustes</h2>
+        <button id="close-settings" className="icon-btn" onClick={onClose} aria-label={t('Volver al perfil')}>{I.back}</button>
+        <h2>{t('Ajustes')}</h2>
         <span style={{ width: 44 }} />
       </header>
       <div className="screen page-body">
-        <h3 className="section-title">Apariencia</h3>
+        <h3 className="section-title">{t('Apariencia')}</h3>
         <div className="panel">
-          <div className="setting"><span className="setting-icon">{I.palette}</span><div className="grow"><div className="setting-label">Tema</div><div className="setting-hint">Auto sigue el modo de tu dispositivo</div></div></div>
-          <Segmented name="Tema" value={theme} onChange={setTheme} options={THEMES} />
+          <div className="setting"><span className="setting-icon">{I.palette}</span><div className="grow"><div className="setting-label">{t('Tema')}</div><div className="setting-hint">{t('Auto sigue el modo de tu dispositivo')}</div></div></div>
+          <Segmented name={t('Tema')} value={theme} onChange={setTheme} options={THEMES.map(([v, label, icon]) => [v, t(label), icon])} />
+        </div>
+        <div className="panel lang-panel">
+          <div className="setting">
+            <span className="setting-icon">{I.globe}</span>
+            <div className="grow"><label className="setting-label" htmlFor="lang">{t('Idioma')}</label></div>
+            <select id="lang" className="lang-select" value={getLang()} onChange={(e) => setLang(e.target.value)}>
+              {LANGS.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+            </select>
+          </div>
         </div>
 
-        <h3 className="section-title">Búsqueda</h3>
+        <h3 className="section-title">{t('Búsqueda')}</h3>
         <div className="panel form">
           <label>
-            <span className="label-row">Radio de búsqueda <b>{me.radius} km</b></span>
+            <span className="label-row">{t('Radio de búsqueda')} <b>{me.radius} km</b></span>
             <input id="radius" type="range" min="1" max="50" value={me.radius} onChange={(e) => set({ radius: +e.target.value })} style={{ '--p': `${((me.radius - 1) / 49) * 100}%` }} />
           </label>
-          <Switch id="only-verified" icon={I.shield} label="Solo jugadores verificados" hint="Verificados en persona por una tienda" on={me.onlyVerified} onChange={(v) => set({ onlyVerified: v })} />
+          <Switch id="only-verified" icon={I.shield} label={t('Solo jugadores verificados')} hint={t('Verificados en persona por una tienda')} on={me.onlyVerified} onChange={(v) => set({ onlyVerified: v })} />
         </div>
 
-        <h3 className="section-title">Privacidad</h3>
+        <h3 className="section-title">{t('Privacidad')}</h3>
         <div className="panel settings">
-          <Switch id="visible" icon={I.eye} label="Aparecer en Descubrir" hint="Si lo desactivas, nadie nuevo verá tu perfil" on={me.visible} onChange={(v) => set({ visible: v })} />
-          <Switch id="show-distance" icon={I.pin} label="Mostrar mi rango de distancia" hint="Nunca se muestra tu ubicación exacta" on={me.showDistance} onChange={(v) => set({ showDistance: v })} />
+          <Switch id="visible" icon={I.eye} label={t('Aparecer en Descubrir')} hint={t('Si lo desactivas, nadie nuevo verá tu perfil')} on={me.visible} onChange={(v) => set({ visible: v })} />
+          <Switch id="show-distance" icon={I.pin} label={t('Mostrar mi rango de distancia')} hint={t('Nunca se muestra tu ubicación exacta')} on={me.showDistance} onChange={(v) => set({ showDistance: v })} />
         </div>
 
-        <h3 className="section-title">Notificaciones</h3>
+        <h3 className="section-title">{t('Notificaciones')}</h3>
         <div className="panel settings">
-          <Switch id="notif-matches" icon={I.sword} label="Nuevos duelos" on={me.notif.matches} onChange={(v) => setNotif('matches', v)} />
-          <Switch id="notif-messages" icon={I.chat} label="Mensajes" on={me.notif.messages} onChange={(v) => setNotif('messages', v)} />
-          <Switch id="notif-events" icon={I.bell} label="Eventos de mis tiendas" hint="Torneos, prereleases y ligas" on={me.notif.events} onChange={(v) => setNotif('events', v)} />
+          <Switch id="notif-matches" icon={I.sword} label={t('Nuevos duelos')} on={me.notif.matches} onChange={(v) => setNotif('matches', v)} />
+          <Switch id="notif-messages" icon={I.chat} label={t('Mensajes')} on={me.notif.messages} onChange={(v) => setNotif('messages', v)} />
+          <Switch id="notif-events" icon={I.bell} label={t('Eventos de mis tiendas')} hint={t('Torneos, prereleases y ligas')} on={me.notif.events} onChange={(v) => setNotif('events', v)} />
         </div>
 
-        <h3 className="section-title">Seguridad</h3>
+        <h3 className="section-title">{t('Seguridad')}</h3>
         <div className="list">
           <button id="open-rules" className="row" onClick={onRules}>
             <span className="row-icon safe">{I.book}</span>
-            <div className="grow"><div className="title">Código de conducta</div><div className="sub">ManaMatch es para jugar, no para ligar</div></div>
+            <div className="grow"><div className="title">{t('Código de conducta')}</div><div className="sub">{t('ManaMatch es para jugar, no para ligar')}</div></div>
             <span className="chev">{I.chevron}</span>
           </button>
           <button id="open-norms" className="row" onClick={onNorms}>
             <span className="row-icon safe">{I.flag}</span>
-            <div className="grow"><div className="title">Normas y sanciones</div><div className="sub">Qué se sanciona y cómo</div></div>
+            <div className="grow"><div className="title">{t('Normas y sanciones')}</div><div className="sub">{t('Qué se sanciona y cómo')}</div></div>
             <span className="chev">{I.chevron}</span>
           </button>
           <div className="panel blocked">
-            <div className="setting"><span className="setting-icon">{I.ban}</span><div className="grow"><div className="setting-label">Usuarios bloqueados</div><div className="setting-hint">{blockedPlayers.length ? 'No pueden verte ni escribirte' : 'No has bloqueado a nadie'}</div></div></div>
+            <div className="setting"><span className="setting-icon">{I.ban}</span><div className="grow"><div className="setting-label">{t('Usuarios bloqueados')}</div><div className="setting-hint">{blockedPlayers.length ? t('No pueden verte ni escribirte') : t('No has bloqueado a nadie')}</div></div></div>
             {blockedPlayers.map((x) => (
               <div key={x.id} className="blocked-row">
                 <img loading="lazy" decoding="async" className="avatar" src={x.avatar} alt="" /><span className="grow">{x.name}</span>
-                <button className="link-btn" onClick={() => onUnblock(x.id)}>Desbloquear</button>
+                <button className="link-btn" onClick={() => onUnblock(x.id)}>{t('Desbloquear')}</button>
               </div>
             ))}
           </div>
@@ -2022,52 +2037,52 @@ function SettingsScreen({ me, setMe, theme, setTheme, blocked, onUnblock, onRese
 
         {!installer.installed && (
           <>
-            <h3 className="section-title">Aplicación</h3>
+            <h3 className="section-title">{t('Aplicación')}</h3>
             <div className="panel install">
               <img src="/icon-192.png" alt="" width="48" height="48" />
               <div className="grow">
-                <div className="setting-label">Instala ManaMatch</div>
+                <div className="setting-label">{t('Instala ManaMatch')}</div>
                 <div className="setting-hint">
-                  {installer.canPrompt ? 'Tenla en tu pantalla de inicio, a pantalla completa y sin conexión.'
-                    : installer.isIOS ? <>En Safari pulsa <b>Compartir</b> {I.share} y luego <b>Añadir a pantalla de inicio</b>.</>
-                      : 'Abre el menú del navegador y elige «Instalar aplicación» o «Añadir a pantalla de inicio».'}
+                  {installer.canPrompt ? t('Tenla en tu pantalla de inicio, a pantalla completa y sin conexión.')
+                    : installer.isIOS ? <>{t('En Safari pulsa «Compartir»')} {I.share} {t('y luego «Añadir a pantalla de inicio».')}</>
+                      : t('Abre el menú del navegador y elige «Instalar aplicación» o «Añadir a pantalla de inicio».')}
                 </div>
               </div>
-              {installer.canPrompt && <button id="install-app" className="primary small" onClick={installer.install}>{I.download}Instalar</button>}
+              {installer.canPrompt && <button id="install-app" className="primary small" onClick={installer.install}>{I.download}{t('Instalar')}</button>}
             </div>
           </>
         )}
 
         {user && (
           <>
-            <h3 className="section-title">Cuenta</h3>
+            <h3 className="section-title">{t('Cuenta')}</h3>
             <div className="list">
               <div className="row account-row">
                 <span className="row-icon account-icon">{viaGoogle ? GOOGLE_G : I.mail}</span>
-                <div className="grow"><div className="title">{viaGoogle ? 'Conectado con Google' : 'Conectado con enlace al correo'}</div><div className="sub">{user.email}</div></div>
+                <div className="grow"><div className="title">{viaGoogle ? t('Conectado con Google') : t('Conectado con enlace al correo')}</div><div className="sub">{user.email}</div></div>
               </div>
               <p className="field-hint account-hint">{I.shield}{viaGoogle
-                ? 'ManaMatch no guarda contraseñas: tu correo y tu contraseña se cambian en tu cuenta de Google.'
-                : 'ManaMatch no usa contraseñas: cada vez que entras te enviamos un enlace nuevo.'}</p>
+                ? t('ManaMatch no guarda contraseñas: tu correo y tu contraseña se cambian en tu cuenta de Google.')
+                : t('ManaMatch no usa contraseñas: cada vez que entras te enviamos un enlace nuevo.')}</p>
               {!viaGoogle && (
                 <button id="change-email" className="row" onClick={() => setAccountDialog('email')}>
                   <span className="row-icon">{I.mail}</span>
-                  <div className="grow"><div className="title">Cambiar correo</div><div className="sub">Confirmarás desde el antiguo y el nuevo</div></div>
+                  <div className="grow"><div className="title">{t('Cambiar correo')}</div><div className="sub">{t('Confirmarás desde el antiguo y el nuevo')}</div></div>
                   <span className="chev">{I.chevron}</span>
                 </button>
               )}
               <button id="sign-out" className="row" onClick={onSignOut}>
                 <span className="row-icon">{I.logout}</span>
-                <div className="grow"><div className="title">Cerrar sesión</div><div className="sub">Podrás volver a entrar cuando quieras</div></div>
+                <div className="grow"><div className="title">{t('Cerrar sesión')}</div><div className="sub">{t('Podrás volver a entrar cuando quieras')}</div></div>
                 <span className="chev">{I.chevron}</span>
               </button>
             </div>
           </>
         )}
 
-        {!user && <button id="reset-profile" className="danger-btn" onClick={onReset}>{I.reset}Restablecer perfil de ejemplo</button>}
-        <button id="wipe-data" className="danger-btn" onClick={onWipe}>{I.trash}Borrar mis datos de este dispositivo</button>
-        {user && <button id="delete-account" className="danger-btn" onClick={() => setAccountDialog('delete')}>{I.ban}Eliminar mi cuenta</button>}
+        {!user && <button id="reset-profile" className="danger-btn" onClick={onReset}>{I.reset}{t('Restablecer perfil de ejemplo')}</button>}
+        <button id="wipe-data" className="danger-btn" onClick={onWipe}>{I.trash}{t('Borrar mis datos de este dispositivo')}</button>
+        {user && <button id="delete-account" className="danger-btn" onClick={() => setAccountDialog('delete')}>{I.ban}{t('Eliminar mi cuenta')}</button>}
       </div>
       {accountDialog === 'email' && <ChangeEmailDialog current={user.email} onClose={() => setAccountDialog(null)} />}
       {accountDialog === 'delete' && <DeleteAccountDialog uid={user.id} onClose={() => setAccountDialog(null)} />}
@@ -2095,7 +2110,7 @@ function MatchScreen({ p, me, onSend, onContinue }) {
   const mine = me.profiles[myGame];
   const sparkColors = [...frameOf(myGame, mine.colors).list, ...frameOf(p.game, p.colors).list];
   return (
-    <div className="match" role="dialog" aria-label="¡Duelo aceptado!">
+    <div className="match" role="dialog" aria-label={t('¡Duelo aceptado!')}>
       {/* Fondo partido en diagonal: tu carta contra la suya */}
       <div className="vs-bg" aria-hidden="true">
         <div className="vs-half left"><img className={imgCls(myGame, mine.favCard).trim()} src={artOf(myGame, mine.favCard)} alt="" /></div>
@@ -2104,21 +2119,21 @@ function MatchScreen({ p, me, onSend, onContinue }) {
       </div>
       <div className="sparks">{Array.from({ length: 24 }, (_, i) => <i key={i} style={{ '--i': i, '--c': sparkColors[i % sparkColors.length] }} />)}</div>
       <div className="duel-icon" aria-hidden="true">{SWORD}{SWORD}</div>
-      <p className="its">¡Duelo</p>
-      <h2 className="match-title" data-text="ACEPTADO!">ACEPTADO!</h2>
+      <p className="its">{t('¡Duelo')}</p>
+      <h2 className="match-title" data-text={t('ACEPTADO!')}>{t('ACEPTADO!')}</h2>
       <div className="pair">
         <Hex src={myAvatar(me, myGame)} alt={me.name} size={124} colors={frameOf(myGame, mine.colors).list} fullCard={avatarIsCard(me, myGame)} />
-        <span className="vs" aria-label="contra">VS</span>
+        <span className="vs" aria-label={t('contra')}>VS</span>
         <Hex src={p.avatar} alt={p.name} size={124} colors={frameOf(p.game, p.colors).list} />
       </div>
-      <p className="swiped">{p.name} también quiere jugar a {GAMES[p.game].name}. Proponed formato y tienda.</p>
+      <p className="swiped">{t('{name} también quiere jugar a {game}. Proponed formato y tienda.', { name: p.name, game: GAMES[p.game].name })}</p>
       <div className="quick light">{quickReplies(p, me).map((q) => <button key={q} type="button" onClick={() => { setText(q); clearWarn(); }}>{q}</button>)}</div>
       <form className="match-reply" onSubmit={submit}>
-        <input id="match-input" placeholder="Propón una partida…" value={text} onChange={(e) => { setText(e.target.value); if (warn === 'conduct') clearWarn(); }} />
-        <button id="match-chat">{warn === 'contact' ? 'Enviar igual' : 'Enviar'}</button>
+        <input id="match-input" placeholder={t('Propón una partida…')} value={text} onChange={(e) => { setText(e.target.value); if (warn === 'conduct') clearWarn(); }} />
+        <button id="match-chat">{warn === 'contact' ? t('Enviar igual') : t('Enviar')}</button>
       </form>
       <ModNote kind={warn} />
-      <button id="match-continue" className="keep" onClick={onContinue}>Seguir buscando</button>
+      <button id="match-continue" className="keep" onClick={onContinue}>{t('Seguir buscando')}</button>
     </div>
   );
 }
@@ -2146,6 +2161,7 @@ function useAppearance(theme, game) {
 }
 
 export default function App() {
+  useLang(); // al cambiar de idioma se vuelve a pintar toda la app
   // Los accesos directos del icono de la app abren una pestaña concreta (?tab=chat)
   const [tab, setTab] = useState(() => { const t = new URLSearchParams(location.search).get('tab'); return TABS.some(([id]) => id === t) ? t : 'discover'; });
   const [queue, setQueue] = useState(PLAYERS);
@@ -2250,7 +2266,7 @@ export default function App() {
       setUnread((u) => u + 1);
       setMatchFx(p);
       setTimeout(() => haptic([30, 60, 40]), 300);
-    } else flash(`Has retado a ${p.name}`);
+    } else flash(t('Has retado a {name}', { name: p.name }));
   };
 
   const rewind = () => {
@@ -2265,13 +2281,13 @@ export default function App() {
     setProfile(null); setBlocking(null); setReporting(null); setMatchFx(null);
     if (chatWith?.id === p.id) setChatWith(null);
     haptic(20);
-    if (!silent) flash(`Has bloqueado a ${p.name}`, I.ban);
+    if (!silent) flash(t('Has bloqueado a {name}', { name: p.name }), I.ban);
   };
 
   const send = (p, m) => {
     setChats((c) => ({ ...c, [p.id]: [...(c[p.id] || []), m] }));
     setTimeout(() => {
-      const reply = m.type === 'meetup' ? { ...m, from: 'them' } : { type: 'text', from: 'them', text: REPLIES[Math.floor(Math.random() * REPLIES.length)] };
+      const reply = m.type === 'meetup' ? { ...m, from: 'them' } : { type: 'text', from: 'them', text: t(REPLIES[Math.floor(Math.random() * REPLIES.length)]) };
       setChats((c) => ({ ...c, [p.id]: [...(c[p.id] || []), reply] }));
     }, 1200);
   };
@@ -2285,10 +2301,10 @@ export default function App() {
     setEditing(null);
     let next = v;
     if (uid && v.avatar.startsWith('data:')) {
-      try { next = { ...v, avatar: await uploadAvatar(uid, v.avatar) }; } catch { next = { ...v, avatar: me.avatar }; flash('No se ha podido subir la foto', I.alert); }
+      try { next = { ...v, avatar: await uploadAvatar(uid, v.avatar) }; } catch { next = { ...v, avatar: me.avatar }; flash(t('No se ha podido subir la foto'), I.alert); }
     } else if (uid && !v.avatar && isAvatarPath(me.avatar)) removeAvatars(uid).catch(() => {});
     setMe(next);
-    flash('Perfil actualizado', I.check);
+    flash(t('Perfil actualizado'), I.check);
   };
   const createProfile = async (draft) => {
     if (hasLocalCardImages(draft)) draft = replaceUploads(draft, await uploadCardImages(uid, draft));
@@ -2327,9 +2343,9 @@ export default function App() {
 
   return (
     <main className={`phone ${tab === 'discover' ? 'discover' : ''}`}>
-      <nav className="topnav" aria-label="Secciones">
+      <nav className="topnav" aria-label={t('Secciones')}>
         {TABS.map(([id, icon, label]) => (
-          <button key={id} id={`nav-${id}`} aria-label={label} title={label} className={tab === id ? 'active' : ''} onClick={() => { setTab(id); if (id === 'chat') setUnread(0); }}>
+          <button key={id} id={`nav-${id}`} aria-label={t(label)} title={t(label)} className={tab === id ? 'active' : ''} onClick={() => { setTab(id); if (id === 'chat') setUnread(0); }}>
             {icon}{id === 'chat' && unread > 0 && <span className="badge">{unread}</span>}
           </button>
         ))}
@@ -2340,9 +2356,9 @@ export default function App() {
           <header className="screen-head">
             <div>
               <span className="eyebrow">ManaMatch · {GAMES[me.game].name}</span>
-              <h1 className="screen-title">{TABS.find((t) => t[0] === tab)[2]}</h1>
+              <h1 className="screen-title">{t(TABS.find((x) => x[0] === tab)[2])}</h1>
             </div>
-            {tab === 'me' && <button id="open-settings" className="icon-btn head-action" onClick={() => setSettingsOpen(true)} aria-label="Ajustes" title="Ajustes">{I.gear}</button>}
+            {tab === 'me' && <button id="open-settings" className="icon-btn head-action" onClick={() => setSettingsOpen(true)} aria-label={t('Ajustes')} title={t('Ajustes')}>{I.gear}</button>}
           </header>
         )}
         {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} />}
@@ -2363,7 +2379,7 @@ export default function App() {
           me={me} setMe={setMe} theme={theme} setTheme={setTheme} installer={installer}
           blocked={blocked} onUnblock={(id) => setBlocked((b) => b.filter((x) => x !== id))}
           onRules={() => setRulesOpen(true)} onNorms={() => setNormsOpen(true)} onWipe={() => setWiping(true)}
-          onReset={() => { setMe(DEFAULT_ME); flash('Perfil restablecido', I.reset); }}
+          onReset={() => { setMe(DEFAULT_ME); flash(t('Perfil restablecido'), I.reset); }}
           user={session?.user} onSignOut={signOut}
           onClose={() => setSettingsOpen(false)}
         />
@@ -2379,7 +2395,7 @@ export default function App() {
       )}
 
       {editing === 'profile' && <EditProfileSheet me={me} onClose={() => setEditing(null)} onSave={saveProfile} />}
-      {editing === 'deck' && <DeckSheet game={me.game} onClose={() => setEditing(null)} onSave={(d) => { addDeck(d); setEditing(null); flash(`Mazo «${d.name}» añadido`, I.plus); }} />}
+      {editing === 'deck' && <DeckSheet game={me.game} onClose={() => setEditing(null)} onSave={(d) => { addDeck(d); setEditing(null); flash(t('Mazo «{name}» añadido', { name: d.name }), I.plus); }} />}
 
       {matchFx && (
         <MatchScreen
@@ -2398,23 +2414,23 @@ export default function App() {
               if (supabase && uid) flagImage(reporting.image).catch(() => {});
             }
             if (alsoBlock) block(reporting, true);
-            setReporting(null); flash(reporting.image ? 'Imagen denunciada y ocultada' : 'Denuncia enviada. La revisaremos en 24 h', I.flag);
+            setReporting(null); flash(reporting.image ? t('Imagen denunciada y ocultada') : t('Denuncia enviada. La revisaremos en 24 h'), I.flag);
           }}
         />
       )}
       {blocking && (
         <Confirm
-          title={`¿Bloquear a ${blocking.name}?`}
-          text="No podrá ver tu perfil ni escribirte, y desaparecerá de tus rivales. Puedes deshacerlo desde tu perfil."
-          confirm="Bloquear" onClose={() => setBlocking(null)} onConfirm={() => block(blocking)}
+          title={t('¿Bloquear a {name}?', { name: blocking.name })}
+          text={t('No podrá ver tu perfil ni escribirte, y desaparecerá de tus rivales. Puedes deshacerlo desde tu perfil.')}
+          confirm={t('Bloquear')} onClose={() => setBlocking(null)} onConfirm={() => block(blocking)}
         />
       )}
 
       {wiping && (
         <Confirm
-          id="confirm-wipe" icon={I.trash} confirm="Borrar todo"
-          title="¿Borrar tus datos de este dispositivo?"
-          text="Se eliminarán tu perfil, tus mazos, la foto, los bloqueos y tus preferencias guardados en este móvil. No se puede deshacer."
+          id="confirm-wipe" icon={I.trash} confirm={t('Borrar todo')}
+          title={t('¿Borrar tus datos de este dispositivo?')}
+          text={t('Se eliminarán tu perfil, tus mazos, la foto, los bloqueos y tus preferencias guardados en este móvil. No se puede deshacer.')}
           onClose={() => setWiping(false)}
           onConfirm={() => {
             try { Object.keys(localStorage).filter((k) => k.startsWith('manamatch-')).forEach((k) => localStorage.removeItem(k)); } catch { /* sin almacenamiento */ }
@@ -2430,8 +2446,8 @@ export default function App() {
         <RulesScreen firstTime={!accepted} onAccept={() => setAccepted(true)} onClose={() => setRulesOpen(false)} />
       )}
 
-      {!online && <div className="offline" role="status">{I.wifiOff}Sin conexión: verás lo último que se guardó</div>}
-      {online && syncFailed && <div className="offline" role="status">{I.alert}No se han podido guardar tus cambios en la cuenta. Lo reintentaremos.</div>}
+      {!online && <div className="offline" role="status">{I.wifiOff}{t('Sin conexión: verás lo último que se guardó')}</div>}
+      {online && syncFailed && <div className="offline" role="status">{I.alert}{t('No se han podido guardar tus cambios en la cuenta. Lo reintentaremos.')}</div>}
 
       {toast && <div className="toast" role="status"><span className="toast-icon">{toast.icon}</span>{toast.text}</div>}
     </main>
