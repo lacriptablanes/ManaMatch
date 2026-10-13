@@ -408,6 +408,39 @@ const RelBadge = ({ p, compact }) => {
   return compact ? null : <span className="rel-badge">{I.check}{t('{n} partidas jugadas', { n: r.played })}</span>;
 };
 
+/* Fila compacta con tus juegos ("Magic, Pokémon, Lorcana…"); al tocarla se abre el selector completo en una hoja */
+function GamesField({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(value);
+  useBack(open, () => setOpen(false));
+  const show = () => { setDraft(value); setOpen(true); };
+  return (
+    <>
+      <button type="button" id="edit-games" className="games-field" onClick={show} aria-haspopup="dialog">
+        <span className="grow">{value.length ? value.map(gameName).join(', ') : t('Elige tus juegos')}</span>
+        <span className="chev">{I.chevron}</span>
+      </button>
+      {open && createPortal(
+        <>
+          <div className="sheet-bg top" onClick={() => setOpen(false)} />
+          <section className="sheet edit-sheet top games-sheet" aria-label={t('Tus juegos')}>
+            <header className="sheet-bar">
+              <button className="icon-btn" onClick={() => setOpen(false)} aria-label={t('Cancelar')}>{I.close}</button>
+              <h2>{t('Tus juegos')}</h2>
+              <span style={{ width: 44 }} />
+            </header>
+            <div className="body"><GamePicker value={draft} onChange={setDraft} /></div>
+            <div className="sheet-cta">
+              <button id="games-done" className="primary" disabled={!draft.length} onClick={() => { onChange(draft); setOpen(false); }}>{I.check}{t('Listo')}</button>
+            </div>
+          </section>
+        </>,
+        document.querySelector('.phone') ?? document.body,
+      )}
+    </>
+  );
+}
+
 /* Juegos de otro jugador, con los que compartís resaltados primero */
 const GameList = ({ me, p }) => {
   const shared = sharedGames(me, p);
@@ -1699,8 +1732,7 @@ function EditProfileSheet({ me, onSave, onClose }) {
           <ModNote kind={bioFlag} />
 
           <fieldset><legend>{t('Tus juegos')}</legend>
-            <GamePicker value={d.interests} onChange={(v) => set({ interests: v })} />
-            {!d.interests.length && <p className="upload-error" role="alert">{t('Elige al menos un juego.')}</p>}
+            <GamesField value={d.interests} onChange={(v) => set({ interests: v })} />
           </fieldset>
 
           <fieldset><legend>{t('Nivel de juego')}</legend>

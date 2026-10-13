@@ -464,4 +464,6 @@ export default {
   "La imagen pesa demasiado (máximo 10 MB).": "Irudia astunegia da (gehienez 10 MB).",
   "La foto pesa demasiado (máximo 10 MB).": "Argazkia astunegia da (gehienez 10 MB).",
   "No se ha podido leer la imagen.": "Ezin izan da irudia irakurri.",
+  "Elige tus juegos": "Aukeratu zure jokoak",
+  "Listo": "Eginda",
 };

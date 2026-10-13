@@ -464,4 +464,6 @@ export default {
   "La imagen pesa demasiado (máximo 10 MB).": "A imaxe pesa demasiado (máximo 10 MB).",
   "La foto pesa demasiado (máximo 10 MB).": "A foto pesa demasiado (máximo 10 MB).",
   "No se ha podido leer la imagen.": "Non se puido ler a imaxe.",
+  "Elige tus juegos": "Escolle os teus xogos",
+  "Listo": "Feito",
 };
