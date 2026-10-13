@@ -2,6 +2,8 @@
 // Una carta se representa siempre como { name, img? }: Magic resuelve la imagen por nombre
 // (Scryfall); Pokémon y One Piece guardan la URL de la imagen de la carta.
 import { cardArt, cardImg, opImg } from './data';
+import { CATALOG } from './catalog';
+import { cardUploadUrl, isCardUpload } from './profileStore';
 
 /* Catálogo de líderes y cartas populares de One Piece (la API pública no tiene buscador por nombre) */
 const OP_CATALOG = [
@@ -88,4 +90,42 @@ export const GAMES = {
     },
   },
 };
+// Juegos con buscador de cartas e imágenes oficiales (perfil "destacado")
 export const GAME_IDS = Object.keys(GAMES);
+
+/* Imagen por defecto de un juego sin carta: fondo carbón liso con sus iniciales en lima */
+export const placeholderArt = (name) => {
+  const initials = name.replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500">`
+    + `<rect width="400" height="500" fill="#2c2840"/><rect x="24" y="24" width="352" height="452" rx="22" fill="none" stroke="#8B5CF6" stroke-width="3" opacity=".55"/>`
+    + `<text x="200" y="200" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="110" fill="#C4F56A" opacity=".9">${initials}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+};
+
+/* El resto del catálogo: perfil genérico, sin buscador; la imagen la sube el jugador */
+const FAV_LABEL = {
+  'Cartas coleccionables': 'Carta favorita', 'Cartas LCG': 'Carta favorita',
+  Wargames: 'Ejército o miniatura favorita', Rol: 'Personaje favorito', 'Juegos de mesa': 'Imagen favorita',
+};
+for (const g of CATALOG) {
+  if (GAMES[g.id]) continue;
+  const ph = placeholderArt(g.name);
+  GAMES[g.id] = {
+    id: g.id, name: g.name, fullName: g.name, generic: true,
+    paletteLabel: '', palette: {},
+    formats: ['Casual', 'Competitivo', 'Torneos de tienda', 'Liga', 'Partidas abiertas'],
+    keyCard: () => (g.cat === 'Wargames' ? 'Ejército' : g.cat === 'Rol' ? 'Personaje' : 'Carta principal'),
+    favLabel: FAV_LABEL[g.cat],
+    art: () => ph,
+    full: () => ph,
+    search: null,
+  };
+}
+
+// Una imagen subida por el jugador manda sobre la oficial (en cualquier juego)
+const uploaded = (c) => (isCardUpload(c?.upload) ? (c.upload.startsWith('data:') ? c.upload : cardUploadUrl(c.upload)) : '');
+for (const cfg of Object.values(GAMES)) {
+  const { art, full } = cfg;
+  cfg.art = (c) => uploaded(c) || art(c ?? {}) || placeholderArt(cfg.name);
+  cfg.full = (c) => uploaded(c) || full(c ?? {}) || placeholderArt(cfg.name);
+}

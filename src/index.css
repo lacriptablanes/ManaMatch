@@ -2164,3 +2164,41 @@ body { background: var(--body-bg); }
 .compat-reasons li { display: flex; gap: 8px; align-items: flex-start; font-size: 0.88rem; color: var(--text-2); line-height: 1.35; }
 .compat-reasons svg { width: 16px; height: 16px; flex: none; margin-top: 1px; color: var(--brand-soft); }
 .compat-none { margin: 0; font-size: 0.88rem; color: var(--muted); }
+
+/* =====================================================================
+   IMÁGENES SUBIDAS: campo de carta, encuadre y denuncia
+   ===================================================================== */
+.form .field { display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; font-weight: 600; color: var(--text-2); }
+.card-field { display: flex; flex-direction: column; gap: 8px; }
+.upload-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.card-field .field-hint { display: flex; gap: 6px; align-items: flex-start; font-weight: 500; }
+.card-field .field-hint svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+.game-tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; padding-bottom: 2px; }
+.game-tabs::-webkit-scrollbar { display: none; }
+.game-tabs button { flex: none; white-space: nowrap; }
+.crop-sheet .body { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.crop-frame {
+  position: relative; overflow: hidden; border-radius: 18px; touch-action: none; cursor: grab;
+  background: #171522; box-shadow: 0 0 0 2px var(--hot), var(--shadow-md);
+}
+.crop-frame:active { cursor: grabbing; }
+.crop-frame img { position: absolute; left: 50%; top: 50%; max-width: none; user-select: none; pointer-events: none; }
+.crop-grid {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent calc(33.33% - 0.5px), rgba(255,255,255,.35) 0, rgba(255,255,255,.35) calc(33.33% + 0.5px), transparent 0, transparent calc(66.66% - 0.5px), rgba(255,255,255,.35) 0, rgba(255,255,255,.35) calc(66.66% + 0.5px), transparent 0),
+    linear-gradient(180deg, transparent calc(33.33% - 0.5px), rgba(255,255,255,.35) 0, rgba(255,255,255,.35) calc(33.33% + 0.5px), transparent 0, transparent calc(66.66% - 0.5px), rgba(255,255,255,.35) 0, rgba(255,255,255,.35) calc(66.66% + 0.5px), transparent 0);
+}
+.crop-zoom { display: flex; align-items: center; gap: 10px; width: 260px; color: var(--muted); }
+.crop-zoom svg { width: 18px; height: 18px; flex: none; }
+.crop-zoom input { flex: 1; accent-color: var(--hot); }
+.fav-wrap { position: relative; }
+.img-flag {
+  position: absolute; right: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border-radius: 999px; border: 0; font-size: 0.75rem; font-weight: 700;
+  color: #fff; background: rgba(23, 21, 34, 0.72); backdrop-filter: blur(6px);
+}
+.img-flag svg { width: 14px; height: 14px; }
+.img-flag.mini { top: 8px; right: 8px; bottom: auto; padding: 6px; z-index: 2; }
+.deck-card { position: relative; }
+.upload-note { margin-top: 6px; text-align: center; }

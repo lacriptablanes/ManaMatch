@@ -1,10 +1,14 @@
 import { useState, useRef, useId, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { PLAYERS, STORES, pokeImg, opImg } from './data';
-import { GAMES, GAME_IDS } from './games';
+import { GAMES, GAME_IDS, placeholderArt } from './games';
 import { CATALOG, GAME_CATEGORIES, MAX_GAMES, gameName, isGameId } from './catalog';
 import { compat, byCompat } from './compat';
 import { supabase } from './supabase';
-import { loadMe, saveMe, uploadAvatar, removeAvatars, isAvatarPath, avatarUrl, ageFrom } from './profileStore';
+import {
+  loadMe, saveMe, uploadAvatar, removeAvatars, isAvatarPath, avatarUrl, ageFrom, isCardUpload,
+  hasLocalCardImages, uploadCardImages, replaceUploads, cleanCardImages, flagImage, hiddenImages,
+} from './profileStore';
 
 /* ---------- Iconos SVG inline (sin dependencias) ---------- */
 const svg = (children, extra = {}) => (
@@ -116,8 +120,21 @@ const migrateMe = (v) => {
   // Lista de juegos: solo identificadores del catálogo, sin repetir y como mucho MAX_GAMES
   me.interests = Array.isArray(v.interests) ? [...new Set(v.interests.filter(isGameId))].slice(0, MAX_GAMES) : [me.game];
   if (!me.interests.length) me.interests = [me.game];
-  return me;
+  return withProfiles(me);
 };
+
+/* Crea el perfil de juego que falte para cada juego de tu lista y limpia imágenes inválidas */
+const newGameProfile = (g) => ({ level: 'Casual', favCard: { name: '' }, colors: [], formats: [GAMES[g].formats[0]], decks: [] });
+const cleanCard = (c) => (c && c.upload && !isCardUpload(c.upload) ? { name: c.name ?? '', ...(c.img && { img: c.img }) } : c);
+function withProfiles(me) {
+  const profiles = { ...me.profiles };
+  for (const g of me.interests) if (!profiles[g] && GAMES[g]) profiles[g] = newGameProfile(g);
+  for (const [g, x] of Object.entries(profiles)) {
+    profiles[g] = { ...x, favCard: cleanCard(x.favCard) ?? { name: '' }, decks: (x.decks ?? []).map((d) => ({ ...d, card: cleanCard(d.card) })) };
+  }
+  const game = me.interests.includes(me.game) ? me.game : (me.interests.find((g) => GAMES[g]) ?? me.game);
+  return { ...me, profiles, game };
+}
 
 /* ---------- Seguridad y convivencia ---------- */
 const RULES = [
@@ -133,7 +150,9 @@ const SAFETY_TIPS = [
   'Sigue la conversación dentro de ManaMatch: así podemos ayudarte si algo va mal.',
   'Si alguien insiste en verte fuera de la tienda o se pone personal, denúncialo.',
 ];
+const IMAGE_REASON = 'Imagen inapropiada o que no es del juego';
 const REPORT_REASONS = [
+  IMAGE_REASON,
   'Busca ligar o hace insinuaciones',
   'Acoso o insultos',
   'Contenido sexual o inapropiado',
@@ -283,22 +302,29 @@ function useCardSuggest(game, q) {
 /* ---------- Utilidades por juego ---------- */
 const storeName = (id) => STORES.find((s) => s.id === id)?.name;
 const prof = (me) => me.profiles[me.game];
-const artOf = (game, card) => GAMES[game].art(card);
-const fullOf = (game, card) => GAMES[game].full(card);
+// Imágenes denunciadas por ti o por varias personas: se sustituyen por la imagen por defecto del juego
+const hiddenImgs = new Set();
+const isHidden = (card) => !!card?.upload && hiddenImgs.has(card.upload);
+const artOf = (game, card) => (isHidden(card) ? placeholderArt(GAMES[game].name) : GAMES[game].art(card));
+const fullOf = (game, card) => (isHidden(card) ? placeholderArt(GAMES[game].name) : GAMES[game].full(card));
+// Solo las cartas oficiales completas de Pokémon y One Piece se recortan; las subidas y las de Magic ya son ilustración
+const isFullCard = (game, card) => (game === 'pokemon' || game === 'onepiece') && !card?.upload && !!card?.img;
+const cardOk = (game, c) => !!(c?.name?.trim() || c?.upload) || !!GAMES[game].generic;
 /* Las cartas de Pokémon y One Piece son la carta completa: se encuadra hacia la ilustración */
-const imgCls = (game) => (game === 'magic' ? '' : ` full-card fc-${game}`);
+const imgCls = (game, card) => (isFullCard(game, card) ? ` full-card fc-${game}` : '');
 // La foto puede ser una subida a la cuenta (ruta en Storage), una recién elegida (data URL) o, si no hay, la carta favorita
 const photoSrc = (me) => (isAvatarPath(me.avatar) ? avatarUrl(me.avatar) : me.avatar);
 const myAvatar = (me, game = me.game) => photoSrc(me) || artOf(game, me.profiles[game].favCard);
-const avatarIsCard = (me, game = me.game) => (!me.avatar && game !== 'magic' ? game : false);
+const avatarIsCard = (me, game = me.game) => (!me.avatar && isFullCard(game, me.profiles[game].favCard) ? game : false);
 const frameOf = (game, colors) => {
   const pal = GAMES[game].palette;
-  const c = (colors.length ? colors : [Object.keys(pal)[0]]).map((k) => pal[k].color);
+  const keys = (colors.length ? colors : [Object.keys(pal)[0]]).filter((k) => pal[k]);
+  const c = keys.length ? keys.map((k) => pal[k].color) : ['#8B5CF6'];
   return { list: c, grad: c.length > 1 ? `linear-gradient(135deg, ${c.join(', ')})` : c[0], glow: c[0] };
 };
 const toggleIn = (arr, v) => arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
 const Pips = ({ game, colors }) => (
-  <div className="pips">{colors.map((c) => <span key={c} className="pip" title={GAMES[game].palette[c].label} style={{ '--c': GAMES[game].palette[c].color }} />)}</div>
+  <div className="pips">{colors.filter((c) => GAMES[game].palette[c]).map((c) => <span key={c} className="pip" title={GAMES[game].palette[c].label} style={{ '--c': GAMES[game].palette[c].color }} />)}</div>
 );
 const Empty = ({ icon, title, text }) => (
   <div className="empty">
@@ -327,8 +353,19 @@ const ChipPicker = ({ options, value, onChange, toggle }) => (
 const ModNote = ({ kind }) => kind && (
   <div className={`mod-note ${kind === 'rate' ? 'contact' : kind}`} role="alert">{kind === 'conduct' ? I.ban : I.alert}<span>{MOD_TEXT[kind]}</span></div>
 );
-const GameTag = ({ game }) => <span className={`game-tag g-${game}`}>{GAME_ICON[game]}{GAMES[game].name}</span>;
-const GAME_OPTIONS = GAME_IDS.map((g) => [g, GAMES[g].name, GAME_ICON[g]]);
+const gameIcon = (g) => GAME_ICON[g] ?? I.deck;
+const GameTag = ({ game }) => <span className={`game-tag g-${game}`}>{gameIcon(game)}{GAMES[game].name}</span>;
+
+/* Pestañas de juego desplazables (tu lista puede tener hasta 10 juegos) */
+const GameTabs = ({ games, value, onChange, label }) => (
+  <div className="filters game-tabs" role="radiogroup" aria-label={label}>
+    {games.map((g) => (
+      <button type="button" key={g} role="radio" aria-checked={value === g} className={value === g ? 'on' : ''} onClick={() => onChange(g)}>
+        {gameIcon(g)}{GAMES[g].name}
+      </button>
+    ))}
+  </div>
+);
 
 /* ---------- Tus juegos: lista del catálogo y juegos en común ---------- */
 const sharedGames = (me, p) => (p.interests ?? []).filter((g) => me.interests.includes(g));
@@ -462,10 +499,10 @@ function TableCard({ p, me, leaving, onInfo }) {
       onPointerMove={tilt} onPointerLeave={untilt} onPointerCancel={untilt}
     >
       <div className="art-frame">
-        <img className={`hero-art${imgCls(p.game)}`} src={artOf(p.game, p.favCard)} alt={`Carta ${p.favCard.name}`} draggable="false" />
+        <img className={`hero-art${imgCls(p.game, p.favCard)}`} src={artOf(p.game, p.favCard)} alt={`Carta ${p.favCard.name}`} draggable="false" />
         <div className="foil" />
         <div className="hero-top">
-          <span className="glass-chip game-chip">{GAME_ICON[p.game]}{GAMES[p.game].name}</span>
+          <span className="glass-chip game-chip">{gameIcon(p.game)}{GAMES[p.game].name}</span>
           <span className="glass-chip dist-chip">{I.pin}{fuzzyDist(p.dist)}</span>
         </div>
       </div>
@@ -476,7 +513,7 @@ function TableCard({ p, me, leaving, onInfo }) {
         <div className="hero-deck">{I.deck}<b>{deck.name}</b><i className="dot-sep" />{deck.format}</div>
         <div className="hero-tags">
           <Pips game={p.game} colors={p.colors} />
-          <span className="hero-fav">{GAME_ICON[p.game]}{p.favCard.name}</span>
+          {p.favCard.name && <span className="hero-fav">{gameIcon(p.game)}{p.favCard.name}</span>}
         </div>
         <div className="hero-sub">{I.store}{storeName(p.stores[0])}<i className="dot-sep" />{p.level}</div>
         <div className="hero-shared" title="Compatibilidad contigo">
@@ -490,7 +527,7 @@ function TableCard({ p, me, leaving, onInfo }) {
 }
 
 /* ================= Profile sheet ================= */
-function ProfileSheet({ p, me, onClose, onLike, onReport, onBlock }) {
+function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock }) {
   const c = compat(me, p);
   const shared = c.shared.length;
   const dayName = (k) => DAYS.find(([d]) => d === k)?.[1].toLowerCase();
@@ -511,7 +548,7 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onBlock }) {
         {/* La cabecera se desplaza con el contenido para no tapar el texto al hacer scroll */}
         <div className="sheet-scroll">
         <div className="sheet-hero">
-          <img className={imgCls(p.game).trim()} src={artOf(p.game, p.favCard)} alt="" />
+          <img className={imgCls(p.game, p.favCard).trim()} src={artOf(p.game, p.favCard)} alt="" />
           <span className="sheet-handle" />
         </div>
         <div className="body">
@@ -549,20 +586,29 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onBlock }) {
           <div className="decks">
             {p.decks.map((d) => (
               <div key={d.name} className="deck-card">
-                <img loading="lazy" decoding="async" className={imgCls(p.game).trim()} src={artOf(p.game, d.card)} alt="" />
+                <img loading="lazy" decoding="async" className={imgCls(p.game, d.card).trim()} src={artOf(p.game, d.card)} alt="" />
                 <span className="deck-format">{d.format}</span>
-                <div><b>{d.name}</b><small>{GAMES[p.game].keyCard(d.format)}: {d.card.name}</small></div>
+                <div><b>{d.name}</b><small>{GAMES[p.game].keyCard(d.format)}{d.card.name && `: ${d.card.name}`}</small></div>
+                {d.card.upload && !isHidden(d.card) && (
+                  <button type="button" className="img-flag mini" onClick={() => onReportImage(d.card.upload)} aria-label={`Denunciar la imagen del mazo ${d.name}`}>{I.flag}</button>
+                )}
               </div>
             ))}
           </div>
 
-          <h3 className="section-title">{GAMES[p.game].paletteLabel}</h3>
+          {p.colors.length > 0 && !GAMES[p.game].generic && <h3 className="section-title">{GAMES[p.game].paletteLabel}</h3>}
           <div className="tags">
-            {p.colors.map((c) => <span key={c} className="tag color-tag"><span className="pip" style={{ '--c': pal[c].color }} />{pal[c].label}</span>)}
+            {p.colors.filter((c) => pal[c]).map((c) => <span key={c} className="tag color-tag"><span className="pip" style={{ '--c': pal[c].color }} />{pal[c].label}</span>)}
           </div>
 
           <h3 className="section-title">{GAMES[p.game].favLabel}</h3>
-          <div className="fav-wrap"><img loading="lazy" decoding="async" className="fav-full" src={fullOf(p.game, p.favCard)} alt={p.favCard.name} /></div>
+          <div className="fav-wrap">
+            <img loading="lazy" decoding="async" className="fav-full" src={fullOf(p.game, p.favCard)} alt={p.favCard.name} />
+            {p.favCard.upload && !isHidden(p.favCard) && (
+              <button type="button" className="img-flag" onClick={() => onReportImage(p.favCard.upload)} aria-label="Denunciar esta imagen">{I.flag}Denunciar imagen</button>
+            )}
+          </div>
+          {p.favCard.upload && <p className="field-hint upload-note">Imagen subida por {p.name}</p>}
 
           <h3 className="section-title">Dónde juega</h3>
           <div className="list">
@@ -596,20 +642,21 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onBlock }) {
 
 /* ================= Denunciar ================= */
 function ReportSheet({ p, onClose, onSubmit }) {
-  const [reason, setReason] = useState('');
+  const [reason, setReason] = useState(p.image ? IMAGE_REASON : '');
   const [details, setDetails] = useState('');
-  const [alsoBlock, setAlsoBlock] = useState(true);
+  // Al denunciar solo una imagen no se bloquea por defecto a la persona
+  const [alsoBlock, setAlsoBlock] = useState(!p.image);
   return (
     <>
       <div className="sheet-bg top" onClick={onClose} />
       <section className="sheet edit-sheet top" aria-label={`Denunciar a ${p.name}`}>
         <header className="sheet-bar">
           <button className="icon-btn" onClick={onClose} aria-label="Cerrar">{I.close}</button>
-          <h2>Denunciar a {p.name}</h2>
+          <h2>{p.image ? 'Denunciar imagen' : `Denunciar a ${p.name}`}</h2>
           <span style={{ width: 44 }} />
         </header>
         <div className="body form">
-          <p className="sheet-intro">Tu denuncia es anónima: {p.name} no sabrá quién la ha enviado. El equipo la revisa en menos de 24 horas.</p>
+          <p className="sheet-intro">{p.image && 'La dejarás de ver al momento y, con varias denuncias, se oculta para todos. '}Tu denuncia es anónima: {p.name} no sabrá quién la ha enviado. El equipo la revisa en menos de 24 horas.</p>
           <fieldset><legend>¿Qué ha pasado?</legend>
             <div className="list">
               {REPORT_REASONS.map((r) => (
@@ -1078,15 +1125,15 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind }) {
   return (
     <>
       <div className="filters">
-        {[['all', 'Todos', null], ...GAME_OPTIONS].map(([id, label, icon]) => (
+        {[['all', 'Todos', null], ...me.interests.map((g) => [g, GAMES[g].name, gameIcon(g)])].map(([id, label, icon]) => (
           <button key={id} id={`filter-${id}`} className={filter === id ? 'on' : ''} onClick={() => setFilter(id)}>{icon}{label}</button>
         ))}
       </div>
       <div className="deck" ref={tableRef}>
-        {!top && <Empty icon={GAME_ICON[filter] ?? I.crystal} title="No hay más jugadores" text="Prueba con otro juego, amplía tu radio de búsqueda o vuelve más tarde." />}
+        {!top && <Empty icon={gameIcon(filter) ?? I.crystal} title="No hay más jugadores" text="Prueba con otro juego, amplía tu radio de búsqueda o vuelve más tarde." />}
         {next && (
           <article className="swipe-card behind">
-            <div className="art-frame"><img className={`hero-art${imgCls(next.game)}`} src={artOf(next.game, next.favCard)} alt="" /></div>
+            <div className="art-frame"><img className={`hero-art${imgCls(next.game, next.favCard)}`} src={artOf(next.game, next.favCard)} alt="" /></div>
           </article>
         )}
         {top && <TableCard key={top.id} p={top} me={me} leaving={leaving} onInfo={() => onInfo(top)} />}
@@ -1131,7 +1178,7 @@ function Nearby({ players, onInfo }) {
         {players.map((p) => (
           <button key={p.id} className="dot" style={{ ...fuzzyPos(p), '--c': frameOf(p.game, p.colors).glow }} onClick={() => onInfo(p)} title={`${p.name} · ${GAMES[p.game].name} · ${fuzzyDist(p.dist)}`}>
             <img src={p.avatar} alt={p.name} />
-            <span className={`dot-game g-${p.game}`}>{GAME_ICON[p.game]}</span>
+            <span className={`dot-game g-${p.game}`}>{gameIcon(p.game)}</span>
           </button>
         ))}
         {STORES.map((s, i) => <span key={s.id} className="shop" title={s.name} style={storePos(s.dist, i, STORES.length)}>{I.store}</span>)}
@@ -1185,7 +1232,7 @@ function Matches({ matches, chats, openChat }) {
             <button key={p.id} id={`match-${p.id}`} className="row" onClick={() => openChat(p)}>
               <img loading="lazy" decoding="async" className="avatar" src={p.avatar} alt="" />
               <div className="grow">
-                <div className="title">{p.name} <span className={`mini-game g-${p.game}`}>{GAME_ICON[p.game]}</span></div>
+                <div className="title">{p.name} <span className={`mini-game g-${p.game}`}>{gameIcon(p.game)}</span></div>
                 <div className={`sub ${last ? '' : 'new'}`}>{last ? (last.type === 'meetup' ? '📅 Partida propuesta' : last.text) : '¡Duelo aceptado! Propón una partida'}</div>
               </div>
               <span className="chev">{I.chevron}</span>
@@ -1243,7 +1290,7 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport }) {
         <button id="chat-back" className="icon-btn" onClick={onBack} aria-label="Volver">{I.back}</button>
         <button className="chat-who" onClick={() => onInfo(p)}>
           <Hex src={p.avatar} alt="" size={46} colors={theirs.list} ring={false} />
-          <div><b>{p.name}</b><span>{GAME_ICON[p.game]}{p.decks[0].name}</span></div>
+          <div><b>{p.name}</b><span>{gameIcon(p.game)}{p.decks[0].name}</span></div>
         </button>
         <Pips game={p.game} colors={p.colors} />
         <button id="chat-report" className="icon-btn" onClick={onReport} aria-label={`Denunciar o bloquear a ${p.name}`} title="Denunciar o bloquear">{I.flag}</button>
@@ -1256,7 +1303,7 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport }) {
         </div>
       )}
       <div className="msgs">
-        <div className="turn-divider"><span>{GAME_ICON[p.game]}Duelo de {GAMES[p.game].name} · {p.formats[0]}</span></div>
+        <div className="turn-divider"><span>{gameIcon(p.game)}Duelo de {GAMES[p.game].name} · {p.formats[0]}</span></div>
         {!msgs.length && <div className="chat-start">Propón formato, tienda y día para vuestra partida.</div>}
         {msgs.map((m, i) => m.type === 'meetup' ? (
           <div key={i} className={`msg meetup ${m.from}`}>
@@ -1293,6 +1340,103 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport }) {
 }
 
 /* ================= Buscador de cartas del juego ================= */
+/* Carta: buscador (si el juego lo tiene) o nombre libre, más la opción de subir tu propia imagen */
+function CardField({ id, game, value, onChange }) {
+  const g = GAMES[game];
+  const fileRef = useRef(null);
+  const [crop, setCrop] = useState(null); // URL local de la imagen que se está encuadrando
+  const [err, setErr] = useState('');
+  const pickFile = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp|gif|avif)$/.test(file.type)) { setErr('Sube una imagen JPG, PNG o WebP.'); return; }
+    if (file.size > 10 * 1024 * 1024) { setErr('La imagen pesa demasiado (máximo 10 MB).'); return; }
+    setErr('');
+    setCrop(URL.createObjectURL(file));
+  };
+  const closeCrop = () => { URL.revokeObjectURL(crop); setCrop(null); };
+  return (
+    <div className="card-field">
+      {g.search
+        ? <CardInput id={id} game={game} value={value} onChange={onChange} placeholder="Busca una carta…" />
+        : <input id={id} value={value?.name ?? ''} maxLength={80} placeholder={`Nombre (opcional)`} onChange={(e) => onChange({ ...value, name: e.target.value })} />}
+      <div className="upload-row">
+        <button type="button" className="ghost small" onClick={() => fileRef.current.click()}>{I.camera}{value?.upload ? 'Cambiar imagen' : 'Subir imagen'}</button>
+        {value?.upload && <button type="button" className="link-btn" onClick={() => { const { upload: _u, ...rest } = value; onChange(rest); }}>Quitar imagen</button>}
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={pickFile} />
+      </div>
+      {err && <p className="upload-error" role="alert">{err}</p>}
+      <p className="field-hint">{I.shield}Sube solo imágenes del juego (una carta, tu ejército, tu mesa…). Las imágenes denunciadas se ocultan.</p>
+      {/* Fuera de la hoja de edición (en .phone): así queda por encima de todo y no se recorta */}
+      {crop && createPortal(
+        <CropSheet src={crop} onClose={closeCrop} onDone={(dataUrl) => { onChange({ ...value, name: value?.name ?? '', upload: dataUrl }); closeCrop(); }} />,
+        document.querySelector('.phone') ?? document.body,
+      )}
+    </div>
+  );
+}
+
+/* Encuadre: arrastra para mover y usa el zoom; se guarda un JPEG de 640×800 sin metadatos */
+const CROP_W = 260, CROP_H = 325, OUT_W = 640, OUT_H = 800;
+function CropSheet({ src, onDone, onClose }) {
+  const [nat, setNat] = useState(null); // tamaño original
+  const [zoom, setZoom] = useState(1);
+  const [off, setOff] = useState({ x: 0, y: 0 });
+  const drag = useRef(null);
+  const imgRef = useRef(null);
+  const base = nat ? Math.max(CROP_W / nat.w, CROP_H / nat.h) : 1;
+  const w = nat ? nat.w * base * zoom : 0, h = nat ? nat.h * base * zoom : 0;
+  // La imagen siempre cubre todo el marco
+  const clamp = (o, z = zoom) => {
+    const ww = nat.w * base * z, hh = nat.h * base * z;
+    const mx = (ww - CROP_W) / 2, my = (hh - CROP_H) / 2;
+    return { x: Math.max(-mx, Math.min(mx, o.x)), y: Math.max(-my, Math.min(my, o.y)) };
+  };
+  const down = (e) => { drag.current = { x: e.clientX, y: e.clientY, o: off }; try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* sin captura */ } };
+  const move = (e) => { const d = drag.current; if (d && nat) setOff(clamp({ x: d.o.x + e.clientX - d.x, y: d.o.y + e.clientY - d.y })); };
+  const up = () => { drag.current = null; };
+  const setZ = (z) => { setZoom(z); setOff((o) => clamp(o, z)); };
+  const done = () => {
+    const c = document.createElement('canvas');
+    c.width = OUT_W; c.height = OUT_H;
+    const k = OUT_W / CROP_W;
+    const x = (CROP_W / 2 + off.x - w / 2) * k, y = (CROP_H / 2 + off.y - h / 2) * k;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#171522'; ctx.fillRect(0, 0, OUT_W, OUT_H);
+    ctx.drawImage(imgRef.current, x, y, w * k, h * k);
+    // Al redibujar en un canvas se pierden los metadatos (EXIF), incluida la ubicación GPS
+    onDone(c.toDataURL('image/jpeg', 0.82));
+  };
+  return (
+    <>
+      <div className="sheet-bg top" onClick={onClose} />
+      <section className="sheet edit-sheet top crop-sheet" aria-label="Encuadrar imagen">
+        <header className="sheet-bar">
+          <button className="icon-btn" onClick={onClose} aria-label="Cancelar">{I.close}</button>
+          <h2>Encuadra la imagen</h2>
+          <span style={{ width: 44 }} />
+        </header>
+        <div className="body">
+          <p className="sheet-intro">Arrastra para colocarla y usa el zoom. Así se verá en tu tarjeta.</p>
+          <div className="crop-frame" style={{ width: CROP_W, height: CROP_H }} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
+            <img ref={imgRef} src={src} alt="" draggable="false"
+              onLoad={(e) => setNat({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+              style={{ width: w || undefined, height: h || undefined, transform: `translate(calc(-50% + ${off.x}px), calc(-50% + ${off.y}px))`, opacity: nat ? 1 : 0 }} />
+            <span className="crop-grid" aria-hidden="true" />
+          </div>
+          <label className="crop-zoom">{I.search}
+            <input type="range" min="1" max="3" step="0.01" value={zoom} aria-label="Zoom" onChange={(e) => setZ(Number(e.target.value))} />
+          </label>
+        </div>
+        <div className="sheet-cta">
+          <button className="primary" disabled={!nat} onClick={done}>{I.check}Usar imagen</button>
+        </div>
+      </section>
+    </>
+  );
+}
+
 function CardInput({ id, game, value, onChange, placeholder }) {
   const [q, setQ] = useState(value?.name ?? '');
   const [open, setOpen] = useState(false);
@@ -1357,9 +1501,9 @@ function CreateProfileScreen({ onCreate }) {
   const age = ageFrom(d.birthDate);
   const ageOk = age !== null && age >= 18 && age <= 99;
   // Cada paso se completa antes de pasar al siguiente
-  const done = [!!(d.name.trim() && ageOk), d.interests.length > 0, !!p.favCard?.name, true];
-  // El perfil con cartas empieza en el primero de tus juegos que lo tenga (Magic, Pokémon u One Piece)
-  const pickGames = (v) => { const main = GAME_IDS.find((g) => v.includes(g)); set({ interests: v, ...(main && { game: main }) }); };
+  const done = [!!(d.name.trim() && ageOk), d.interests.length > 0, cardOk(d.game, p.favCard), true];
+  // El perfil con cartas empieza en el primero de tus juegos con buscador (Magic, Pokémon u One Piece), si hay alguno
+  const pickGames = (v) => setD((x) => withProfiles({ ...x, interests: v, game: GAME_IDS.find((g) => v.includes(g)) ?? v[0] ?? x.game }));
   const stepOk = done[page];
   const reachable = done.indexOf(false) === -1 ? last : done.indexOf(false);
   const go = (i) => setPage(Math.max(0, Math.min(i, reachable)));
@@ -1392,24 +1536,24 @@ function CreateProfileScreen({ onCreate }) {
           <GamePicker value={d.interests} onChange={pickGames} />
         </section>
         <section {...step(2)}>
-          <div className={`rule-hero small g-${d.game}`}><div className="art">{GAME_ICON[d.game]}</div></div>
+          <div className={`rule-hero small g-${d.game}`}><div className="art">{gameIcon(d.game)}</div></div>
           <span className="eyebrow">Paso 3 de 3</span>
           <h2 className="rules-title">Tu estilo de juego</h2>
           <div className="form onboard-form">
-            <fieldset><legend>Perfil con cartas</legend>
-              <Segmented name="Juego" value={d.game} onChange={(g) => set({ game: g })} options={GAME_OPTIONS} />
-            </fieldset>
+            {d.interests.length > 1 && <fieldset><legend>Juego principal</legend>
+              <GameTabs label="Juego principal" games={d.interests} value={d.game} onChange={(g) => set({ game: g })} />
+            </fieldset>}
             <fieldset><legend>Nivel</legend>
               <Segmented name="Nivel" value={p.level} onChange={(v) => setProf({ level: v })} options={LEVELS.map((l) => [l, l])} />
             </fieldset>
-            <label>{GAMES[d.game].favLabel} de {GAMES[d.game].name}
-              <CardInput key={d.game} id="new-fav" game={d.game} value={p.favCard} onChange={(card) => setProf({ favCard: card })} placeholder="Busca una carta…" />
-            </label>
-            <div className={`fav-preview g-${d.game}`}><img className={imgCls(d.game).trim()} src={artOf(d.game, p.favCard)} alt="" /><span>{p.favCard.name}</span></div>
+            <div className="field">{GAMES[d.game].favLabel} de {GAMES[d.game].name}
+              <CardField key={d.game} id="new-fav" game={d.game} value={p.favCard} onChange={(card) => setProf({ favCard: card })} />
+            </div>
+            <div className={`fav-preview g-${d.game}`}><img className={imgCls(d.game, p.favCard).trim()} src={artOf(d.game, p.favCard)} alt="" /><span>{p.favCard.name || GAMES[d.game].name}</span></div>
           </div>
         </section>
         <section {...step(3)}>
-          <Hex src={artOf(d.game, p.favCard)} alt="" size={130} colors={frameOf(d.game, p.colors).list} fullCard={d.game !== 'magic' ? d.game : false} />
+          <Hex src={artOf(d.game, p.favCard)} alt="" size={130} colors={frameOf(d.game, p.colors).list} fullCard={isFullCard(d.game, p.favCard) ? d.game : false} />
           <span className="eyebrow onboard-ready">Todo listo</span>
           <h2 className="rules-title">{d.name.trim() || 'Jugador'}</h2>
           <p className="rules-lead">{GAMES[d.game].name} · {p.level}. Tu foto, mazos, disponibilidad y tiendas los añades después desde tu perfil.</p>
@@ -1481,7 +1625,7 @@ function EditProfileSheet({ me, onSave, onClose }) {
   const bioFlag = checkMessage(d.bio) === 'conduct' ? 'conduct' : null;
   const age = ageFrom(d.birthDate);
   const ageOk = age !== null && age >= 18 && age <= 99;
-  const valid = d.name.trim() && ageOk && d.interests.length > 0 && p.favCard?.name?.trim() && p.colors.length && p.formats.length && !bioFlag;
+  const valid = d.name.trim() && ageOk && d.interests.length > 0 && cardOk(d.game, p.favCard) && (game.generic || p.colors.length) && p.formats.length && !bioFlag;
   return (
     <>
       <div className="sheet-bg" onClick={onClose} />
@@ -1493,8 +1637,8 @@ function EditProfileSheet({ me, onSave, onClose }) {
         </header>
         <div className="body form">
           <fieldset><legend>Perfil de juego que editas</legend>
-            <Segmented name="Juego" value={d.game} onChange={(g) => set({ game: g })} options={GAME_OPTIONS} />
-            <p className="field-hint">{I.palette}Cada juego tiene su propio perfil: carta favorita, colores, formatos y mazos. El que guardes como activo ambienta toda la app.</p>
+            <GameTabs label="Perfil de juego que editas" games={d.interests} value={d.game} onChange={(g) => set({ game: g })} />
+            <p className="field-hint">{I.palette}Cada juego de tu lista tiene su propio perfil: imagen favorita, formatos y mazos. El que guardes como activo es el que ven primero los demás.</p>
           </fieldset>
 
           <div className="photo-edit">
@@ -1520,20 +1664,20 @@ function EditProfileSheet({ me, onSave, onClose }) {
           <ModNote kind={bioFlag} />
 
           <fieldset><legend>Tus juegos</legend>
-            <GamePicker value={d.interests} onChange={(v) => set({ interests: v })} />
+            <GamePicker value={d.interests} onChange={(v) => setD((x) => withProfiles({ ...x, interests: v }))} />
             {!d.interests.length && <p className="upload-error" role="alert">Elige al menos un juego.</p>}
           </fieldset>
 
-          <label>{game.favLabel} de {game.name}
-            <CardInput key={d.game} id="edit-fav" game={d.game} value={p.favCard} onChange={(c) => setProf({ favCard: c })} placeholder="Busca una carta…" />
-          </label>
-          <div className={`fav-preview g-${d.game}`}><img className={imgCls(d.game).trim()} src={artOf(d.game, p.favCard)} alt="" /><span>{p.favCard.name}</span></div>
+          <div className="field">{game.favLabel} de {game.name}
+            <CardField key={d.game} id="edit-fav" game={d.game} value={p.favCard} onChange={(c) => setProf({ favCard: c })} />
+          </div>
+          <div className={`fav-preview g-${d.game}`}><img className={imgCls(d.game, p.favCard).trim()} src={artOf(d.game, p.favCard)} alt="" /><span>{p.favCard.name || game.name}</span></div>
 
           <fieldset><legend>Nivel de juego</legend>
             <Segmented name="Nivel" value={p.level} onChange={(v) => setProf({ level: v })} options={LEVELS.map((l) => [l, l])} />
           </fieldset>
 
-          <fieldset><legend>{game.paletteLabel}</legend>
+          {!game.generic && <fieldset><legend>{game.paletteLabel}</legend>
             <div className="mana-picker">
               {Object.entries(game.palette).map(([k, m]) => (
                 <button type="button" key={k} className={`mana ${p.colors.includes(k) ? 'on' : ''}`} style={{ '--c': m.color }} aria-pressed={p.colors.includes(k)} onClick={() => setProf((c) => ({ colors: toggleIn(c.colors, k) }))}>
@@ -1541,7 +1685,7 @@ function EditProfileSheet({ me, onSave, onClose }) {
                 </button>
               ))}
             </div>
-          </fieldset>
+          </fieldset>}
 
           <fieldset><legend>Formatos de {game.name} (al menos uno)</legend><ChipPicker options={game.formats} value={p.formats} onChange={(v) => setProf({ formats: v })} toggle={(o) => setProf((c) => ({ formats: toggleIn(c.formats, o) }))} /></fieldset>
 
@@ -1579,7 +1723,7 @@ function EditProfileSheet({ me, onSave, onClose }) {
 function DeckSheet({ game, onSave, onClose }) {
   const g = GAMES[game];
   const [deck, setDeck] = useState({ name: '', format: g.formats[0], card: null });
-  const valid = deck.name.trim() && deck.card?.name?.trim();
+  const valid = deck.name.trim() && cardOk(game, deck.card);
   return (
     <>
       <div className="sheet-bg" onClick={onClose} />
@@ -1591,18 +1735,18 @@ function DeckSheet({ game, onSave, onClose }) {
         </header>
         <div className="body form">
           <div className="deck-preview">
-            {deck.card ? <img className={imgCls(game).trim()} src={artOf(game, deck.card)} alt="" /> : <div className="deck-ph">{GAME_ICON[game]}</div>}
+            {deck.card ? <img className={imgCls(game, deck.card).trim()} src={artOf(game, deck.card)} alt="" /> : <div className="deck-ph">{gameIcon(game)}</div>}
             <span className="deck-format">{deck.format}</span>
             <b>{deck.name || 'Nombre del mazo'}</b>
           </div>
           <label>Nombre<input id="deck-name" value={deck.name} maxLength={32} placeholder="Ej. Luffy Morado" onChange={(e) => setDeck({ ...deck, name: e.target.value })} /></label>
           <label>Formato<select id="deck-format" value={deck.format} onChange={(e) => setDeck({ ...deck, format: e.target.value })}>{g.formats.map((f) => <option key={f}>{f}</option>)}</select></label>
-          <label>{g.keyCard(deck.format)}
-            <CardInput id="deck-card" game={game} value={deck.card} onChange={(c) => setDeck((x) => ({ ...x, card: c }))} placeholder="Busca una carta…" />
-          </label>
+          <div className="field">{g.keyCard(deck.format)}
+            <CardField id="deck-card" game={game} value={deck.card} onChange={(c) => setDeck((x) => ({ ...x, card: c }))} />
+          </div>
         </div>
         <div className="sheet-cta">
-          <button id="save-deck" className="primary" disabled={!valid} onClick={() => onSave({ ...deck, id: crypto.randomUUID(), name: deck.name.trim() })}>{I.plus}Añadir mazo</button>
+          <button id="save-deck" className="primary" disabled={!valid} onClick={() => onSave({ ...deck, id: crypto.randomUUID(), name: deck.name.trim(), card: deck.card ?? { name: '' } })}>{I.plus}Añadir mazo</button>
         </div>
       </section>
     </>
@@ -1621,11 +1765,11 @@ function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
     <>
       <div className="game-switch">
         <span className="game-switch-label">Perfil activo</span>
-        <Segmented name="Perfil de juego" value={me.game} onChange={(g) => { set({ game: g }); flash(`Perfil de ${GAMES[g].name} activado`, GAME_ICON[g]); }} options={GAME_OPTIONS} />
+        <GameTabs label="Perfil de juego" games={me.interests} value={me.game} onChange={(g) => { set({ game: g }); flash(`Perfil de ${GAMES[g].name} activado`, gameIcon(g)); }} />
       </div>
 
       <div className={`me-card g-${me.game}`}>
-        <img className={`me-cover${imgCls(me.game)}`} src={artOf(me.game, p.favCard)} alt="" />
+        <img className={`me-cover${imgCls(me.game, p.favCard)}`} src={artOf(me.game, p.favCard)} alt="" />
         <button id="edit-profile" className="icon-btn glass me-edit" aria-label="Editar perfil" onClick={onEdit}>{I.edit}</button>
         <button className="me-photo" onClick={onEdit} aria-label="Cambiar imagen">
           <Hex src={myAvatar(me)} size={108} badge={p.formats[0]} colors={frameOf(me.game, p.colors).list} fullCard={avatarIsCard(me)} />
@@ -1634,7 +1778,7 @@ function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
         <GameTag game={me.game} />
         <h2 className="me-name">{me.name}</h2>
         <div className="me-sub">{p.level}</div>
-        <div className="me-fav">{GAME_ICON[me.game]}{p.favCard.name}</div>
+        {p.favCard.name && <div className="me-fav">{gameIcon(me.game)}{p.favCard.name}</div>}
         <Pips game={me.game} colors={p.colors} />
         {me.bio && <p className="me-bio">{me.bio}</p>}
         <div className="me-avail">{I.clock}{dayNames || 'Sin días'}{me.slots.length > 0 && ` · ${me.slots.join(', ')}`}</div>
@@ -1656,7 +1800,7 @@ function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
       <div className="decks">
         {p.decks.map((d) => (
           <div key={d.id ?? d.name} className="deck-card">
-            <img loading="lazy" decoding="async" className={imgCls(me.game).trim()} src={artOf(me.game, d.card)} alt="" />
+            <img loading="lazy" decoding="async" className={imgCls(me.game, d.card).trim()} src={artOf(me.game, d.card)} alt="" />
             <span className="deck-format">{d.format}</span>
             <button className="deck-del" aria-label={`Borrar ${d.name}`} onClick={() => setProf({ decks: p.decks.filter((x) => x !== d) })}>{I.trash}</button>
             <div><b>{d.name}</b></div>
@@ -1906,8 +2050,8 @@ function MatchScreen({ p, me, onSend, onContinue }) {
     <div className="match" role="dialog" aria-label="¡Duelo aceptado!">
       {/* Fondo partido en diagonal: tu carta contra la suya */}
       <div className="vs-bg" aria-hidden="true">
-        <div className="vs-half left"><img className={imgCls(myGame).trim()} src={artOf(myGame, mine.favCard)} alt="" /></div>
-        <div className="vs-half right"><img className={imgCls(p.game).trim()} src={artOf(p.game, p.favCard)} alt="" /></div>
+        <div className="vs-half left"><img className={imgCls(myGame, mine.favCard).trim()} src={artOf(myGame, mine.favCard)} alt="" /></div>
+        <div className="vs-half right"><img className={imgCls(p.game, p.favCard).trim()} src={artOf(p.game, p.favCard)} alt="" /></div>
         <svg className="vs-seam" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="62" y1="-2" x2="38" y2="102" /></svg>
       </div>
       <div className="sparks">{Array.from({ length: 24 }, (_, i) => <i key={i} style={{ '--i': i, '--c': sparkColors[i % sparkColors.length] }} />)}</div>
@@ -1973,6 +2117,9 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [wiping, setWiping] = useState(false);
   const [me, setMe] = useStoredState('manamatch-me', DEFAULT_ME, migrateMe);
+  // Imágenes que has denunciado (y, con cuenta, las ocultas para todos): se sincronizan con el conjunto global
+  const [hidden, setHidden] = useStoredState('manamatch-hidden-imgs', [], (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(-200) : []));
+  hidden.forEach((x) => hiddenImgs.add(x));
   const [theme, setTheme] = useStoredState('manamatch-theme', 'dark');
   const [blocked, setBlocked] = useStoredState('manamatch-blocked', []);
   const [accepted, setAccepted] = useStoredState('manamatch-rules', false);
@@ -1996,7 +2143,7 @@ export default function App() {
     loadMe(uid, STARTER_PROFILES)
       .then((m) => {
         if (!alive) return;
-        if (m) { lastSaved.current = JSON.stringify(m); setMe(m); }
+        if (m) { lastSaved.current = JSON.stringify(m); setMe(migrateMe(m)); }
         setCloud({ uid, status: m ? 'ready' : 'new' });
       })
       .catch(() => alive && setCloud({ uid, status: 'error' }));
@@ -2006,11 +2153,22 @@ export default function App() {
     if (cloudStatus !== 'ready') return;
     const json = JSON.stringify(me);
     if (json === lastSaved.current || me.avatar.startsWith('data:')) return;
-    const t = setTimeout(() => {
-      saveMe(uid, me).then(() => { lastSaved.current = json; setSyncFailed(false); }).catch(() => setSyncFailed(true));
+    const t = setTimeout(async () => {
+      try {
+        // Primero se suben las imágenes de cartas nuevas; al cambiar el perfil este efecto vuelve a guardar
+        if (hasLocalCardImages(me)) { const map = await uploadCardImages(uid, me); setMe((x) => replaceUploads(x, map)); return; }
+        await saveMe(uid, me);
+        lastSaved.current = json; setSyncFailed(false);
+        cleanCardImages(uid, me).catch(() => {});
+      } catch { setSyncFailed(true); }
     }, 800);
     return () => clearTimeout(t);
-  }, [me, cloudStatus, uid, online]);
+  }, [me, cloudStatus, uid, online, setMe]);
+  // Imágenes ocultas para todos por acumular denuncias
+  useEffect(() => {
+    if (!supabase || !uid) return;
+    hiddenImages().then((list) => setHidden((h) => [...new Set([...h, ...list])].slice(-200))).catch(() => {});
+  }, [uid, setHidden]);
 
   // El botón "atrás" cierra primero lo último que se abrió
   useBack(tab !== 'discover', () => setTab('discover'));
@@ -2083,6 +2241,7 @@ export default function App() {
     flash('Perfil actualizado', I.check);
   };
   const createProfile = async (draft) => {
+    if (hasLocalCardImages(draft)) draft = replaceUploads(draft, await uploadCardImages(uid, draft));
     await saveMe(uid, draft);
     lastSaved.current = JSON.stringify(draft);
     setMe(draft);
@@ -2163,6 +2322,7 @@ export default function App() {
       {profile && (
         <ProfileSheet
           p={profile} me={me} onClose={() => setProfile(null)}
+          onReportImage={(image) => setReporting({ ...profile, image })}
           onLike={visibleQueue.some((q) => q.id === profile.id) ? () => decide(profile, true) : null}
           onReport={() => setReporting(profile)} onBlock={() => setBlocking(profile)}
         />
@@ -2182,7 +2342,14 @@ export default function App() {
       {reporting && (
         <ReportSheet
           p={reporting} onClose={() => setReporting(null)}
-          onSubmit={({ alsoBlock }) => { if (alsoBlock) block(reporting, true); setReporting(null); flash('Denuncia enviada. La revisaremos en 24 h', I.flag); }}
+          onSubmit={({ alsoBlock }) => {
+            if (reporting.image) {
+              setHidden((h) => [...h.filter((x) => x !== reporting.image), reporting.image]);
+              if (supabase && uid) flagImage(reporting.image).catch(() => {});
+            }
+            if (alsoBlock) block(reporting, true);
+            setReporting(null); flash(reporting.image ? 'Imagen denunciada y ocultada' : 'Denuncia enviada. La revisaremos en 24 h', I.flag);
+          }}
         />
       )}
       {blocking && (

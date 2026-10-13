@@ -16,6 +16,9 @@ export const STORES = [
 
 // Cada jugador tiene su lista de juegos (interests, ids de catalog.js) y un juego principal (game) con su paleta de colores, formatos y mazos.
 // Las cartas son { name, img? }: en Magic la imagen se resuelve por nombre.
+// Imagen "subida" de ejemplo (en la app real sería una foto del jugador guardada en Storage)
+const demoUpload = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="640" height="800" viewBox="0 0 640 800"><rect width="640" height="800" fill="#1d1a2b"/><circle cx="470" cy="190" r="120" fill="#8B5CF6" opacity=".55"/><path d="M0 620 L170 430 L300 560 L430 380 L640 600 L640 800 L0 800Z" fill="#2c2840"/><path d="M300 250 l40 60 l-15 190 l-50 0 l-15 -190Z" fill="#C4F56A"/><rect x="250" y="300" width="140" height="22" rx="6" fill="#C4F56A"/><path d="M0 700 L640 660 L640 800 L0 800Z" fill="#171522"/></svg>')}`;
+
 export const PLAYERS = [
   {
     id: 1, interests: ['magic', 'lorcana', 'catan', 'dnd'], game: 'magic', avatar: 'https://randomuser.me/api/portraits/women/44.jpg', verified: true, name: 'Lucía', dist: 1.2,
@@ -114,5 +117,13 @@ export const PLAYERS = [
       { name: 'Luffy de inicio', format: 'Casual', card: { name: 'Monkey.D.Luffy (ST01-001)', img: opImg('ST01-001') } },
     ],
     stores: ['s4', 's3'], availability: 'Fines de semana', days: ['S', 'D'], slots: ['Tarde'],
+  },
+  {
+    id: 10, interests: ['wh40k', 'kill-team', 'magic', 'lorcana'], game: 'wh40k', avatar: 'https://randomuser.me/api/portraits/men/11.jpg', verified: false, name: 'Álex', dist: 2.2,
+    formats: ['Torneos de tienda', 'Casual'], colors: [], level: 'Casual competitivo',
+    favCard: { name: 'Mis Marines Espaciales', upload: demoUpload },
+    bio: 'Pinto miniaturas desde los 12. Busco rival para partidas de 1000 puntos y algún Commander de vez en cuando.',
+    decks: [{ name: 'Ultramarines', format: 'Torneos de tienda', card: { name: 'Capitán', upload: demoUpload } }],
+    stores: ['s3', 's1'], availability: 'Miércoles por la tarde', days: ['X'], slots: ['Tarde'],
   },
 ];
