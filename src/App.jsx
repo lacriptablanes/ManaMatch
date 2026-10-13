@@ -408,35 +408,39 @@ const RelBadge = ({ p, compact }) => {
   return compact ? null : <span className="rel-badge">{I.check}{t('{n} partidas jugadas', { n: r.played })}</span>;
 };
 
-/* Fila compacta con tus juegos ("Magic, Pokémon, Lorcana…"); al tocarla se abre el selector completo en una hoja */
+/* Hoja con el selector completo de juegos; los cambios se aplican al pulsar Listo */
+function GamesSheet({ value, onSave, onClose }) {
+  const [draft, setDraft] = useState(value);
+  useBack(true, onClose);
+  return createPortal(
+    <>
+      <div className="sheet-bg top" onClick={onClose} />
+      <section className="sheet edit-sheet top games-sheet" aria-label={t('Tus juegos')}>
+        <header className="sheet-bar">
+          <button className="icon-btn" onClick={onClose} aria-label={t('Cancelar')}>{I.close}</button>
+          <h2>{t('Tus juegos')}</h2>
+          <span style={{ width: 44 }} />
+        </header>
+        <div className="body"><GamePicker value={draft} onChange={setDraft} /></div>
+        <div className="sheet-cta">
+          <button id="games-done" className="primary" disabled={!draft.length} onClick={() => { onSave(draft); onClose(); }}>{I.check}{t('Listo')}</button>
+        </div>
+      </section>
+    </>,
+    document.querySelector('.phone') ?? document.body,
+  );
+}
+
+/* Fila compacta con tus juegos ("Magic, Pokémon, Lorcana…"); al tocarla se abre el selector */
 function GamesField({ value, onChange }) {
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(value);
-  useBack(open, () => setOpen(false));
-  const show = () => { setDraft(value); setOpen(true); };
   return (
     <>
-      <button type="button" id="edit-games" className="games-field" onClick={show} aria-haspopup="dialog">
+      <button type="button" id="edit-games" className="games-field" onClick={() => setOpen(true)} aria-haspopup="dialog">
         <span className="grow">{value.length ? value.map(gameName).join(', ') : t('Elige tus juegos')}</span>
         <span className="chev">{I.chevron}</span>
       </button>
-      {open && createPortal(
-        <>
-          <div className="sheet-bg top" onClick={() => setOpen(false)} />
-          <section className="sheet edit-sheet top games-sheet" aria-label={t('Tus juegos')}>
-            <header className="sheet-bar">
-              <button className="icon-btn" onClick={() => setOpen(false)} aria-label={t('Cancelar')}>{I.close}</button>
-              <h2>{t('Tus juegos')}</h2>
-              <span style={{ width: 44 }} />
-            </header>
-            <div className="body"><GamePicker value={draft} onChange={setDraft} /></div>
-            <div className="sheet-cta">
-              <button id="games-done" className="primary" disabled={!draft.length} onClick={() => { onChange(draft); setOpen(false); }}>{I.check}{t('Listo')}</button>
-            </div>
-          </section>
-        </>,
-        document.querySelector('.phone') ?? document.body,
-      )}
+      {open && <GamesSheet value={value} onSave={onChange} onClose={() => setOpen(false)} />}
     </>
   );
 }
@@ -1825,6 +1829,7 @@ const THEMES = [['light', 'Día', I.sun], ['dark', 'Noche', I.moon], ['system', 
 
 function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
   const fav = me.favCard;
+  const [gamesOpen, setGamesOpen] = useState(false);
   const dayNames = DAYS.filter(([k]) => me.days.includes(k)).map(([, n]) => t(n).slice(0, 3)).join(', ');
   return (
     <>
@@ -1851,8 +1856,12 @@ function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
       <h3 className="section-title">{t('Mis juegos')}<small className="title-note">{me.interests.length}/{MAX_GAMES}</small></h3>
       <div className="tags">
         {me.interests.map((g) => <span key={g} className="tag interest on">{gameName(g)}</span>)}
-        <button type="button" className="tag interest add" onClick={onEdit}>{I.plus}{t('Añadir')}</button>
+        <button type="button" id="add-games" className="tag interest add" onClick={() => setGamesOpen(true)}>{I.plus}{t('Añadir')}</button>
       </div>
+      {gamesOpen && (
+        <GamesSheet value={me.interests} onClose={() => setGamesOpen(false)}
+          onSave={(v) => { setMe((x) => normalizeMe({ ...x, interests: v })); flash(t('Juegos actualizados'), I.check); }} />
+      )}
 
       {me.formats.length > 0 && <>
         <h3 className="section-title">{t('Formatos')}</h3>

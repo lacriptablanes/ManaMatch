@@ -466,4 +466,5 @@ export default {
   "No se ha podido leer la imagen.": "Non se puido ler a imaxe.",
   "Elige tus juegos": "Escolle os teus xogos",
   "Listo": "Feito",
+  "Juegos actualizados": "Xogos actualizados",
 };

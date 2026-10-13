@@ -466,4 +466,5 @@ export default {
   "No se ha podido leer la imagen.": "Ezin izan da irudia irakurri.",
   "Elige tus juegos": "Aukeratu zure jokoak",
   "Listo": "Eginda",
+  "Juegos actualizados": "Jokoak eguneratuta",
 };

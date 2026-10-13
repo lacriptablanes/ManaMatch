@@ -464,4 +464,5 @@ export default {
   "No se ha podido leer la imagen.": "Couldn't read the image.",
   "Elige tus juegos": "Choose your games",
   "Listo": "Done",
+  "Juegos actualizados": "Games updated",
 };

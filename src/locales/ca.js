@@ -466,4 +466,5 @@ export default {
   "No se ha podido leer la imagen.": "No s'ha pogut llegir la imatge.",
   "Elige tus juegos": "Tria els teus jocs",
   "Listo": "Fet",
+  "Juegos actualizados": "Jocs actualitzats",
 };
