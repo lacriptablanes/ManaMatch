@@ -1247,6 +1247,13 @@ function CardInput({ id, game, value, onChange, placeholder }) {
 }
 
 /* ================= Crear perfil (la primera vez que entra una cuenta nueva) ================= */
+// Aviso junto a la fecha de nacimiento: para qué se pide y que nadie más la ve
+const AgeNotice = () => (
+  <div className="age-notice">
+    <p>{I.user}<span><b>Solo para mayores de 18 años.</b> La pedimos para comprobarlo.</span></p>
+    <p>{I.eye}<span><b>Tu edad no se muestra nunca.</b> Ni tu fecha de nacimiento ni tu edad aparecen en tu perfil.</span></p>
+  </div>
+);
 const maxBirthDate = () => { const t = new Date(); t.setFullYear(t.getFullYear() - 18); return t.toISOString().slice(0, 10); };
 const NEW_ME = { ...DEFAULT_ME, name: '', birthDate: '', bio: '', stores: [], days: [], slots: [], profiles: STARTER_PROFILES };
 
@@ -1277,7 +1284,7 @@ function CreateProfileScreen({ onCreate }) {
             <label>Nombre de jugador<input id="new-name" value={d.name} maxLength={24} autoComplete="nickname" placeholder="Cómo te verán los demás" onChange={(e) => set({ name: e.target.value })} /></label>
             <label>Fecha de nacimiento<input id="new-birth" type="date" max={maxBirthDate()} value={d.birthDate} onChange={(e) => set({ birthDate: e.target.value })} /></label>
             {d.birthDate && !ageOk && <p className="upload-error" role="alert">{age < 18 ? 'ManaMatch es solo para mayores de 18.' : 'Revisa la fecha de nacimiento.'}</p>}
-            <p className="field-hint">{I.shield}Tu fecha de nacimiento es privada: nadie la verá. Solo sirve para confirmar que eres mayor de 18.</p>
+            <AgeNotice />
           </div>
         </section>
         <section className={`${slide(1)} dense`}>
@@ -1412,7 +1419,7 @@ function EditProfileSheet({ me, onSave, onClose }) {
           {!d.name.trim() && <p className="upload-error" role="alert">Escribe un nombre de jugador.</p>}
           <label>Fecha de nacimiento<input id="edit-birth" type="date" max={maxBirthDate()} value={d.birthDate} onChange={(e) => set({ birthDate: e.target.value })} /></label>
           {d.birthDate && !ageOk && <p className="upload-error" role="alert">{age < 18 ? 'ManaMatch es solo para mayores de 18.' : 'Revisa la fecha de nacimiento.'}</p>}
-          <p className="field-hint">{I.shield}Tu fecha de nacimiento no se muestra a nadie: solo sirve para confirmar que eres mayor de 18.</p>
+          <AgeNotice />
           <label>
             <span className="label-row">Sobre ti como jugador <small>{d.bio.length}/160</small></span>
             <textarea id="edit-bio" rows="3" maxLength={160} value={d.bio} placeholder="Qué juegas, qué buscas en una mesa…" onChange={(e) => set({ bio: e.target.value })} />
