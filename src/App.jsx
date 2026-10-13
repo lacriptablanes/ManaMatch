@@ -453,7 +453,6 @@ function ProfileSheet({ p, onClose, onLike, onReport, onBlock }) {
           </div>
           <div className="info-pills">
             {p.verified && <span className="info-pill ok">{I.shield}Verificado en {storeName(p.stores[0])}</span>}
-            <span className="info-pill">{I.user}Mayor de 18</span>
             <span className="info-pill">{I.pin}{fuzzyDist(p.dist)}</span>
             <span className="info-pill">{I.clock}{p.availability}</span>
           </div>
