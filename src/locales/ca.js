@@ -467,4 +467,5 @@ export default {
   "Elige tus juegos": "Tria els teus jocs",
   "Listo": "Fet",
   "Juegos actualizados": "Jocs actualitzats",
+  "Añade más juegos a tu lista, amplía tu radio de búsqueda o vuelve más tarde.": "Afegeix més jocs a la teva llista, amplia el radi de cerca o torna més tard.",
 };

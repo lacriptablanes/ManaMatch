@@ -467,4 +467,5 @@ export default {
   "Elige tus juegos": "Escolle os teus xogos",
   "Listo": "Feito",
   "Juegos actualizados": "Xogos actualizados",
+  "Añade más juegos a tu lista, amplía tu radio de búsqueda o vuelve más tarde.": "Engade máis xogos á túa lista, amplía o teu radio de busca ou volve máis tarde.",
 };

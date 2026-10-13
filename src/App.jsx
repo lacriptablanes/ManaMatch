@@ -1171,8 +1171,7 @@ function ThrowCard({ card, index, total, disabled, targetRef, onPlay, onTap }) {
 
 /* ================= Discover ================= */
 function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind }) {
-  // Por defecto se muestran todos, ordenados por compatibilidad contigo
-  const [filter, setFilter] = useState('all');
+  // Solo jugadores con algún juego en común contigo, ordenados por compatibilidad
   const [leaving, setLeaving] = useState(null);
   const [impact, setImpact] = useState(null);
   const [tipSeen, setTipSeen] = useStoredState('manamatch-hand-tip', false);
@@ -1180,7 +1179,7 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind }) {
   const tableRef = useRef(null);
   const impactKey = useRef(0);
   const list = queue.filter((p) =>
-    (filter === 'all' || p.game === filter || p.interests?.includes(filter)) && p.dist <= me.radius && (!me.onlyVerified || p.verified))
+    sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))
     .sort(byCompat(me));
   const [top, next] = list;
 
@@ -1198,13 +1197,8 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind }) {
 
   return (
     <>
-      <div className="filters">
-        {[['all', t('Todos'), null], ...me.interests.map((g) => [g, GAMES[g].name, gameIcon(g)])].map(([id, label, icon]) => (
-          <button key={id} id={`filter-${id}`} className={filter === id ? 'on' : ''} onClick={() => setFilter(id)}>{icon}{label}</button>
-        ))}
-      </div>
       <div className="deck" ref={tableRef}>
-        {!top && <Empty icon={gameIcon(filter) ?? I.crystal} title={t('No hay más jugadores')} text={t('Prueba con otro juego, amplía tu radio de búsqueda o vuelve más tarde.')} />}
+        {!top && <Empty icon={I.crystal} title={t('No hay más jugadores')} text={t('Añade más juegos a tu lista, amplía tu radio de búsqueda o vuelve más tarde.')} />}
         {next && (
           <article className="swipe-card behind">
             <div className="art-frame"><img className={`hero-art${imgCls(next.game, next.favCard)}`} src={artOf(next.game, next.favCard)} alt="" /></div>

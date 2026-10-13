@@ -467,4 +467,5 @@ export default {
   "Elige tus juegos": "Aukeratu zure jokoak",
   "Listo": "Eginda",
   "Juegos actualizados": "Jokoak eguneratuta",
+  "Añade más juegos a tu lista, amplía tu radio de búsqueda o vuelve más tarde.": "Gehitu joko gehiago zure zerrendara, handitu bilaketa-erradioa edo itzuli geroago.",
 };

@@ -465,4 +465,5 @@ export default {
   "Elige tus juegos": "Choose your games",
   "Listo": "Done",
   "Juegos actualizados": "Games updated",
+  "Añade más juegos a tu lista, amplía tu radio de búsqueda o vuelve más tarde.": "Add more games to your list, widen your search radius or come back later.",
 };
