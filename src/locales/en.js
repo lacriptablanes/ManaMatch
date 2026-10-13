@@ -466,4 +466,7 @@ export default {
   "Listo": "Done",
   "Juegos actualizados": "Games updated",
   "Añade más juegos a tu lista, amplía tu radio de búsqueda o vuelve más tarde.": "Add more games to your list, widen your search radius or come back later.",
+  "¿Una partida de {game} esta semana?": "A game of {game} this week?",
+  "Muy pronto el personal de {store} podrá verificarte en persona y conseguirás la insignia de jugador verificado.": "Soon the staff at {store} will be able to verify you in person and you'll get the verified player badge.",
+  "Próximamente": "Coming soon",
 };

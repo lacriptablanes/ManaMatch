@@ -20,7 +20,7 @@ export const STORES = [
 // Imagen "subida" de ejemplo (en la app real sería una foto del jugador guardada en Storage)
 const demoUpload = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="640" height="800" viewBox="0 0 640 800"><rect width="640" height="800" fill="#1d1a2b"/><circle cx="470" cy="190" r="120" fill="#8B5CF6" opacity=".55"/><path d="M0 620 L170 430 L300 560 L430 380 L640 600 L640 800 L0 800Z" fill="#2c2840"/><path d="M300 250 l40 60 l-15 190 l-50 0 l-15 -190Z" fill="#C4F56A"/><rect x="250" y="300" width="140" height="22" rx="6" fill="#C4F56A"/><path d="M0 700 L640 660 L640 800 L0 800Z" fill="#171522"/></svg>')}`;
 
-export const PLAYERS = [
+const RAW_PLAYERS = [
   {
     id: 1, rel: { played: 14, noShow: 0 }, interests: ['magic', 'lorcana', 'catan', 'dnd'], game: 'magic', avatar: 'https://randomuser.me/api/portraits/women/44.jpg', verified: true, name: 'Lucía', dist: 1.2,
     formats: ['Commander', 'Draft'], colors: ['U', 'G'], level: 'Casual competitivo',
@@ -128,3 +128,10 @@ export const PLAYERS = [
     stores: ['s3', 's1'], availability: 'Miércoles por la tarde', days: ['X'], slots: ['Tarde'],
   },
 ];
+
+// Misma forma que un perfil real: la carta favorita y cada mazo llevan su juego
+export const PLAYERS = RAW_PLAYERS.map((p) => ({
+  ...p,
+  favCard: { ...p.favCard, game: p.favCard.game ?? p.game },
+  decks: p.decks.map((deck) => ({ ...deck, game: deck.game ?? p.game })),
+}));

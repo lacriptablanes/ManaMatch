@@ -468,4 +468,7 @@ export default {
   "Listo": "Feito",
   "Juegos actualizados": "Xogos actualizados",
   "Añade más juegos a tu lista, amplía tu radio de búsqueda o vuelve más tarde.": "Engade máis xogos á túa lista, amplía o teu radio de busca ou volve máis tarde.",
+  "¿Una partida de {game} esta semana?": "Unha partida de {game} esta semana?",
+  "Muy pronto el personal de {store} podrá verificarte en persona y conseguirás la insignia de jugador verificado.": "Moi pronto o persoal de {store} poderá verificarte en persoa e conseguirás a insignia de xogador verificado.",
+  "Próximamente": "Proximamente",
 };

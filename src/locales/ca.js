@@ -468,4 +468,7 @@ export default {
   "Listo": "Fet",
   "Juegos actualizados": "Jocs actualitzats",
   "Añade más juegos a tu lista, amplía tu radio de búsqueda o vuelve más tarde.": "Afegeix més jocs a la teva llista, amplia el radi de cerca o torna més tard.",
+  "¿Una partida de {game} esta semana?": "Una partida de {game} aquesta setmana?",
+  "Muy pronto el personal de {store} podrá verificarte en persona y conseguirás la insignia de jugador verificado.": "Molt aviat el personal de {store} et podrà verificar en persona i aconseguiràs la insígnia de jugador verificat.",
+  "Próximamente": "Properament",
 };

@@ -76,7 +76,7 @@ export const GAMES = {
       red: { label: 'Rojo', color: '#e0313d' }, green: { label: 'Verde', color: '#2e9e5b' }, blue: { label: 'Azul', color: '#2b7bd6' },
       purple: { label: 'Morado', color: '#8e4fc9' }, black: { label: 'Negro', color: '#55556a' }, yellow: { label: 'Amarillo', color: '#f2c230' },
     },
-    formats: ['Estándar', 'Sellado', 'Treasure Cup', 'Casual'],
+    formats: ['Estándar', 'Sellado', 'Treasure Cup'],
     keyCard: () => 'Líder',
     favLabel: 'Carta favorita',
     art: (c) => c.img,
@@ -113,7 +113,8 @@ for (const g of CATALOG) {
   GAMES[g.id] = {
     id: g.id, name: g.name, fullName: g.name, generic: true,
     paletteLabel: '', palette: {},
-    formats: ['Casual', 'Competitivo', 'Torneos de tienda', 'Liga', 'Partidas abiertas'],
+    // El nivel (casual/competitivo) ya se elige aparte: aquí solo tipos de partida
+    formats: ['Partidas abiertas', 'Torneos de tienda', 'Liga'],
     keyCard: () => (g.cat === 'Wargames' ? 'Ejército' : g.cat === 'Rol' ? 'Personaje' : 'Carta principal'),
     favLabel: FAV_LABEL[g.cat],
     art: () => ph,

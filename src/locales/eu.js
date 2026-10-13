@@ -468,4 +468,7 @@ export default {
   "Listo": "Eginda",
   "Juegos actualizados": "Jokoak eguneratuta",
   "Añade más juegos a tu lista, amplía tu radio de búsqueda o vuelve más tarde.": "Gehitu joko gehiago zure zerrendara, handitu bilaketa-erradioa edo itzuli geroago.",
+  "¿Una partida de {game} esta semana?": "{game} partida bat aste honetan?",
+  "Muy pronto el personal de {store} podrá verificarte en persona y conseguirás la insignia de jugador verificado.": "Laster {store} dendako langileek aurrez aurre egiaztatu ahal izango zaituzte eta jokalari egiaztatuaren txapa lortuko duzu.",
+  "Próximamente": "Laster",
 };

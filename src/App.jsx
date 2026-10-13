@@ -127,7 +127,8 @@ function normalizeMe(me) {
   return {
     ...me,
     level: LEVELS.includes(me.level) ? me.level : 'Casual',
-    formats: Array.isArray(me.formats) ? me.formats.filter((f) => typeof f === 'string').slice(0, 20) : [],
+    // Solo formatos de tus juegos (si quitas un juego, sus formatos desaparecen)
+    formats: Array.isArray(me.formats) ? me.formats.filter((f) => formatOptions(me.interests).includes(f)).slice(0, 20) : [],
     favCard,
     decks: (Array.isArray(me.decks) ? me.decks : []).filter((d) => d && GAMES[d.game]).map((d) => ({ ...d, card: cleanCard(d.card) })),
   };
@@ -322,16 +323,9 @@ const imgCls = (game, card) => (isFullCard(game, card) ? ` full-card fc-${game}`
 const photoSrc = (me) => (isAvatarPath(me.avatar) ? avatarUrl(me.avatar) : me.avatar);
 const myAvatar = (me) => photoSrc(me) || artOf(me.favCard.game, me.favCard);
 const avatarIsCard = (me) => (!me.avatar && isFullCard(me.favCard.game, me.favCard) ? me.favCard.game : false);
-const frameOf = (game, colors) => {
-  const pal = GAMES[game].palette;
-  const keys = (colors.length ? colors : [Object.keys(pal)[0]]).filter((k) => pal[k]);
-  const c = keys.length ? keys.map((k) => pal[k].color) : ['#8B5CF6'];
-  return { list: c, grad: c.length > 1 ? `linear-gradient(135deg, ${c.join(', ')})` : c[0], glow: c[0] };
-};
+// Marco del retrato: el morado de la app para todos (los colores por juego ya no existen en el perfil)
+const FRAME = { list: ['#8B5CF6'], grad: '#8B5CF6', glow: '#8B5CF6' };
 const toggleIn = (arr, v) => arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
-const Pips = ({ game, colors }) => (
-  <div className="pips">{colors.filter((c) => GAMES[game].palette[c]).map((c) => <span key={c} className="pip" title={t(GAMES[game].palette[c].label)} style={{ '--c': GAMES[game].palette[c].color }} />)}</div>
-);
 const Empty = ({ icon, title, text }) => (
   <div className="empty">
     <div className="empty-icon">{icon}</div>
@@ -360,7 +354,6 @@ const ModNote = ({ kind }) => kind && (
   <div className={`mod-note ${kind === 'rate' ? 'contact' : kind}`} role="alert">{kind === 'conduct' ? I.ban : I.alert}<span>{t(MOD_TEXT[kind])}</span></div>
 );
 const gameIcon = (g) => GAME_ICON[g] ?? I.deck;
-const GameTag = ({ game }) => <span className={`game-tag g-${game}`}>{gameIcon(game)}{GAMES[game].name}</span>;
 
 /* Desplegable con tus juegos (para elegir de qué juego es una carta o un mazo) */
 const GameSelect = ({ id, games, value, onChange }) => (
@@ -371,6 +364,8 @@ const GameSelect = ({ id, games, value, onChange }) => (
 
 /* ---------- Tus juegos: lista del catálogo y juegos en común ---------- */
 const sharedGames = (me, p) => (p.interests ?? []).filter((g) => me.interests.includes(g));
+// Juego de vuestro duelo: el primero que compartís (o, si no, el de su carta favorita)
+const duelGame = (me, p) => sharedGames(me, p)[0] ?? p.favCard.game;
 const fold = (t) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 function GamePicker({ value, onChange }) {
@@ -523,32 +518,29 @@ function TableCard({ p, me, leaving, onInfo }) {
     el.style.setProperty('--rx', `${(0.5 - my) * 10}deg`);
   };
   const untilt = () => { ['--rx', '--ry'].forEach((v) => ref.current?.style.setProperty(v, '0deg')); };
-  const { grad, glow, list } = frameOf(p.game, p.colors);
+  const { grad, glow, list } = FRAME;
   const deck = p.decks[0];
   return (
     <article
-      ref={ref} className={`swipe-card table-card g-${p.game}${leaving ? ' leaving' : ''}`}
+      ref={ref} className={`swipe-card table-card g-${p.favCard.game}${leaving ? ' leaving' : ''}`}
       style={{ '--frame': grad, '--glow': glow, transform: LEAVE[leaving] ?? 'perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg))' }}
       onPointerMove={tilt} onPointerLeave={untilt} onPointerCancel={untilt}
     >
       <div className="art-frame">
-        <img className={`hero-art${imgCls(p.game, p.favCard)}`} src={artOf(p.game, p.favCard)} alt={t('Carta {name}', { name: p.favCard.name })} draggable="false" />
+        <img className={`hero-art${imgCls(p.favCard.game, p.favCard)}`} src={artOf(p.favCard.game, p.favCard)} alt={p.favCard.name ? t('Carta {name}', { name: p.favCard.name }) : ''} draggable="false" />
         <div className="foil" />
         <div className="hero-top">
-          <span className="glass-chip game-chip">{gameIcon(p.game)}{GAMES[p.game].name}</span>
+          <span className="glass-chip game-chip">{gameIcon(p.favCard.game)}{GAMES[p.favCard.game].name}</span>
           <span className="glass-chip dist-chip">{I.pin}{fuzzyDist(p.dist)}</span>
         </div>
       </div>
       <div className="hero-body" role="button" tabIndex={0} aria-label={t('Ver la ficha de {name}', { name: p.name })}
         onClick={onInfo} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onInfo(); } }}>
-        <Hex src={p.avatar} alt={p.name} size={100} badge={t(p.formats[0])} colors={list} />
-        <h2 className="hero-name">{p.name}{p.verified && <span className="verified" title={t('Verificado en {store}', { store: storeName(p.stores[0]) })}>{I.check}</span>}</h2>
-        <div className="hero-deck">{I.deck}<b>{deck.name}</b><i className="dot-sep" />{t(deck.format)}</div>
-        <div className="hero-tags">
-          <Pips game={p.game} colors={p.colors} />
-          {p.favCard.name && <span className="hero-fav">{gameIcon(p.game)}{p.favCard.name}</span>}
-        </div>
-        <div className="hero-sub">{I.store}{storeName(p.stores[0])}<i className="dot-sep" />{t(p.level)}</div>
+        <Hex src={p.avatar} alt={p.name} size={100} badge={p.formats[0] && t(p.formats[0])} colors={list} />
+        <h2 className="hero-name">{p.name}{p.verified && <span className="verified" title={t('Verificado')}>{I.check}</span>}</h2>
+        {deck && <div className="hero-deck">{I.deck}<b>{deck.name}</b><i className="dot-sep" />{t(deck.format)}</div>}
+        {p.favCard.name && <div className="hero-tags"><span className="hero-fav">{gameIcon(p.favCard.game)}{p.favCard.name}</span></div>}
+        <div className="hero-sub">{storeName(p.stores[0]) && <>{I.store}{storeName(p.stores[0])}<i className="dot-sep" /></>}{t(p.level)}</div>
         <div className="hero-chips">
           <div className="hero-shared" title={t('Compatibilidad contigo')}>
             <b>{c.score}%</b>{shared > 0 ? (shared === 1 ? t('1 juego en común') : t('{n} juegos en común', { n: shared })) : t('compatible')}
@@ -577,33 +569,34 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock
       : t('Coincidís los {days}', { days: list2(c.sharedDays.map(dayName)) })],
     c.sharedStores.length > 0 && [I.store, t('Vais a {stores}', { stores: list2(c.sharedStores.map(storeName)) })],
   ].filter(Boolean);
-  const { list } = frameOf(p.game, p.colors);
-  const pal = GAMES[p.game].palette;
+  const { list } = FRAME;
+  // La carta favorita solo se enseña si tiene imagen (oficial o subida); sin ella sería la imagen por defecto repetida
+  const hasFav = !!(p.favCard.upload || p.favCard.img || (p.favCard.game === 'magic' && p.favCard.name));
+  const stores = p.stores.map((id) => STORES.find((x) => x.id === id)).filter(Boolean);
   return (
     <>
       <div className="sheet-bg" onClick={onClose} />
-      <section className={`sheet g-${p.game}`} aria-label={t('Perfil de {name}', { name: p.name })}>
+      <section className={`sheet g-${p.favCard.game}`} aria-label={t('Perfil de {name}', { name: p.name })}>
         <button id="close-profile" className="icon-btn glass close" onClick={onClose} aria-label={t('Cerrar')}>{I.close}</button>
         {/* La cabecera se desplaza con el contenido para no tapar el texto al hacer scroll */}
         <div className="sheet-scroll">
         <div className="sheet-hero">
-          <img className={imgCls(p.game, p.favCard).trim()} src={artOf(p.game, p.favCard)} alt="" />
+          <img className={imgCls(p.favCard.game, p.favCard).trim()} src={artOf(p.favCard.game, p.favCard)} alt="" />
           <span className="sheet-handle" />
         </div>
         <div className="body">
           <div className="sheet-id">
             <Hex src={p.avatar} alt={p.name} size={84} colors={list} ring={false} />
             <div>
-              <GameTag game={p.game} />
               <h2 className="sheet-name">{p.name}{p.verified && <span className="verified" title={t('Verificado')}>{I.check}</span>}</h2>
               <div className="sheet-sub">{[p.level, ...p.formats.filter((f) => f !== p.level)].map((x) => t(x)).join(' · ')}</div>
             </div>
           </div>
           <div className="info-pills">
-            {p.verified && <span className="info-pill ok">{I.shield}{t('Verificado en {store}', { store: storeName(p.stores[0]) })}</span>}
+            {p.verified && <span className="info-pill ok">{I.shield}{storeName(p.stores[0]) ? t('Verificado en {store}', { store: storeName(p.stores[0]) }) : t('Verificado')}</span>}
             <RelBadge p={p} />
             <span className="info-pill">{I.pin}{fuzzyDist(p.dist)}</span>
-            <span className="info-pill">{I.clock}{t(p.availability)}</span>
+            {p.availability && <span className="info-pill">{I.clock}{t(p.availability)}</span>}
           </div>
           <p className="bio">{p.bio}</p>
 
@@ -622,13 +615,13 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock
             <GameList me={me} p={p} />
           </>}
 
-          <h3 className="section-title">{t('Mazos')}</h3>
+          {p.decks.length > 0 && <h3 className="section-title">{t('Mazos')}</h3>}
           <div className="decks">
             {p.decks.map((d) => (
-              <div key={d.name} className="deck-card">
-                <img loading="lazy" decoding="async" className={imgCls(p.game, d.card).trim()} src={artOf(p.game, d.card)} alt="" />
+              <div key={d.id ?? d.name} className="deck-card">
+                <img loading="lazy" decoding="async" className={imgCls(d.game, d.card).trim()} src={artOf(d.game, d.card)} alt="" />
                 <span className="deck-format">{t(d.format)}</span>
-                <div><b>{d.name}</b><small>{t(GAMES[p.game].keyCard(d.format))}{d.card.name && `: ${d.card.name}`}</small></div>
+                <div><b>{d.name}</b><small>{GAMES[d.game].name}{d.card.name && ` · ${d.card.name}`}</small></div>
                 {d.card.upload && !isHidden(d.card) && (
                   <button type="button" className="img-flag mini" onClick={() => onReportImage(d.card.upload)} aria-label={t('Denunciar la imagen del mazo {name}', { name: d.name })}>{I.flag}</button>
                 )}
@@ -636,26 +629,22 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock
             ))}
           </div>
 
-          {p.colors.length > 0 && !GAMES[p.game].generic && <h3 className="section-title">{t(GAMES[p.game].paletteLabel)}</h3>}
-          <div className="tags">
-            {p.colors.filter((c) => pal[c]).map((c) => <span key={c} className="tag color-tag"><span className="pip" style={{ '--c': pal[c].color }} />{t(pal[c].label)}</span>)}
-          </div>
-
-          <h3 className="section-title">{t(GAMES[p.game].favLabel)}</h3>
+          {hasFav && <>
+          <h3 className="section-title">{t(GAMES[p.favCard.game].favLabel)}</h3>
           <div className="fav-wrap">
-            <img loading="lazy" decoding="async" className="fav-full" src={fullOf(p.game, p.favCard)} alt={p.favCard.name} />
+            <img loading="lazy" decoding="async" className="fav-full" src={fullOf(p.favCard.game, p.favCard)} alt={p.favCard.name} />
             {p.favCard.upload && !isHidden(p.favCard) && (
               <button type="button" className="img-flag" onClick={() => onReportImage(p.favCard.upload)} aria-label={t('Denunciar esta imagen')}>{I.flag}{t('Denunciar imagen')}</button>
             )}
           </div>
           {p.favCard.upload && <p className="field-hint upload-note">{t('Imagen subida por {name}', { name: p.name })}</p>}
+          </>}
 
-          <h3 className="section-title">{t('Dónde juega')}</h3>
+          {stores.length > 0 && <h3 className="section-title">{t('Dónde juega')}</h3>}
           <div className="list">
-            {p.stores.map((id) => {
-              const s = STORES.find((x) => x.id === id);
+            {stores.map((s) => {
               return (
-                <div key={id} className="row">
+                <div key={s.id} className="row">
                   <span className="row-icon">{I.store}</span>
                   <div className="grow"><div className="title">{s.name}</div><div className="sub">{t(s.events)}</div></div>
                   <span className="dist">{s.dist} km</span>
@@ -1201,7 +1190,7 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind }) {
         {!top && <Empty icon={I.crystal} title={t('No hay más jugadores')} text={t('Añade más juegos a tu lista, amplía tu radio de búsqueda o vuelve más tarde.')} />}
         {next && (
           <article className="swipe-card behind">
-            <div className="art-frame"><img className={`hero-art${imgCls(next.game, next.favCard)}`} src={artOf(next.game, next.favCard)} alt="" /></div>
+            <div className="art-frame"><img className={`hero-art${imgCls(next.favCard.game, next.favCard)}`} src={artOf(next.favCard.game, next.favCard)} alt="" /></div>
           </article>
         )}
         {top && <TableCard key={top.id} p={top} me={me} leaving={leaving} onInfo={() => onInfo(top)} />}
@@ -1244,9 +1233,9 @@ function Nearby({ players, onInfo }) {
       <div className="radar" role="img" aria-label={t('Radar de jugadores cercanos')}>
         <div className="me" />
         {players.map((p) => (
-          <button key={p.id} className="dot" style={{ ...fuzzyPos(p), '--c': frameOf(p.game, p.colors).glow }} onClick={() => onInfo(p)} title={`${p.name} · ${GAMES[p.game].name} · ${fuzzyDist(p.dist)}`}>
+          <button key={p.id} className="dot" style={{ ...fuzzyPos(p), '--c': FRAME.glow }} onClick={() => onInfo(p)} title={`${p.name} · ${GAMES[p.favCard.game].name} · ${fuzzyDist(p.dist)}`}>
             <img src={p.avatar} alt={p.name} />
-            <span className={`dot-game g-${p.game}`}>{gameIcon(p.game)}</span>
+            <span className={`dot-game g-${p.favCard.game}`}>{gameIcon(p.favCard.game)}</span>
           </button>
         ))}
         {STORES.map((s, i) => <span key={s.id} className="shop" title={s.name} style={storePos(s.dist, i, STORES.length)}>{I.store}</span>)}
@@ -1287,7 +1276,7 @@ function Matches({ matches, chats, openChat }) {
       <div className="new-matches">
         {matches.map((p) => (
           <button key={p.id} className="nm" onClick={() => openChat(p)}>
-            <Hex src={p.avatar} alt={p.name} size={68} colors={frameOf(p.game, p.colors).list} ring={false} />
+            <Hex src={p.avatar} alt={p.name} size={68} colors={FRAME.list} ring={false} />
             <span>{p.name}</span>
           </button>
         ))}
@@ -1300,7 +1289,7 @@ function Matches({ matches, chats, openChat }) {
             <button key={p.id} id={`match-${p.id}`} className="row" onClick={() => openChat(p)}>
               <img loading="lazy" decoding="async" className="avatar" src={p.avatar} alt="" />
               <div className="grow">
-                <div className="title">{p.name} <span className={`mini-game g-${p.game}`}>{gameIcon(p.game)}</span></div>
+                <div className="title">{p.name} <span className={`mini-game g-${p.favCard.game}`}>{gameIcon(p.favCard.game)}</span></div>
                 <div className={`sub ${last ? '' : 'new'}`}>{last ? (last.type === 'meetup' ? `📅 ${t('Partida propuesta')}` : last.text) : t('¡Duelo aceptado! Propón una partida')}</div>
               </div>
               <span className="chev">{I.chevron}</span>
@@ -1315,8 +1304,13 @@ function Matches({ matches, chats, openChat }) {
 /* Respuestas rápidas centradas en el juego */
 const quickReplies = (p, me) => {
   const mine = me.formats;
-  const shared = p.formats.find((f) => mine.includes(f)) || p.formats[0];
-  return [t('¿Una partida de {format} esta semana?', { format: t(shared) }), t('¿Jugamos en {store}?', { store: storeName(p.stores[0]) }), t('¿Qué mazo vas a traer?')];
+  const format = p.formats.find((f) => mine.includes(f)) || p.formats[0];
+  const store = storeName(p.stores.find((s) => me.stores.includes(s)) ?? p.stores[0]);
+  return [
+    format ? t('¿Una partida de {format} esta semana?', { format: t(format) }) : t('¿Una partida de {game} esta semana?', { game: GAMES[duelGame(me, p)].name }),
+    store && t('¿Jugamos en {store}?', { store }),
+    t('¿Qué mazo vas a traer?'),
+  ].filter(Boolean);
 };
 
 /* Hook de envío con moderación: bloquea lo inapropiado y avisa (una vez) si se comparten contactos */
@@ -1344,24 +1338,24 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport, attended, onAtten
   const [text, setText] = useState('');
   const [planning, setPlanning] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(true);
-  const [plan, setPlan] = useState({ store: p.stores[0], date: '', format: p.formats[0] });
+  const [plan, setPlan] = useState({ store: p.stores[0] ?? STORES[0].id, date: '', format: p.formats.find((f) => me.formats.includes(f)) ?? p.formats[0] ?? me.formats[0] ?? '' });
+  const game = GAMES[duelGame(me, p)];
   const [sendText, warn, clearWarn] = useModeratedSend((t) => onSend({ type: 'text', from: 'me', text: t }));
 
   const send = (e) => { e.preventDefault(); if (sendText(text)) setText(''); };
   const propose = () => { onSend({ type: 'meetup', from: 'me', ...plan }); setPlanning(false); };
 
-  const theirs = frameOf(p.game, p.colors);
+  const theirs = FRAME;
   const formats = [...new Set([...p.formats, ...me.formats])];
   const lastMeetup = msgs.findLast((m) => m.type === 'meetup');
   return (
-    <div className={`chat g-${p.game}`} style={{ '--them': theirs.glow, '--them-grad': theirs.grad }}>
+    <div className={`chat g-${p.favCard.game}`} style={{ '--them': theirs.glow, '--them-grad': theirs.grad }}>
       <div className="chat-head">
         <button id="chat-back" className="icon-btn" onClick={onBack} aria-label={t('Volver')}>{I.back}</button>
         <button className="chat-who" onClick={() => onInfo(p)}>
           <Hex src={p.avatar} alt="" size={46} colors={theirs.list} ring={false} />
-          <div><b>{p.name}</b><span>{gameIcon(p.game)}{p.decks[0].name}</span></div>
+          <div><b>{p.name}</b><span>{gameIcon(game.id)}{p.decks[0]?.name ?? game.name}</span></div>
         </button>
-        <Pips game={p.game} colors={p.colors} />
         <button id="chat-report" className="icon-btn" onClick={onReport} aria-label={t('Denunciar o bloquear a {name}', { name: p.name })} title={t('Denunciar o bloquear')}>{I.flag}</button>
       </div>
       {safetyOpen && (
@@ -1372,7 +1366,7 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport, attended, onAtten
         </div>
       )}
       <div className="msgs">
-        <div className="turn-divider"><span>{gameIcon(p.game)}{t('Duelo de {game}', { game: GAMES[p.game].name })} · {t(p.formats[0])}</span></div>
+        <div className="turn-divider"><span>{gameIcon(game.id)}{t('Duelo de {game}', { game: game.name })}{plan.format && ` · ${t(plan.format)}`}</span></div>
         {!msgs.length && <div className="chat-start">{t('Propón formato, tienda y día para vuestra partida.')}</div>}
         {msgs.map((m, i) => m.type === 'meetup' ? (
           <div key={i} className={`msg meetup ${m.from}`}>
@@ -1397,7 +1391,7 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport, attended, onAtten
         </div>
       )}
       {msgs.length < 3 && !planning && (
-        <div className="quick">{quickReplies(p, me).map((q) => <button key={q} type="button" onClick={() => { setText(q); clearWarn(); }}>{q}</button>)}</div>
+        <div className="quick">{quickReplies(p, me).filter((q) => !msgs.some((m) => m.text === q)).map((q) => <button key={q} type="button" onClick={() => { setText(q); clearWarn(); }}>{q}</button>)}</div>
       )}
       <ModNote kind={warn} />
       <form className="composer" onSubmit={send}>
@@ -1840,7 +1834,7 @@ function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
       <h3 className="section-title">{t('Mis juegos')}<small className="title-note">{me.interests.length}/{MAX_GAMES}</small></h3>
       <div className="tags">
         {me.interests.map((g) => <span key={g} className="tag interest on">{gameName(g)}</span>)}
-        <button type="button" id="add-games" className="tag interest add" onClick={() => setGamesOpen(true)}>{I.plus}{t('Añadir')}</button>
+        <button type="button" id="add-games" className="tag interest add" onClick={() => setGamesOpen(true)}>{me.interests.length < MAX_GAMES ? <>{I.plus}{t('Añadir')}</> : <>{I.edit}{t('Cambiar')}</>}</button>
       </div>
       {gamesOpen && (
         <GamesSheet value={me.interests} onClose={() => setGamesOpen(false)}
@@ -1870,9 +1864,9 @@ function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
         <span className="verify-icon">{I.qr}</span>
         <div className="grow">
           <div className="setting-label">{t('Verifícate en tu tienda')}</div>
-          <div className="setting-hint">{t('Enseña tu código al personal de {store} y conseguirás la insignia de jugador verificado.', { store: storeName(me.stores[0]) || t('tu tienda') })}</div>
+          <div className="setting-hint">{t('Muy pronto el personal de {store} podrá verificarte en persona y conseguirás la insignia de jugador verificado.', { store: storeName(me.stores[0]) || t('tu tienda') })}</div>
         </div>
-        <button className="ghost small" onClick={() => flash(t('Código listo: enséñalo en la tienda'), I.qr)}>{t('Ver código')}</button>
+        <span className="soon-tag">{t('Próximamente')}</span>
       </div>
     </>
   );
@@ -2007,7 +2001,7 @@ function SettingsScreen({ me, setMe, theme, setTheme, blocked, onUnblock, onRese
           <Switch id="show-distance" icon={I.pin} label={t('Mostrar mi rango de distancia')} hint={t('Nunca se muestra tu ubicación exacta')} on={me.showDistance} onChange={(v) => set({ showDistance: v })} />
         </div>
 
-        <h3 className="section-title">{t('Notificaciones')}</h3>
+        <h3 className="section-title">{t('Notificaciones')}<small className="title-note">{t('Próximamente')}</small></h3>
         <div className="panel settings">
           <Switch id="notif-matches" icon={I.sword} label={t('Nuevos duelos')} on={me.notif.matches} onChange={(v) => setNotif('matches', v)} />
           <Switch id="notif-messages" icon={I.chat} label={t('Mensajes')} on={me.notif.messages} onChange={(v) => setNotif('messages', v)} />
@@ -2109,13 +2103,13 @@ function MatchScreen({ p, me, onSend, onContinue }) {
   const submit = (e) => { e.preventDefault(); if (!text.trim()) onSend(''); else sendText(text); };
   // Si tienes perfil del juego del rival, el duelo se ambienta con tu carta de ese juego
   const mine = me.favCard;
-  const sparkColors = ['#8B5CF6', '#C4F56A', ...frameOf(p.game, p.colors).list];
+  const sparkColors = ['#8B5CF6', '#C4F56A', '#B79CFB'];
   return (
     <div className="match" role="dialog" aria-label={t('¡Duelo aceptado!')}>
       {/* Fondo partido en diagonal: tu carta contra la suya */}
       <div className="vs-bg" aria-hidden="true">
         <div className="vs-half left"><img className={imgCls(mine.game, mine).trim()} src={artOf(mine.game, mine)} alt="" /></div>
-        <div className="vs-half right"><img className={imgCls(p.game, p.favCard).trim()} src={artOf(p.game, p.favCard)} alt="" /></div>
+        <div className="vs-half right"><img className={imgCls(p.favCard.game, p.favCard).trim()} src={artOf(p.favCard.game, p.favCard)} alt="" /></div>
         <svg className="vs-seam" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="62" y1="-2" x2="38" y2="102" /></svg>
       </div>
       <div className="sparks">{Array.from({ length: 24 }, (_, i) => <i key={i} style={{ '--i': i, '--c': sparkColors[i % sparkColors.length] }} />)}</div>
@@ -2125,9 +2119,9 @@ function MatchScreen({ p, me, onSend, onContinue }) {
       <div className="pair">
         <Hex src={myAvatar(me)} alt={me.name} size={124} colors={['#8B5CF6', '#C4F56A']} fullCard={avatarIsCard(me)} />
         <span className="vs" aria-label={t('contra')}>VS</span>
-        <Hex src={p.avatar} alt={p.name} size={124} colors={frameOf(p.game, p.colors).list} />
+        <Hex src={p.avatar} alt={p.name} size={124} colors={FRAME.list} />
       </div>
-      <p className="swiped">{t('{name} también quiere jugar a {game}. Proponed formato y tienda.', { name: p.name, game: GAMES[p.game].name })}</p>
+      <p className="swiped">{t('{name} también quiere jugar a {game}. Proponed formato y tienda.', { name: p.name, game: sharedGames(me, p).map(gameName).join(', ') || GAMES[p.favCard.game].name })}</p>
       <div className="quick light">{quickReplies(p, me).map((q) => <button key={q} type="button" onClick={() => { setText(q); clearWarn(); }}>{q}</button>)}</div>
       <form className="match-reply" onSubmit={submit}>
         <input id="match-input" placeholder={t('Propón una partida…')} value={text} onChange={(e) => { setText(e.target.value); if (warn === 'conduct') clearWarn(); }} />
@@ -2360,14 +2354,13 @@ export default function App() {
         {tab !== 'discover' && !inChat && (
           <header className="screen-head">
             <div>
-              <span className="eyebrow">ManaMatch</span>
               <h1 className="screen-title">{t(TABS.find((x) => x[0] === tab)[2])}</h1>
             </div>
             {tab === 'me' && <button id="open-settings" className="icon-btn head-action" onClick={() => setSettingsOpen(true)} aria-label={t('Ajustes')} title={t('Ajustes')}>{I.gear}</button>}
           </header>
         )}
         {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} />}
-        {tab === 'nearby' && <Nearby players={PLAYERS.filter((p) => notBlocked(p) && p.dist <= me.radius && (!me.onlyVerified || p.verified))} onInfo={setProfile} />}
+        {tab === 'nearby' && <Nearby players={PLAYERS.filter((p) => notBlocked(p) && sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))} onInfo={setProfile} />}
         {tab === 'chat' && (chatWith
           ? <Chat p={chatWith} me={me} attended={attendance[chatWith.id]} onAttend={(v) => setAttendance((a) => ({ ...a, [chatWith.id]: v }))} msgs={chats[chatWith.id] || []} onSend={(m) => send(chatWith, m)} onBack={() => setChatWith(null)} onInfo={setProfile} onReport={() => setReporting(chatWith)} />
           : <Matches matches={visibleMatches} chats={chats} openChat={openChat} />)}
