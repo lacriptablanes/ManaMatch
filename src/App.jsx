@@ -1398,7 +1398,7 @@ function EditProfileSheet({ me, onSave, onClose }) {
   const bioFlag = checkMessage(d.bio) === 'conduct' ? 'conduct' : null;
   const age = ageFrom(d.birthDate);
   const ageOk = age !== null && age >= 18 && age <= 99;
-  const valid = d.name.trim() && ageOk && p.colors.length && p.formats.length && !bioFlag;
+  const valid = d.name.trim() && ageOk && p.favCard?.name?.trim() && p.colors.length && p.formats.length && !bioFlag;
   return (
     <>
       <div className="sheet-bg" onClick={onClose} />
@@ -1491,7 +1491,7 @@ function EditProfileSheet({ me, onSave, onClose }) {
 function DeckSheet({ game, onSave, onClose }) {
   const g = GAMES[game];
   const [deck, setDeck] = useState({ name: '', format: g.formats[0], card: null });
-  const valid = deck.name.trim() && deck.card;
+  const valid = deck.name.trim() && deck.card?.name?.trim();
   return (
     <>
       <div className="sheet-bg" onClick={onClose} />
@@ -1998,6 +1998,8 @@ export default function App() {
   const signOut = async () => {
     await supabase.auth.signOut();
     try { ['manamatch-me', 'manamatch-blocked', 'manamatch-rules'].forEach((k) => localStorage.removeItem(k)); } catch { /* sin almacenamiento */ }
+    // También las imágenes guardadas por el service worker (incluida la foto propia)
+    try { await caches?.delete?.('mm-media-v1'); } catch { /* sin caché */ }
     location.replace('/');
   };
 

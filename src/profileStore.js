@@ -77,7 +77,9 @@ export async function saveMe(uid, me) {
 
 /* Sube una foto (data URL en JPEG) con nombre aleatorio y borra las anteriores. Devuelve su ruta. */
 export async function uploadAvatar(uid, dataUrl) {
-  const blob = await (await fetch(dataUrl)).blob();
+  // Se decodifica a mano: fetch(data:) lo bloquea la política de seguridad (connect-src)
+  const bytes = Uint8Array.from(atob(dataUrl.slice(dataUrl.indexOf(',') + 1)), (c) => c.charCodeAt(0));
+  const blob = new Blob([bytes], { type: 'image/jpeg' });
   const path = `${uid}/${crypto.randomUUID()}.jpg`;
   check(await supabase.storage.from(AVATARS).upload(path, blob, { contentType: 'image/jpeg', upsert: false }));
   await removeAvatars(uid, path);
