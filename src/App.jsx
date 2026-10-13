@@ -431,20 +431,6 @@ function GamesSheet({ value, onSave, onClose }) {
   );
 }
 
-/* Fila compacta con tus juegos ("Magic, Pokémon, Lorcana…"); al tocarla se abre el selector */
-function GamesField({ value, onChange }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <button type="button" id="edit-games" className="games-field" onClick={() => setOpen(true)} aria-haspopup="dialog">
-        <span className="grow">{value.length ? value.map(gameName).join(', ') : t('Elige tus juegos')}</span>
-        <span className="chev">{I.chevron}</span>
-      </button>
-      {open && <GamesSheet value={value} onSave={onChange} onClose={() => setOpen(false)} />}
-    </>
-  );
-}
-
 /* Juegos de otro jugador, con los que compartís resaltados primero */
 const GameList = ({ me, p }) => {
   const shared = sharedGames(me, p);
@@ -1702,7 +1688,7 @@ function EditProfileSheet({ me, onSave, onClose }) {
   const bioFlag = checkMessage(d.bio) === 'conduct' ? 'conduct' : null;
   const age = ageFrom(d.birthDate);
   const ageOk = age !== null && age >= 18 && age <= 99;
-  const valid = d.name.trim() && ageOk && d.interests.length > 0 && !bioFlag;
+  const valid = d.name.trim() && ageOk && !bioFlag;
   return (
     <>
       <div className="sheet-bg" onClick={onClose} />
@@ -1734,10 +1720,6 @@ function EditProfileSheet({ me, onSave, onClose }) {
             <textarea id="edit-bio" rows="3" maxLength={160} value={d.bio} placeholder={t('Qué juegas, qué buscas en una mesa…')} onChange={(e) => set({ bio: e.target.value })} />
           </label>
           <ModNote kind={bioFlag} />
-
-          <fieldset><legend>{t('Tus juegos')}</legend>
-            <GamesField value={d.interests} onChange={(v) => set({ interests: v })} />
-          </fieldset>
 
           <fieldset><legend>{t('Nivel de juego')}</legend>
             <Segmented name={t('Nivel')} value={d.level} onChange={(v) => set({ level: v })} options={LEVELS.map((l) => [l, t(l)])} />
