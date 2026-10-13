@@ -683,7 +683,7 @@ function RuleArt({ anim, icon }) {
 }
 
 // Carrusel horizontal con puntos: `slide(i)` marca la pantalla visible para que anime al entrar
-function useCarousel(count) {
+function useCarousel(count, { clickableDots = true } = {}) {
   const [page, setPage] = useState(0);
   const track = useRef(null);
   const go = (i) => track.current.scrollTo({ left: i * track.current.clientWidth, behavior: 'smooth' });
@@ -691,7 +691,9 @@ function useCarousel(count) {
   const slide = (i) => `rule-slide ${page === i ? 'on' : ''}`;
   const dots = (
     <div className="rules-dots">
-      {Array.from({ length: count }, (_, i) => <button key={i} type="button" className={page === i ? 'on' : ''} aria-label={`Ir a la pantalla ${i + 1}`} aria-current={page === i} onClick={() => go(i)} />)}
+      {Array.from({ length: count }, (_, i) => (clickableDots
+        ? <button key={i} type="button" className={page === i ? 'on' : ''} aria-label={`Ir a la pantalla ${i + 1}`} aria-current={page === i} onClick={() => go(i)} />
+        : <span key={i} className={page === i ? 'on' : ''} />))}
     </div>
   );
   return { page, last: count - 1, track, go, onScroll, slide, dots };
@@ -1260,7 +1262,8 @@ const NEW_ME = { ...DEFAULT_ME, name: '', birthDate: '', bio: '', stores: [], da
 function CreateProfileScreen({ onCreate }) {
   const [d, setD] = useState(NEW_ME);
   const [state, setState] = useState(null); // null | 'saving' | 'error'
-  const { page, last, track, go, onScroll, slide, dots } = useCarousel(4);
+  // Los puntos solo indican el paso: no se puede saltar a uno sin completar los anteriores
+  const { page, last, track, go, onScroll, slide, dots } = useCarousel(4, { clickableDots: false });
   const set = (patch) => setD((x) => ({ ...x, ...patch }));
   const p = d.profiles[d.game];
   const setProf = (patch) => setD((x) => ({ ...x, profiles: { ...x.profiles, [x.game]: { ...x.profiles[x.game], ...patch } } }));

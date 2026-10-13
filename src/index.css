@@ -1911,8 +1911,8 @@ body { background: var(--body-bg); }
 .rule-slide .rules-checks { width: 100%; }
 .rules-cta { border-top: none; }
 .rules-dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 14px; }
-.rules-dots button { width: 8px; height: 8px; padding: 0; border-radius: 99px; background: var(--border-hi); transition: width 0.3s var(--ease-spring), background 0.3s; }
-.rules-dots button.on { width: 26px; background: var(--hot); }
+.rules-dots > * { width: 8px; height: 8px; padding: 0; border-radius: 99px; background: var(--border-hi); transition: width 0.3s var(--ease-spring), background 0.3s; }
+.rules-dots > .on { width: 26px; background: var(--hot); }
 .rules-cta .primary svg:last-child:not(:first-child) { margin-left: 2px; }
 
 /* ---------- Iconos animados del código de conducta (se reproducen al entrar en cada pantalla) ---------- */
@@ -2068,7 +2068,6 @@ body { background: var(--body-bg); }
 
 /* ---------- Crear perfil (primera vez) ---------- */
 .rules-slides.locked { overflow-x: hidden; }
-.onboarding .rules-dots button { pointer-events: none; }
 .rules-close.back { left: 16px; right: auto; }
 .onboard-form { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
 .onboard-form .field-hint { margin: 0; }
