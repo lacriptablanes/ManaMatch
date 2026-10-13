@@ -1991,6 +1991,10 @@ export default function App() {
     location.replace('/');
   };
 
+  // Solo en desarrollo: ?onboarding muestra la pantalla de crear perfil sin necesitar una cuenta nueva
+  if (import.meta.env.DEV && new URLSearchParams(location.search).has('onboarding')) {
+    return <main className="phone"><CreateProfileScreen onCreate={async () => { location.search = ''; }} /></main>;
+  }
   // Con cuentas activadas, sin sesión no se ve nada de la app
   if (session === undefined) return <main className="phone" aria-busy="true" />;
   if (supabase && !session) return <main className="phone"><LoginScreen /></main>;
