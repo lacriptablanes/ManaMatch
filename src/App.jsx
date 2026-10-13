@@ -1,7 +1,7 @@
 import { useState, useRef, useId, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { PLAYERS, STORES, pokeImg, opImg } from './data';
-import { GAMES, GAME_IDS, placeholderArt } from './games';
+import { GAMES, placeholderArt } from './games';
 import { CATALOG, GAME_CATEGORIES, MAX_GAMES, gameName, isGameId } from './catalog';
 import { compat, byCompat, reliability } from './compat';
 import { t, useLang, setLang, getLang, LANGS, locale } from './i18n';
@@ -72,71 +72,68 @@ const LEVELS = ['Casual', 'Casual competitivo', 'Competitivo'];
 const DAYS = [['L', 'Lunes'], ['M', 'Martes'], ['X', 'Miércoles'], ['J', 'Jueves'], ['V', 'Viernes'], ['S', 'Sábado'], ['D', 'Domingo']];
 const SLOTS = ['Mañana', 'Tarde', 'Noche'];
 
-/* Un perfil de juego por cada TCG: carta favorita, colores, formatos, nivel y mazos */
-const DEFAULT_PROFILES = {
-  magic: {
-    level: 'Casual competitivo', favCard: { name: 'Atraxa, Praetors\' Voice' }, colors: ['W', 'U', 'B', 'G'], formats: ['Commander', 'Modern'],
-    decks: [{ id: 1, name: 'Atraxa Superfriends', format: 'Commander', card: { name: 'Atraxa, Praetors\' Voice' } }],
-  },
-  pokemon: {
-    level: 'Casual', favCard: { name: 'Charizard ex', img: pokeImg('sv3pt5', 6) }, colors: ['fire', 'colorless'], formats: ['Estándar'],
-    decks: [{ id: 2, name: 'Charizard ex', format: 'Estándar', card: { name: 'Charizard ex', img: pokeImg('sv3', 125) } }],
-  },
-  onepiece: {
-    level: 'Casual', favCard: { name: 'Monkey.D.Luffy (ST01-001)', img: opImg('ST01-001') }, colors: ['red'], formats: ['Estándar'],
-    decks: [{ id: 3, name: 'Luffy de inicio', format: 'Estándar', card: { name: 'Monkey.D.Luffy (ST01-001)', img: opImg('ST01-001') } }],
-  },
-};
-// Perfiles de juego con los que empieza una cuenta nueva: los mismos de ejemplo, sin mazos
-const STARTER_PROFILES = Object.fromEntries(Object.entries(DEFAULT_PROFILES).map(([g, x]) => [g, { ...x, decks: [] }]));
+/* Un único perfil: tus juegos, un nivel, unos formatos, una carta favorita (de cualquiera de tus juegos) y tus mazos */
 const DEFAULT_ME = {
-  name: 'Planeswalker', birthDate: '1998-03-14', avatar: '', game: 'magic', profiles: DEFAULT_PROFILES,
+  name: 'Planeswalker', birthDate: '1998-03-14', avatar: '',
   interests: ['magic', 'pokemon', 'lorcana', 'fab', 'wh40k'],
+  level: 'Casual competitivo', formats: ['Commander', 'Modern', 'Estándar'],
+  favCard: { game: 'magic', name: 'Atraxa, Praetors\' Voice' },
+  decks: [
+    { id: 1, game: 'magic', name: 'Atraxa Superfriends', format: 'Commander', card: { name: 'Atraxa, Praetors\' Voice' } },
+    { id: 2, game: 'pokemon', name: 'Charizard ex', format: 'Estándar', card: { name: 'Charizard ex', img: pokeImg('sv3', 125) } },
+  ],
   bio: 'Jugador de cartas de toda la vida. Busco mesa fija entre semana y algún torneo de tienda.',
   stores: ['s1'], days: ['X', 'V'], slots: ['Tarde'],
   radius: 5, onlyVerified: false,
   showDistance: true, visible: true,
   notif: { matches: true, messages: true, events: false },
 };
-/* Convierte un perfil guardado con la versión anterior (solo Magic) al formato de varios juegos */
+const cleanCard = (c) => {
+  if (!c || typeof c !== 'object') return { name: '' };
+  const { upload, ...rest } = c;
+  return isCardUpload(upload) ? { ...rest, upload } : rest;
+};
+/* Convierte perfiles guardados con versiones anteriores (solo Magic, o un perfil por juego) al perfil único */
 const migrateMe = (v) => {
   const me = { ...DEFAULT_ME, ...v, notif: { ...DEFAULT_ME.notif, ...v.notif } };
-  if (v.profiles) me.profiles = { ...DEFAULT_PROFILES, ...v.profiles };
-  else {
-    const m = DEFAULT_PROFILES.magic;
-    me.game = 'magic';
-    me.profiles = {
-      ...DEFAULT_PROFILES,
-      magic: {
-        level: v.level ?? m.level, colors: v.colors ?? m.colors, formats: v.formats ?? m.formats,
-        favCard: typeof v.favCard === 'string' ? { name: v.favCard } : m.favCard,
-        decks: (v.decks ?? m.decks).map((d, i) => ({ id: d.id ?? i, name: d.name, format: d.format, card: d.card ?? { name: d.commander } })),
-      },
-    };
+  if (v.profiles) {
+    // Versión con un perfil por juego: el activo pasa a ser el perfil único y se juntan formatos y mazos
+    const game = v.profiles[v.game] ? v.game : Object.keys(v.profiles)[0];
+    const active = v.profiles[game] ?? {};
+    const kept = Object.entries(v.profiles).filter(([g]) => !v.interests || v.interests.includes(g) || g === game);
+    me.level = active.level ?? DEFAULT_ME.level;
+    me.favCard = { ...(active.favCard ?? { name: '' }), game };
+    me.formats = [...new Set(kept.flatMap(([, x]) => x.formats ?? []))];
+    me.decks = kept.flatMap(([g, x]) => (x.decks ?? []).map((d) => ({ ...d, game: g })));
+  } else if (typeof v.favCard === 'string') {
+    // Primera versión (solo Magic)
+    me.favCard = { game: 'magic', name: v.favCard };
+    me.decks = (v.decks ?? []).map((d, i) => ({ id: d.id ?? i, game: 'magic', name: d.name, format: d.format, card: d.card ?? { name: d.commander } }));
   }
   // Antes se guardaba la edad; ahora la fecha de nacimiento (aproximada si solo había edad)
   if (!v.birthDate) me.birthDate = v.age ? `${new Date().getFullYear() - v.age}-01-01` : DEFAULT_ME.birthDate;
-  ['favCard', 'colors', 'formats', 'level', 'decks', 'games', 'showAge', 'age'].forEach((k) => delete me[k]);
+  ['profiles', 'game', 'colors', 'games', 'showAge', 'age'].forEach((k) => delete me[k]);
   if (typeof me.avatar !== 'string' || (me.avatar && !me.avatar.startsWith('data:image/') && !isAvatarPath(me.avatar))) me.avatar = '';
-  if (!GAMES[me.game]) me.game = 'magic';
   // Lista de juegos: solo identificadores del catálogo, sin repetir y como mucho MAX_GAMES
-  me.interests = Array.isArray(v.interests) ? [...new Set(v.interests.filter(isGameId))].slice(0, MAX_GAMES) : [me.game];
-  if (!me.interests.length) me.interests = [me.game];
-  return withProfiles(me);
+  me.interests = Array.isArray(me.interests) ? [...new Set(me.interests.filter(isGameId))].slice(0, MAX_GAMES) : [];
+  if (!me.interests.length) me.interests = [GAMES[me.favCard?.game] ? me.favCard.game : 'magic'];
+  return normalizeMe(me);
 };
-
-/* Crea el perfil de juego que falte para cada juego de tu lista y limpia imágenes inválidas */
-const newGameProfile = (g) => ({ level: 'Casual', favCard: { name: '' }, colors: [], formats: [GAMES[g].formats[0]], decks: [] });
-const cleanCard = (c) => (c && c.upload && !isCardUpload(c.upload) ? { name: c.name ?? '', ...(c.img && { img: c.img }) } : c);
-function withProfiles(me) {
-  const profiles = { ...me.profiles };
-  for (const g of me.interests) if (!profiles[g] && GAMES[g]) profiles[g] = newGameProfile(g);
-  for (const [g, x] of Object.entries(profiles)) {
-    profiles[g] = { ...x, favCard: cleanCard(x.favCard) ?? { name: '' }, decks: (x.decks ?? []).map((d) => ({ ...d, card: cleanCard(d.card) })) };
-  }
-  const game = me.interests.includes(me.game) ? me.game : (me.interests.find((g) => GAMES[g]) ?? me.game);
-  return { ...me, profiles, game };
+/* Mantiene el perfil coherente: la carta favorita es de uno de tus juegos y los datos tienen la forma esperada */
+function normalizeMe(me) {
+  const first = me.interests[0] ?? 'magic';
+  let favCard = cleanCard(me.favCard);
+  if (!me.interests.includes(favCard.game)) favCard = { game: first, name: '' };
+  return {
+    ...me,
+    level: LEVELS.includes(me.level) ? me.level : 'Casual',
+    formats: Array.isArray(me.formats) ? me.formats.filter((f) => typeof f === 'string').slice(0, 20) : [],
+    favCard,
+    decks: (Array.isArray(me.decks) ? me.decks : []).filter((d) => d && GAMES[d.game]).map((d) => ({ ...d, card: cleanCard(d.card) })),
+  };
 }
+/* Formatos que se pueden elegir: los de tus juegos, sin repetir */
+const formatOptions = (games) => [...new Set(games.flatMap((g) => GAMES[g]?.formats ?? []))];
 
 /* ---------- Seguridad y convivencia ---------- */
 const RULES = [
@@ -303,7 +300,6 @@ function useCardSuggest(game, q) {
 
 /* ---------- Utilidades por juego ---------- */
 const storeName = (id) => STORES.find((s) => s.id === id)?.name;
-const prof = (me) => me.profiles[me.game];
 // Imágenes denunciadas por ti o por varias personas: se sustituyen por la imagen por defecto del juego
 const hiddenImgs = new Set();
 const isHidden = (card) => !!card?.upload && hiddenImgs.has(card.upload);
@@ -311,13 +307,13 @@ const artOf = (game, card) => (isHidden(card) ? placeholderArt(GAMES[game].name)
 const fullOf = (game, card) => (isHidden(card) ? placeholderArt(GAMES[game].name) : GAMES[game].full(card));
 // Solo las cartas oficiales completas de Pokémon y One Piece se recortan; las subidas y las de Magic ya son ilustración
 const isFullCard = (game, card) => (game === 'pokemon' || game === 'onepiece') && !card?.upload && !!card?.img;
-const cardOk = (game, c) => !!(c?.name?.trim() || c?.upload) || !!GAMES[game].generic;
+const cardOk = (game, c) => !!(c?.name?.trim() || c?.upload) || !!GAMES[game]?.generic;
 /* Las cartas de Pokémon y One Piece son la carta completa: se encuadra hacia la ilustración */
 const imgCls = (game, card) => (isFullCard(game, card) ? ` full-card fc-${game}` : '');
 // La foto puede ser una subida a la cuenta (ruta en Storage), una recién elegida (data URL) o, si no hay, la carta favorita
 const photoSrc = (me) => (isAvatarPath(me.avatar) ? avatarUrl(me.avatar) : me.avatar);
-const myAvatar = (me, game = me.game) => photoSrc(me) || artOf(game, me.profiles[game].favCard);
-const avatarIsCard = (me, game = me.game) => (!me.avatar && isFullCard(game, me.profiles[game].favCard) ? game : false);
+const myAvatar = (me) => photoSrc(me) || artOf(me.favCard.game, me.favCard);
+const avatarIsCard = (me) => (!me.avatar && isFullCard(me.favCard.game, me.favCard) ? me.favCard.game : false);
 const frameOf = (game, colors) => {
   const pal = GAMES[game].palette;
   const keys = (colors.length ? colors : [Object.keys(pal)[0]]).filter((k) => pal[k]);
@@ -358,15 +354,11 @@ const ModNote = ({ kind }) => kind && (
 const gameIcon = (g) => GAME_ICON[g] ?? I.deck;
 const GameTag = ({ game }) => <span className={`game-tag g-${game}`}>{gameIcon(game)}{GAMES[game].name}</span>;
 
-/* Pestañas de juego desplazables (tu lista puede tener hasta 10 juegos) */
-const GameTabs = ({ games, value, onChange, label }) => (
-  <div className="filters game-tabs" role="radiogroup" aria-label={label}>
-    {games.map((g) => (
-      <button type="button" key={g} role="radio" aria-checked={value === g} className={value === g ? 'on' : ''} onClick={() => onChange(g)}>
-        {gameIcon(g)}{GAMES[g].name}
-      </button>
-    ))}
-  </div>
+/* Desplegable con tus juegos (para elegir de qué juego es una carta o un mazo) */
+const GameSelect = ({ id, games, value, onChange }) => (
+  <select id={id} className="game-select" value={value} onChange={(e) => onChange(e.target.value)}>
+    {games.map((g) => <option key={g} value={g}>{GAMES[g].name}</option>)}
+  </select>
 );
 
 /* ---------- Tus juegos: lista del catálogo y juegos en común ---------- */
@@ -1297,7 +1289,7 @@ function Matches({ matches, chats, openChat }) {
 
 /* Respuestas rápidas centradas en el juego */
 const quickReplies = (p, me) => {
-  const mine = me.profiles[p.game]?.formats ?? [];
+  const mine = me.formats;
   const shared = p.formats.find((f) => mine.includes(f)) || p.formats[0];
   return [t('¿Una partida de {format} esta semana?', { format: t(shared) }), t('¿Jugamos en {store}?', { store: storeName(p.stores[0]) }), t('¿Qué mazo vas a traer?')];
 };
@@ -1334,7 +1326,7 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport, attended, onAtten
   const propose = () => { onSend({ type: 'meetup', from: 'me', ...plan }); setPlanning(false); };
 
   const theirs = frameOf(p.game, p.colors);
-  const formats = [...new Set([...p.formats, ...(me.profiles[p.game]?.formats ?? [])])];
+  const formats = [...new Set([...p.formats, ...me.formats])];
   const lastMeetup = msgs.findLast((m) => m.type === 'meetup');
   return (
     <div className={`chat g-${p.game}`} style={{ '--them': theirs.glow, '--them-grad': theirs.grad }}>
@@ -1403,7 +1395,7 @@ function CardField({ id, game, value, onChange }) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!/^image\/(jpeg|png|webp|gif|avif)$/.test(file.type)) { setErr('Sube una imagen JPG, PNG o WebP.'); return; }
+    if (file.type && !file.type.startsWith('image/')) { setErr('Ese archivo no es una imagen.'); return; }
     if (file.size > 10 * 1024 * 1024) { setErr('La imagen pesa demasiado (máximo 10 MB).'); return; }
     setErr('');
     setCrop(URL.createObjectURL(file));
@@ -1417,13 +1409,14 @@ function CardField({ id, game, value, onChange }) {
       <div className="upload-row">
         <button type="button" className="ghost small" onClick={() => fileRef.current.click()}>{I.camera}{value?.upload ? t('Cambiar imagen') : t('Subir imagen')}</button>
         {value?.upload && <button type="button" className="link-btn" onClick={() => { const { upload: _u, ...rest } = value; onChange(rest); }}>{t('Quitar imagen')}</button>}
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={pickFile} />
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickFile} />
       </div>
       {err && <p className="upload-error" role="alert">{t(err)}</p>}
       <p className="field-hint">{I.shield}{t('Sube solo imágenes del juego (una carta, tu ejército, tu mesa…). Las imágenes denunciadas se ocultan.')}</p>
       {/* Fuera de la hoja de edición (en .phone): así queda por encima de todo y no se recorta */}
       {crop && createPortal(
-        <CropSheet src={crop} onClose={closeCrop} onDone={(dataUrl) => { onChange({ ...value, name: value?.name ?? '', upload: dataUrl }); closeCrop(); }} />,
+        <CropSheet src={crop} onClose={closeCrop} onError={() => { closeCrop(); setErr('No se ha podido abrir esa imagen. Prueba con una JPG o PNG.'); }}
+          onDone={(dataUrl) => { onChange({ ...value, name: value?.name ?? '', upload: dataUrl }); closeCrop(); }} />,
         document.querySelector('.phone') ?? document.body,
       )}
     </div>
@@ -1432,7 +1425,7 @@ function CardField({ id, game, value, onChange }) {
 
 /* Encuadre: arrastra para mover y usa el zoom; se guarda un JPEG de 640×800 sin metadatos */
 const CROP_W = 260, CROP_H = 325, OUT_W = 640, OUT_H = 800;
-function CropSheet({ src, onDone, onClose }) {
+function CropSheet({ src, onDone, onClose, onError }) {
   const [nat, setNat] = useState(null); // tamaño original
   const [zoom, setZoom] = useState(1);
   const [off, setOff] = useState({ x: 0, y: 0 });
@@ -1474,7 +1467,7 @@ function CropSheet({ src, onDone, onClose }) {
           <p className="sheet-intro">{t('Arrastra para colocarla y usa el zoom. Así se verá en tu tarjeta.')}</p>
           <div className="crop-frame" style={{ width: CROP_W, height: CROP_H }} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
             <img ref={imgRef} src={src} alt="" draggable="false"
-              onLoad={(e) => setNat({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+              onLoad={(e) => setNat({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} onError={onError}
               style={{ width: w || undefined, height: h || undefined, transform: `translate(calc(-50% + ${off.x}px), calc(-50% + ${off.y}px))`, opacity: nat ? 1 : 0 }} />
             <span className="crop-grid" aria-hidden="true" />
           </div>
@@ -1539,7 +1532,7 @@ const AgeNotice = () => (
   </div>
 );
 const maxBirthDate = () => { const t = new Date(); t.setFullYear(t.getFullYear() - 18); return t.toISOString().slice(0, 10); };
-const NEW_ME = { ...DEFAULT_ME, name: '', birthDate: '', bio: '', stores: [], days: [], slots: [], interests: [], profiles: STARTER_PROFILES };
+const NEW_ME = { ...DEFAULT_ME, name: '', birthDate: '', bio: '', stores: [], days: [], slots: [], interests: [], level: 'Casual', formats: [], favCard: { game: 'magic', name: '' }, decks: [] };
 
 function CreateProfileScreen({ onCreate }) {
   const [d, setD] = useState(NEW_ME);
@@ -1548,15 +1541,11 @@ function CreateProfileScreen({ onCreate }) {
   // ni el ratón, ni el foco pueden saltarse un paso sin completar
   const [page, setPage] = useState(0);
   const last = 3;
-  const set = (patch) => setD((x) => ({ ...x, ...patch }));
-  const p = d.profiles[d.game];
-  const setProf = (patch) => setD((x) => ({ ...x, profiles: { ...x.profiles, [x.game]: { ...x.profiles[x.game], ...patch } } }));
+  const set = (patch) => setD((x) => normalizeMe({ ...x, ...patch }));
   const age = ageFrom(d.birthDate);
   const ageOk = age !== null && age >= 18 && age <= 99;
-  // Cada paso se completa antes de pasar al siguiente
-  const done = [!!(d.name.trim() && ageOk), d.interests.length > 0, cardOk(d.game, p.favCard), true];
-  // El perfil con cartas empieza en el primero de tus juegos con buscador (Magic, Pokémon u One Piece), si hay alguno
-  const pickGames = (v) => setD((x) => withProfiles({ ...x, interests: v, game: GAME_IDS.find((g) => v.includes(g)) ?? v[0] ?? x.game }));
+  // Cada paso se completa antes de pasar al siguiente (la carta favorita es opcional)
+  const done = [!!(d.name.trim() && ageOk), d.interests.length > 0, true, true];
   const stepOk = done[page];
   const reachable = done.indexOf(false) === -1 ? last : done.indexOf(false);
   const go = (i) => setPage(Math.max(0, Math.min(i, reachable)));
@@ -1566,6 +1555,7 @@ function CreateProfileScreen({ onCreate }) {
     setState('saving');
     try { await onCreate({ ...d, name: d.name.trim() }); } catch { setState('error'); }
   };
+  const fav = d.favCard;
   return (
     <div className="rules onboarding" role="dialog" aria-label={t('Crear tu perfil')}>
       {page > 0 && <button className="icon-btn rules-close back" onClick={() => go(page - 1)} aria-label={t('Paso anterior')}>{I.back}</button>}
@@ -1586,30 +1576,32 @@ function CreateProfileScreen({ onCreate }) {
           <div className="rule-hero small"><RuleArt anim="clash" /></div>
           <span className="eyebrow">{t('Paso {n} de {total}', { n: 2, total: 3 })}</span>
           <h2 className="rules-title">{t('¿A qué juegas?')}</h2>
-          <GamePicker value={d.interests} onChange={pickGames} />
+          <GamePicker value={d.interests} onChange={(v) => set({ interests: v })} />
         </section>
         <section {...step(2)}>
-          <div className={`rule-hero small g-${d.game}`}><div className="art">{gameIcon(d.game)}</div></div>
+          <div className="rule-hero small"><RuleArt anim="clash" /></div>
           <span className="eyebrow">{t('Paso {n} de {total}', { n: 3, total: 3 })}</span>
           <h2 className="rules-title">{t('Tu estilo de juego')}</h2>
           <div className="form onboard-form">
-            {d.interests.length > 1 && <fieldset><legend>{t('Juego principal')}</legend>
-              <GameTabs label={t('Juego principal')} games={d.interests} value={d.game} onChange={(g) => set({ game: g })} />
-            </fieldset>}
             <fieldset><legend>{t('Nivel')}</legend>
-              <Segmented name={t('Nivel')} value={p.level} onChange={(v) => setProf({ level: v })} options={LEVELS.map((l) => [l, t(l)])} />
+              <Segmented name={t('Nivel')} value={d.level} onChange={(v) => set({ level: v })} options={LEVELS.map((l) => [l, t(l)])} />
             </fieldset>
-            <div className="field">{t('{label} de {game}', { label: t(GAMES[d.game].favLabel), game: GAMES[d.game].name })}
-              <CardField key={d.game} id="new-fav" game={d.game} value={p.favCard} onChange={(card) => setProf({ favCard: card })} />
-            </div>
-            <div className={`fav-preview g-${d.game}`}><img className={imgCls(d.game, p.favCard).trim()} src={artOf(d.game, p.favCard)} alt="" /><span>{p.favCard.name || GAMES[d.game].name}</span></div>
+            <fieldset><legend>{t('Carta favorita (opcional)')}</legend>
+              {d.interests.length > 1 && (
+                <label className="inline-field">{t('Juego')}
+                  <GameSelect id="new-fav-game" games={d.interests} value={fav.game} onChange={(g) => set({ favCard: { game: g, name: '' } })} />
+                </label>
+              )}
+              <CardField key={fav.game} id="new-fav" game={fav.game} value={fav} onChange={(card) => set({ favCard: { ...card, game: fav.game } })} />
+              <p className="field-hint">{t('Es la imagen grande de tu tarjeta. Puedes añadirla o cambiarla cuando quieras desde tu perfil.')}</p>
+            </fieldset>
           </div>
         </section>
         <section {...step(3)}>
-          <Hex src={artOf(d.game, p.favCard)} alt="" size={130} colors={frameOf(d.game, p.colors).list} fullCard={isFullCard(d.game, p.favCard) ? d.game : false} />
+          <Hex src={artOf(fav.game, fav)} alt="" size={130} colors={['#8B5CF6']} fullCard={isFullCard(fav.game, fav) ? fav.game : false} />
           <span className="eyebrow onboard-ready">{t('Todo listo')}</span>
           <h2 className="rules-title">{d.name.trim() || t('Jugador')}</h2>
-          <p className="rules-lead">{GAMES[d.game].name} · {t(p.level)}. {t('Tu foto, mazos, disponibilidad y tiendas los añades después desde tu perfil.')}</p>
+          <p className="rules-lead">{d.interests.map(gameName).join(' · ')}<br />{t(d.level)}. {t('Tu foto, mazos, disponibilidad y tiendas los añades después desde tu perfil.')}</p>
           {state === 'error' && <p className="upload-error" role="alert">{t('No se ha podido crear el perfil. Revisa la conexión e inténtalo de nuevo.')}</p>}
         </section>
        </div>
@@ -1643,13 +1635,8 @@ function BootScreen({ error, onRetry }) {
 function EditProfileSheet({ me, onSave, onClose }) {
   const [d, setD] = useState(me);
   // Los cambios se calculan sobre el estado más reciente (patch puede ser una función) para no perder pulsaciones rápidas
-  const set = (patch) => setD((x) => ({ ...x, ...(typeof patch === 'function' ? patch(x) : patch) }));
-  const p = d.profiles[d.game];
-  const setProf = (patch) => setD((x) => {
-    const cur = x.profiles[x.game];
-    return { ...x, profiles: { ...x.profiles, [x.game]: { ...cur, ...(typeof patch === 'function' ? patch(cur) : patch) } } };
-  });
-  const game = GAMES[d.game];
+  const set = (patch) => setD((x) => normalizeMe({ ...x, ...(typeof patch === 'function' ? patch(x) : patch) }));
+  const fav = d.favCard;
   const fileRef = useRef(null);
 
   const [uploadError, setUploadError] = useState('');
@@ -1678,7 +1665,7 @@ function EditProfileSheet({ me, onSave, onClose }) {
   const bioFlag = checkMessage(d.bio) === 'conduct' ? 'conduct' : null;
   const age = ageFrom(d.birthDate);
   const ageOk = age !== null && age >= 18 && age <= 99;
-  const valid = d.name.trim() && ageOk && d.interests.length > 0 && cardOk(d.game, p.favCard) && (game.generic || p.colors.length) && p.formats.length && !bioFlag;
+  const valid = d.name.trim() && ageOk && d.interests.length > 0 && !bioFlag;
   return (
     <>
       <div className="sheet-bg" onClick={onClose} />
@@ -1689,13 +1676,8 @@ function EditProfileSheet({ me, onSave, onClose }) {
           <span style={{ width: 44 }} />
         </header>
         <div className="body form">
-          <fieldset><legend>{t('Perfil de juego que editas')}</legend>
-            <GameTabs label={t('Perfil de juego que editas')} games={d.interests} value={d.game} onChange={(g) => set({ game: g })} />
-            <p className="field-hint">{I.palette}{t('Cada juego de tu lista tiene su propio perfil: imagen favorita, formatos y mazos. El que guardes como activo es el que ven primero los demás.')}</p>
-          </fieldset>
-
           <div className="photo-edit">
-            <Hex src={myAvatar(d)} alt={t('Tu imagen')} size={96} colors={frameOf(d.game, p.colors).list} ring={false} fullCard={avatarIsCard(d)} />
+            <Hex src={myAvatar(d)} alt={t('Tu imagen')} size={96} colors={['#8B5CF6']} ring={false} fullCard={avatarIsCard(d)} />
             <div className="photo-actions">
               <span className="photo-hint">{t('Por defecto usamos tu carta favorita. La foto personal es opcional.')}</span>
               <button type="button" id="upload-photo" className="ghost small" onClick={() => fileRef.current.click()}>{I.camera}{t('Subir foto')}</button>
@@ -1717,30 +1699,27 @@ function EditProfileSheet({ me, onSave, onClose }) {
           <ModNote kind={bioFlag} />
 
           <fieldset><legend>{t('Tus juegos')}</legend>
-            <GamePicker value={d.interests} onChange={(v) => setD((x) => withProfiles({ ...x, interests: v }))} />
+            <GamePicker value={d.interests} onChange={(v) => set({ interests: v })} />
             {!d.interests.length && <p className="upload-error" role="alert">{t('Elige al menos un juego.')}</p>}
           </fieldset>
 
-          <div className="field">{t('{label} de {game}', { label: t(game.favLabel), game: game.name })}
-            <CardField key={d.game} id="edit-fav" game={d.game} value={p.favCard} onChange={(c) => setProf({ favCard: c })} />
-          </div>
-          <div className={`fav-preview g-${d.game}`}><img className={imgCls(d.game, p.favCard).trim()} src={artOf(d.game, p.favCard)} alt="" /><span>{p.favCard.name || game.name}</span></div>
-
           <fieldset><legend>{t('Nivel de juego')}</legend>
-            <Segmented name={t('Nivel')} value={p.level} onChange={(v) => setProf({ level: v })} options={LEVELS.map((l) => [l, t(l)])} />
+            <Segmented name={t('Nivel')} value={d.level} onChange={(v) => set({ level: v })} options={LEVELS.map((l) => [l, t(l)])} />
           </fieldset>
 
-          {!game.generic && <fieldset><legend>{t(game.paletteLabel)}</legend>
-            <div className="mana-picker">
-              {Object.entries(game.palette).map(([k, m]) => (
-                <button type="button" key={k} className={`mana ${p.colors.includes(k) ? 'on' : ''}`} style={{ '--c': m.color }} aria-pressed={p.colors.includes(k)} onClick={() => setProf((c) => ({ colors: toggleIn(c.colors, k) }))}>
-                  <span className="pip" style={{ '--c': m.color }} />{t(m.label)}
-                </button>
-              ))}
-            </div>
-          </fieldset>}
+          <fieldset><legend>{t('Formatos')}</legend>
+            <ChipPicker options={formatOptions(d.interests)} value={d.formats} onChange={(v) => set({ formats: v })} toggle={(o) => set((x) => ({ formats: toggleIn(x.formats, o) }))} />
+          </fieldset>
 
-          <fieldset><legend>{t('Formatos de {game} (al menos uno)', { game: game.name })}</legend><ChipPicker options={game.formats} value={p.formats} onChange={(v) => setProf({ formats: v })} toggle={(o) => setProf((c) => ({ formats: toggleIn(c.formats, o) }))} /></fieldset>
+          <fieldset><legend>{t('Carta favorita')}</legend>
+            {d.interests.length > 1 && (
+              <label className="inline-field">{t('Juego')}
+                <GameSelect id="edit-fav-game" games={d.interests} value={fav.game} onChange={(g) => set({ favCard: { game: g, name: '' } })} />
+              </label>
+            )}
+            <CardField key={fav.game} id="edit-fav" game={fav.game} value={fav} onChange={(c) => set({ favCard: { ...c, game: fav.game } })} />
+            <div className={`fav-preview g-${fav.game}`}><img className={imgCls(fav.game, fav).trim()} src={artOf(fav.game, fav)} alt="" /><span>{fav.name || GAMES[fav.game].name}</span></div>
+          </fieldset>
 
           <fieldset><legend>{t('Disponibilidad')}</legend>
             <div className="days">
@@ -1773,9 +1752,11 @@ function EditProfileSheet({ me, onSave, onClose }) {
 }
 
 /* ================= Añadir mazo ================= */
-function DeckSheet({ game, onSave, onClose }) {
+function DeckSheet({ games, onSave, onClose }) {
+  const [game, setGame] = useState(games[0]);
   const g = GAMES[game];
   const [deck, setDeck] = useState({ name: '', format: g.formats[0], card: null });
+  const pickGame = (v) => { setGame(v); setDeck((x) => ({ ...x, format: GAMES[v].formats[0], card: null })); };
   const valid = deck.name.trim() && cardOk(game, deck.card);
   return (
     <>
@@ -1792,14 +1773,15 @@ function DeckSheet({ game, onSave, onClose }) {
             <span className="deck-format">{t(deck.format)}</span>
             <b>{deck.name || t('Nombre del mazo')}</b>
           </div>
+          {games.length > 1 && <label>{t('Juego')}<GameSelect id="deck-game" games={games} value={game} onChange={pickGame} /></label>}
           <label>{t('Nombre')}<input id="deck-name" value={deck.name} maxLength={32} placeholder={t('Ej. Luffy Morado')} onChange={(e) => setDeck({ ...deck, name: e.target.value })} /></label>
           <label>{t('Formato')}<select id="deck-format" value={deck.format} onChange={(e) => setDeck({ ...deck, format: e.target.value })}>{g.formats.map((f) => <option key={f} value={f}>{t(f)}</option>)}</select></label>
           <div className="field">{t(g.keyCard(deck.format))}
-            <CardField id="deck-card" game={game} value={deck.card} onChange={(c) => setDeck((x) => ({ ...x, card: c }))} />
+            <CardField key={game} id="deck-card" game={game} value={deck.card} onChange={(c) => setDeck((x) => ({ ...x, card: c }))} />
           </div>
         </div>
         <div className="sheet-cta">
-          <button id="save-deck" className="primary" disabled={!valid} onClick={() => onSave({ ...deck, id: crypto.randomUUID(), name: deck.name.trim(), card: deck.card ?? { name: '' } })}>{I.plus}{t('Añadir mazo')}</button>
+          <button id="save-deck" className="primary" disabled={!valid} onClick={() => onSave({ ...deck, game, id: crypto.randomUUID(), name: deck.name.trim(), card: deck.card ?? { name: '' } })}>{I.plus}{t('Añadir mazo')}</button>
         </div>
       </section>
     </>
@@ -1810,33 +1792,24 @@ function DeckSheet({ game, onSave, onClose }) {
 const THEMES = [['light', 'Día', I.sun], ['dark', 'Noche', I.moon], ['system', 'Auto', I.auto]];
 
 function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
-  const set = (patch) => setMe((x) => ({ ...x, ...patch }));
-  const p = prof(me);
-  const setProf = (patch) => setMe((x) => ({ ...x, profiles: { ...x.profiles, [x.game]: { ...x.profiles[x.game], ...patch } } }));
+  const fav = me.favCard;
   const dayNames = DAYS.filter(([k]) => me.days.includes(k)).map(([, n]) => t(n).slice(0, 3)).join(', ');
   return (
     <>
-      <div className="game-switch">
-        <span className="game-switch-label">{t('Perfil activo')}</span>
-        <GameTabs label={t('Perfil de juego')} games={me.interests} value={me.game} onChange={(g) => { set({ game: g }); flash(t('Perfil de {game} activado', { game: GAMES[g].name }), gameIcon(g)); }} />
-      </div>
-
-      <div className={`me-card g-${me.game}`}>
-        <img className={`me-cover${imgCls(me.game, p.favCard)}`} src={artOf(me.game, p.favCard)} alt="" />
+      <div className={`me-card g-${fav.game}`}>
+        <img className={`me-cover${imgCls(fav.game, fav)}`} src={artOf(fav.game, fav)} alt="" />
         <button id="edit-profile" className="icon-btn glass me-edit" aria-label={t('Editar perfil')} onClick={onEdit}>{I.edit}</button>
         <button className="me-photo" onClick={onEdit} aria-label={t('Cambiar imagen')}>
-          <Hex src={myAvatar(me)} size={108} badge={t(p.formats[0])} colors={frameOf(me.game, p.colors).list} fullCard={avatarIsCard(me)} />
+          <Hex src={myAvatar(me)} size={108} badge={me.formats[0] && t(me.formats[0])} colors={['#8B5CF6']} fullCard={avatarIsCard(me)} />
           <span className="cam">{I.camera}</span>
         </button>
-        <GameTag game={me.game} />
         <h2 className="me-name">{me.name}</h2>
-        <div className="me-sub">{t(p.level)}</div>
-        {p.favCard.name && <div className="me-fav">{gameIcon(me.game)}{p.favCard.name}</div>}
-        <Pips game={me.game} colors={p.colors} />
+        <div className="me-sub">{t(me.level)}</div>
+        {fav.name && <div className="me-fav">{gameIcon(fav.game)}{fav.name}</div>}
         {me.bio && <p className="me-bio">{me.bio}</p>}
         <div className="me-avail">{I.clock}{dayNames || t('Sin días')}{me.slots.length > 0 && ` · ${me.slots.map((x) => t(x)).join(', ')}`}</div>
         <div className="stats">
-          <div><b>{p.decks.length}</b><span>{t('Mazos')}</span></div>
+          <div><b>{me.decks.length}</b><span>{t('Mazos')}</span></div>
           <div><b>{matchCount}</b><span>{t('Rivales')}</span></div>
           <div><b>{me.stores.length}</b><span>{t('Tiendas')}</span></div>
         </div>
@@ -1849,17 +1822,22 @@ function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
         <button type="button" className="tag interest add" onClick={onEdit}>{I.plus}{t('Añadir')}</button>
       </div>
 
-      <h3 className="section-title">{t('Mis mazos de {game}', { game: GAMES[me.game].name })}</h3>
+      {me.formats.length > 0 && <>
+        <h3 className="section-title">{t('Formatos')}</h3>
+        <div className="tags">{me.formats.map((f) => <span key={f} className="tag">{t(f)}</span>)}</div>
+      </>}
+
+      <h3 className="section-title">{t('Mis mazos')}</h3>
       <div className="decks">
-        {p.decks.map((d) => (
+        {me.decks.map((d) => (
           <div key={d.id ?? d.name} className="deck-card">
-            <img loading="lazy" decoding="async" className={imgCls(me.game, d.card).trim()} src={artOf(me.game, d.card)} alt="" />
+            <img loading="lazy" decoding="async" className={imgCls(d.game, d.card).trim()} src={artOf(d.game, d.card)} alt="" />
             <span className="deck-format">{t(d.format)}</span>
-            <button className="deck-del" aria-label={t('Borrar {name}', { name: d.name })} onClick={() => setProf({ decks: p.decks.filter((x) => x !== d) })}>{I.trash}</button>
-            <div><b>{d.name}</b></div>
+            <button className="deck-del" aria-label={t('Borrar {name}', { name: d.name })} onClick={() => setMe((x) => ({ ...x, decks: x.decks.filter((y) => y !== d) }))}>{I.trash}</button>
+            <div><b>{d.name}</b><small>{GAMES[d.game].name}</small></div>
           </div>
         ))}
-        <button id="add-deck" className="deck-card add" onClick={onAddDeck}><span className="add-icon">{I.plus}</span>{t('Añadir mazo')}<small>{t('Formato y {key}', { key: t(GAMES[me.game].keyCard(GAMES[me.game].formats[0])).toLowerCase() })}</small></button>
+        <button id="add-deck" className="deck-card add" onClick={onAddDeck}><span className="add-icon">{I.plus}</span>{t('Añadir mazo')}<small>{t('De cualquiera de tus juegos')}</small></button>
       </div>
 
       <h3 className="section-title">{t('Verificación')}</h3>
@@ -1871,7 +1849,6 @@ function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
         </div>
         <button className="ghost small" onClick={() => flash(t('Código listo: enséñalo en la tienda'), I.qr)}>{t('Ver código')}</button>
       </div>
-
     </>
   );
 }
@@ -2106,14 +2083,13 @@ function MatchScreen({ p, me, onSend, onContinue }) {
   const [sendText, warn, clearWarn] = useModeratedSend(onSend);
   const submit = (e) => { e.preventDefault(); if (!text.trim()) onSend(''); else sendText(text); };
   // Si tienes perfil del juego del rival, el duelo se ambienta con tu carta de ese juego
-  const myGame = me.profiles[p.game] ? p.game : me.game;
-  const mine = me.profiles[myGame];
-  const sparkColors = [...frameOf(myGame, mine.colors).list, ...frameOf(p.game, p.colors).list];
+  const mine = me.favCard;
+  const sparkColors = ['#8B5CF6', '#C4F56A', ...frameOf(p.game, p.colors).list];
   return (
     <div className="match" role="dialog" aria-label={t('¡Duelo aceptado!')}>
       {/* Fondo partido en diagonal: tu carta contra la suya */}
       <div className="vs-bg" aria-hidden="true">
-        <div className="vs-half left"><img className={imgCls(myGame, mine.favCard).trim()} src={artOf(myGame, mine.favCard)} alt="" /></div>
+        <div className="vs-half left"><img className={imgCls(mine.game, mine).trim()} src={artOf(mine.game, mine)} alt="" /></div>
         <div className="vs-half right"><img className={imgCls(p.game, p.favCard).trim()} src={artOf(p.game, p.favCard)} alt="" /></div>
         <svg className="vs-seam" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="62" y1="-2" x2="38" y2="102" /></svg>
       </div>
@@ -2122,7 +2098,7 @@ function MatchScreen({ p, me, onSend, onContinue }) {
       <p className="its">{t('¡Duelo')}</p>
       <h2 className="match-title" data-text={t('ACEPTADO!')}>{t('ACEPTADO!')}</h2>
       <div className="pair">
-        <Hex src={myAvatar(me, myGame)} alt={me.name} size={124} colors={frameOf(myGame, mine.colors).list} fullCard={avatarIsCard(me, myGame)} />
+        <Hex src={myAvatar(me)} alt={me.name} size={124} colors={['#8B5CF6', '#C4F56A']} fullCard={avatarIsCard(me)} />
         <span className="vs" aria-label={t('contra')}>VS</span>
         <Hex src={p.avatar} alt={p.name} size={124} colors={frameOf(p.game, p.colors).list} />
       </div>
@@ -2191,7 +2167,7 @@ export default function App() {
   const [theme, setTheme] = useStoredState('manamatch-theme-v2', 'system');
   const [blocked, setBlocked] = useStoredState('manamatch-blocked', []);
   const [accepted, setAccepted] = useStoredState('manamatch-rules', false);
-  useAppearance(theme, me.game);
+  useAppearance(theme, me.favCard.game);
   useViewportHeight();
   const online = useOnline();
   const installer = useInstall();
@@ -2208,7 +2184,7 @@ export default function App() {
   useEffect(() => {
     if (!supabase || !uid) return;
     let alive = true;
-    loadMe(uid, STARTER_PROFILES)
+    loadMe(uid)
       .then((m) => {
         if (!alive) return;
         if (m) { lastSaved.current = JSON.stringify(m); setMe(migrateMe(m)); }
@@ -2228,7 +2204,7 @@ export default function App() {
         await saveMe(uid, me);
         lastSaved.current = json; setSyncFailed(false);
         cleanCardImages(uid, me).catch(() => {});
-      } catch { setSyncFailed(true); }
+      } catch (err) { console.error('ManaMatch: no se ha podido guardar', err); setSyncFailed(err?.message || true); }
     }, 800);
     return () => clearTimeout(t);
   }, [me, cloudStatus, uid, online, setMe]);
@@ -2294,7 +2270,7 @@ export default function App() {
     }, 1200);
   };
 
-  const addDeck = (d) => setMe((x) => ({ ...x, profiles: { ...x.profiles, [x.game]: { ...x.profiles[x.game], decks: [...x.profiles[x.game].decks, d] } } }));
+  const addDeck = (d) => setMe((x) => ({ ...x, decks: [...x.decks, d] }));
   const openChat = (p) => { setChatWith(p); setTab('chat'); setMatchFx(null); setUnread(0); };
   const inChat = tab === 'chat' && chatWith;
 
@@ -2303,7 +2279,7 @@ export default function App() {
     setEditing(null);
     let next = v;
     if (uid && v.avatar.startsWith('data:')) {
-      try { next = { ...v, avatar: await uploadAvatar(uid, v.avatar) }; } catch { next = { ...v, avatar: me.avatar }; flash(t('No se ha podido subir la foto'), I.alert); }
+      try { next = { ...v, avatar: await uploadAvatar(uid, v.avatar) }; } catch (err) { console.error('ManaMatch: foto', err); next = { ...v, avatar: me.avatar }; flash(`${t('No se ha podido subir la foto')}${err?.message ? `: ${err.message}` : ''}`, I.alert); }
     } else if (uid && !v.avatar && isAvatarPath(me.avatar)) removeAvatars(uid).catch(() => {});
     setMe(next);
     flash(t('Perfil actualizado'), I.check);
@@ -2355,11 +2331,11 @@ export default function App() {
         ))}
       </nav>
 
-      <section className="screen" key={tab + (chatWith?.id ?? '') + (tab === 'discover' ? me.game : '')}>
+      <section className="screen" key={tab + (chatWith?.id ?? '')}>
         {tab !== 'discover' && !inChat && (
           <header className="screen-head">
             <div>
-              <span className="eyebrow">ManaMatch · {GAMES[me.game].name}</span>
+              <span className="eyebrow">ManaMatch</span>
               <h1 className="screen-title">{t(TABS.find((x) => x[0] === tab)[2])}</h1>
             </div>
             {tab === 'me' && <button id="open-settings" className="icon-btn head-action" onClick={() => setSettingsOpen(true)} aria-label={t('Ajustes')} title={t('Ajustes')}>{I.gear}</button>}
@@ -2399,7 +2375,7 @@ export default function App() {
       )}
 
       {editing === 'profile' && <EditProfileSheet me={me} onClose={() => setEditing(null)} onSave={saveProfile} />}
-      {editing === 'deck' && <DeckSheet game={me.game} onClose={() => setEditing(null)} onSave={(d) => { addDeck(d); setEditing(null); flash(t('Mazo «{name}» añadido', { name: d.name }), I.plus); }} />}
+      {editing === 'deck' && <DeckSheet games={me.interests} onClose={() => setEditing(null)} onSave={(d) => { addDeck(d); setEditing(null); flash(t('Mazo «{name}» añadido', { name: d.name }), I.plus); }} />}
 
       {matchFx && (
         <MatchScreen
@@ -2451,7 +2427,7 @@ export default function App() {
       )}
 
       {!online && <div className="offline" role="status">{I.wifiOff}{t('Sin conexión: verás lo último que se guardó')}</div>}
-      {online && syncFailed && <div className="offline" role="status">{I.alert}{t('No se han podido guardar tus cambios en la cuenta. Lo reintentaremos.')}</div>}
+      {online && syncFailed && <div className="offline" role="status">{I.alert}{t('No se han podido guardar tus cambios en la cuenta. Lo reintentaremos.')}{typeof syncFailed === 'string' && <small className="sync-detail">{syncFailed}</small>}</div>}
 
       {toast && <div className="toast" role="status"><span className="toast-icon">{toast.icon}</span>{toast.text}</div>}
     </main>

@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 
 // Traduce el perfil de la app (`me`) a las tablas de Supabase y al revés.
-// Público: profiles, game_profiles, decks. Privado (solo su dueño): private_profiles (nacimiento y ajustes).
+// Público: profiles (con juegos, nivel, formatos y carta favorita) y decks. Privado (solo su dueño): private_profiles.
 
 const AVATARS = 'avatars';
 const CARDS = 'cards';
@@ -16,7 +16,7 @@ export const isCardUpload = (v) => typeof v === 'string' && (CARD_PATH.test(v) |
 export const cardUploadUrl = (path) => (supabase ? supabase.storage.from(CARDS).getPublicUrl(path).data.publicUrl : '');
 
 /* Todas las cartas del perfil (favoritas y de mazos) */
-const allCards = (me) => Object.values(me.profiles).flatMap((g) => [g.favCard, ...g.decks.map((d) => d.card)]).filter(Boolean);
+const allCards = (me) => [me.favCard, ...me.decks.map((d) => d.card)].filter(Boolean);
 export const hasLocalCardImages = (me) => allCards(me).some((c) => c.upload?.startsWith('data:image/jpeg'));
 
 /* Sube las imágenes de cartas que aún están en el móvil. Devuelve { dataUrl: ruta } */
@@ -31,12 +31,9 @@ export async function uploadCardImages(uid, me) {
   return map;
 }
 /* Cambia en el perfil las imágenes locales por su ruta ya subida */
+const fixUpload = (map) => (c) => (c?.upload && map[c.upload] ? { ...c, upload: map[c.upload] } : c);
 export const replaceUploads = (me, map) => ({
-  ...me,
-  profiles: Object.fromEntries(Object.entries(me.profiles).map(([g, x]) => {
-    const fix = (c) => (c?.upload && map[c.upload] ? { ...c, upload: map[c.upload] } : c);
-    return [g, { ...x, favCard: fix(x.favCard), decks: x.decks.map((d) => ({ ...d, card: fix(d.card) })) }];
-  })),
+  ...me, favCard: fixUpload(map)(me.favCard), decks: me.decks.map((d) => ({ ...d, card: fixUpload(map)(d.card) })),
 });
 /* Borra del servidor las imágenes de cartas que ya no usa el perfil */
 export async function cleanCardImages(uid, me) {
@@ -67,41 +64,38 @@ const dataUrlToBlob = (dataUrl) => new Blob(
   [Uint8Array.from(atob(dataUrl.slice(dataUrl.indexOf(',') + 1)), (c) => c.charCodeAt(0))], { type: 'image/jpeg' });
 
 /* Devuelve el perfil guardado o null si la cuenta aún no tiene perfil */
-export async function loadMe(uid, starter) {
-  const [prof, priv, games, decks] = await Promise.all([
+export async function loadMe(uid) {
+  const [prof, priv, decks] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
     supabase.from('private_profiles').select('*').eq('user_id', uid).maybeSingle(),
-    supabase.from('game_profiles').select('*').eq('user_id', uid),
     supabase.from('decks').select('*').eq('user_id', uid),
   ]);
-  [prof, priv, games, decks].forEach(check);
+  [prof, priv, decks].forEach(check);
   const p = prof.data;
   if (!p || !priv.data) return null;
   const settings = priv.data.settings ?? {};
-  const profiles = Object.fromEntries(Object.entries(starter).map(([g, s]) => [g, { ...s, decks: [] }]));
-  for (const row of games.data) {
-    profiles[row.game] = { decks: [], ...profiles[row.game], level: row.level, favCard: row.fav_card, colors: row.colors, formats: row.formats };
-  }
-  for (const d of decks.data) profiles[d.game]?.decks.push({ id: d.id, name: d.name, format: d.format, card: d.card });
   return {
-    name: p.display_name, bio: p.bio, game: p.active_game, visible: p.visible, showDistance: p.show_distance,
+    name: p.display_name, bio: p.bio, visible: p.visible, showDistance: p.show_distance,
     avatar: isAvatarPath(p.avatar_path) ? p.avatar_path : '',
     days: p.days, slots: p.slots, stores: p.store_ids,
     interests: p.interests?.length ? p.interests : [p.active_game],
+    level: p.level, formats: p.formats ?? [],
+    favCard: { ...(p.fav_card ?? {}), game: p.fav_card?.game ?? p.active_game },
+    decks: decks.data.map((d) => ({ id: d.id, game: d.game, name: d.name, format: d.format, card: d.card })),
     birthDate: priv.data.birth_date,
     radius: settings.radius ?? 5, onlyVerified: !!settings.onlyVerified,
     notif: { matches: true, messages: true, events: false, ...settings.notif },
-    profiles,
   };
 }
 
 /* Guarda el perfil completo. Los mazos que ya no están en la app se borran del servidor. */
 export async function saveMe(uid, me) {
   const fields = {
-    display_name: me.name.trim().slice(0, 24), bio: me.bio.slice(0, 160), active_game: me.game, visible: me.visible,
-    avatar_path: isAvatarPath(me.avatar) ? me.avatar : null,
+    display_name: me.name.trim().slice(0, 24), bio: me.bio.slice(0, 160), visible: me.visible,
+    // active_game: el juego de tu carta favorita (lo usan las consultas que aún filtran por un juego)
+    active_game: me.favCard.game, avatar_path: isAvatarPath(me.avatar) ? me.avatar : null,
     days: me.days, slots: me.slots, store_ids: me.stores.slice(0, 10), show_distance: me.showDistance,
-    interests: me.interests.slice(0, 10),
+    interests: me.interests.slice(0, 10), level: me.level, formats: me.formats.slice(0, 20), fav_card: me.favCard,
   };
   // Primero se actualiza; si la fila no existe se crea. (Un "upsert" intentaría reescribir el id, que no se puede editar.)
   const upd = await supabase.from('profiles').update(fields).eq('id', uid).select('id');
@@ -113,15 +107,8 @@ export async function saveMe(uid, me) {
     settings: { radius: me.radius, onlyVerified: me.onlyVerified, notif: me.notif },
   }));
 
-  // Solo se guardan los perfiles de los juegos que tienes en tu lista; los demás se borran
-  const kept = Object.entries(me.profiles).filter(([game]) => me.interests.includes(game) || game === me.game);
-  check(await supabase.from('game_profiles').upsert(
-    kept.map(([game, g]) => ({ user_id: uid, game, level: g.level, fav_card: g.favCard, colors: g.colors, formats: g.formats })),
-  ));
-  check(await supabase.from('game_profiles').delete().eq('user_id', uid).not('game', 'in', `(${kept.map(([g]) => g).join(',')})`));
-
-  const decks = kept.flatMap(([game, g]) => g.decks.filter((d) => isUuid(d.id))
-    .map((d) => ({ id: d.id, user_id: uid, game, name: d.name.slice(0, 32), format: d.format, card: d.card })));
+  const decks = me.decks.filter((d) => isUuid(d.id))
+    .map((d) => ({ id: d.id, user_id: uid, game: d.game, name: d.name.slice(0, 32), format: d.format, card: d.card }));
   if (decks.length) check(await supabase.from('decks').upsert(decks));
   const del = supabase.from('decks').delete().eq('user_id', uid);
   check(await (decks.length ? del.not('id', 'in', `(${decks.map((d) => d.id).join(',')})`) : del));

@@ -10,11 +10,11 @@ export function compat(me, p) {
   // Con 3 juegos en común (o todos los que tenga el que menos) ya es la puntuación máxima
   const games = shared.length ? Math.min(1, shared.length / Math.max(1, Math.min(3, mine.length, theirs.length))) : 0;
 
-  // Formatos y nivel solo se comparan en el juego principal del otro, si tú también tienes perfil en él
-  const myProf = mine.includes(p.game) ? me.profiles?.[p.game] : null;
-  const sharedFormats = myProf ? p.formats.filter((f) => myProf.formats.includes(f)) : [];
-  const formats = myProf ? (sharedFormats.length ? 1 : 0.2) : 0;
-  const lvlDiff = myProf ? Math.abs(LEVEL_ORDER.indexOf(myProf.level) - LEVEL_ORDER.indexOf(p.level)) : 2;
+  // Formatos en común (de cualquier juego) y nivel parecido
+  const myFormats = me.formats ?? [];
+  const sharedFormats = (p.formats ?? []).filter((f) => myFormats.includes(f));
+  const formats = sharedFormats.length ? 1 : myFormats.length ? 0.2 : 0.5;
+  const lvlDiff = Math.abs(LEVEL_ORDER.indexOf(me.level) - LEVEL_ORDER.indexOf(p.level));
   const level = [1, 0.5, 0][lvlDiff] ?? 0;
 
   const sharedDays = (p.days ?? []).filter((d) => me.days.includes(d));
