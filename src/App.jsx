@@ -683,7 +683,7 @@ function RuleArt({ anim, icon }) {
 }
 
 // Carrusel horizontal con puntos: `slide(i)` marca la pantalla visible para que anime al entrar
-function useCarousel(count, { clickableDots = true } = {}) {
+function useCarousel(count) {
   const [page, setPage] = useState(0);
   const track = useRef(null);
   const go = (i) => track.current.scrollTo({ left: i * track.current.clientWidth, behavior: 'smooth' });
@@ -691,9 +691,7 @@ function useCarousel(count, { clickableDots = true } = {}) {
   const slide = (i) => `rule-slide ${page === i ? 'on' : ''}`;
   const dots = (
     <div className="rules-dots">
-      {Array.from({ length: count }, (_, i) => (clickableDots
-        ? <button key={i} type="button" className={page === i ? 'on' : ''} aria-label={`Ir a la pantalla ${i + 1}`} aria-current={page === i} onClick={() => go(i)} />
-        : <span key={i} className={page === i ? 'on' : ''} />))}
+      {Array.from({ length: count }, (_, i) => <button key={i} type="button" className={page === i ? 'on' : ''} aria-label={`Ir a la pantalla ${i + 1}`} aria-current={page === i} onClick={() => go(i)} />)}
     </div>
   );
   return { page, last: count - 1, track, go, onScroll, slide, dots };
@@ -1262,8 +1260,10 @@ const NEW_ME = { ...DEFAULT_ME, name: '', birthDate: '', bio: '', stores: [], da
 function CreateProfileScreen({ onCreate }) {
   const [d, setD] = useState(NEW_ME);
   const [state, setState] = useState(null); // null | 'saving' | 'error'
-  // Los puntos solo indican el paso: no se puede saltar a uno sin completar los anteriores
-  const { page, last, track, go, onScroll, slide, dots } = useCarousel(4, { clickableDots: false });
+  // Aquí no hay carrusel desplazable: los pasos solo cambian con Siguiente y Atrás, así ni el teclado,
+  // ni el ratón, ni el foco pueden saltarse un paso sin completar
+  const [page, setPage] = useState(0);
+  const last = 3;
   const set = (patch) => setD((x) => ({ ...x, ...patch }));
   const p = d.profiles[d.game];
   const setProf = (patch) => setD((x) => ({ ...x, profiles: { ...x.profiles, [x.game]: { ...x.profiles[x.game], ...patch } } }));
@@ -1273,10 +1273,9 @@ function CreateProfileScreen({ onCreate }) {
   const done = [!!(d.name.trim() && ageOk), true, !!p.favCard?.name, true];
   const stepOk = done[page];
   const reachable = done.indexOf(false) === -1 ? last : done.indexOf(false);
-  // Si algo mueve el carrusel más allá del primer paso sin completar (teclado, foco…), vuelve a ese paso
-  useEffect(() => { if (page > reachable) go(reachable); });
-  // Las pantallas que no se ven no aceptan foco ni pulsaciones (así Tab o las flechas no saltan a la siguiente)
-  const step = (i) => ({ className: `${slide(i)}${i < last ? ' dense' : ''}`, inert: page !== i });
+  const go = (i) => setPage(Math.max(0, Math.min(i, reachable)));
+  // Las pantallas que no se ven no aceptan foco ni pulsaciones
+  const step = (i) => ({ className: `rule-slide${page === i ? ' on' : ''}${i < last ? ' dense' : ''}`, inert: page !== i });
   const create = async () => {
     setState('saving');
     try { await onCreate({ ...d, name: d.name.trim() }); } catch { setState('error'); }
@@ -1284,7 +1283,8 @@ function CreateProfileScreen({ onCreate }) {
   return (
     <div className="rules onboarding" role="dialog" aria-label="Crear tu perfil">
       {page > 0 && <button className="icon-btn rules-close back" onClick={() => go(page - 1)} aria-label="Paso anterior">{I.back}</button>}
-      <div className="rules-slides locked" ref={track} onScroll={onScroll}>
+      <div className="steps-viewport">
+       <div className="steps-track" style={{ transform: `translateX(${-page * 100}%)` }}>
         <section {...step(0)}>
           <div className="rule-hero small"><RuleArt anim="adult" /></div>
           <span className="eyebrow">Paso 1 de 3</span>
@@ -1332,9 +1332,10 @@ function CreateProfileScreen({ onCreate }) {
           <p className="rules-lead">{GAMES[d.game].name} · {p.level}. Tu foto, mazos, disponibilidad y tiendas los añades después desde tu perfil.</p>
           {state === 'error' && <p className="upload-error" role="alert">No se ha podido crear el perfil. Revisa la conexión e inténtalo de nuevo.</p>}
         </section>
+       </div>
       </div>
       <div className="rules-cta">
-        {dots}
+        <div className="rules-dots" aria-label={`Paso ${Math.min(page + 1, 3)} de 3`}>{[0, 1, 2, 3].map((i) => <span key={i} className={page === i ? 'on' : ''} />)}</div>
         {page < last
           ? <button id="onboard-next" className="primary" disabled={!stepOk} onClick={() => go(page + 1)}>Siguiente{I.chevron}</button>
           : <button id="onboard-create" className="primary" disabled={state === 'saving'} onClick={create}>{I.sword}{state === 'saving' ? 'Creando…' : 'Crear perfil'}</button>}

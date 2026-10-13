@@ -2067,7 +2067,9 @@ body { background: var(--body-bg); }
 .dialog > .primary { width: 100%; }
 
 /* ---------- Crear perfil (primera vez) ---------- */
-.rules-slides.locked { overflow-x: hidden; }
+/* Pasos sin desplazamiento: la cinta se mueve con transform y el visor recorta sin permitir scroll (clip) */
+.steps-viewport { flex: 1; min-height: 0; overflow: hidden; overflow: clip; }
+.steps-track { display: flex; height: 100%; transition: transform 0.45s var(--ease-spring); }
 .rules-close.back { left: 16px; right: auto; }
 .onboard-form { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
 .onboard-form .field-hint { margin: 0; }
