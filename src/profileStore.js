@@ -40,6 +40,7 @@ export async function loadMe(uid, starter) {
     name: p.display_name, bio: p.bio, game: p.active_game, visible: p.visible, showDistance: p.show_distance,
     avatar: isAvatarPath(p.avatar_path) ? p.avatar_path : '',
     days: p.days, slots: p.slots, stores: p.store_ids,
+    interests: p.interests?.length ? p.interests : [p.active_game],
     birthDate: priv.data.birth_date,
     radius: settings.radius ?? 5, onlyVerified: !!settings.onlyVerified,
     notif: { matches: true, messages: true, events: false, ...settings.notif },
@@ -53,6 +54,7 @@ export async function saveMe(uid, me) {
     display_name: me.name.trim().slice(0, 24), bio: me.bio.slice(0, 160), active_game: me.game, visible: me.visible,
     avatar_path: isAvatarPath(me.avatar) ? me.avatar : null,
     days: me.days, slots: me.slots, store_ids: me.stores.slice(0, 10), show_distance: me.showDistance,
+    interests: me.interests.slice(0, 10),
   };
   // Primero se actualiza; si la fila no existe se crea. (Un "upsert" intentaría reescribir el id, que no se puede editar.)
   const upd = await supabase.from('profiles').update(fields).eq('id', uid).select('id');

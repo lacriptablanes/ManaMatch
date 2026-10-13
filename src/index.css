@@ -2101,3 +2101,44 @@ body { background: var(--body-bg); }
 .age-notice b { color: var(--text); }
 .age-notice svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; color: var(--brand, #8B5CF6); }
 :root:not([data-theme="light"]) .age-notice svg { color: var(--lime, #C4F56A); }
+
+/* =====================================================================
+   TUS JUEGOS (selector estilo "intereses" y juegos en común)
+   ===================================================================== */
+.tag.interest {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px;
+  background: transparent; border: 1.5px solid var(--border-hi); color: var(--text); font-weight: 600;
+}
+.tag.interest svg { width: 14px; height: 14px; }
+.tag.interest.on, :root:not([data-theme="light"]) .tag.interest.on {
+  background: color-mix(in srgb, var(--hot) 14%, transparent); border-color: var(--hot); color: var(--text);
+}
+.tag.interest.on svg { color: var(--hot); }
+:root[data-theme="light"] .tag.interest.on svg { color: var(--brand); }
+.tag.interest:disabled { opacity: 0.4; cursor: not-allowed; }
+.tag.interest.add { border-style: dashed; color: var(--muted); }
+.game-picker { display: flex; flex-direction: column; gap: 12px; text-align: left; width: 100%; }
+.picker-head { display: flex; align-items: flex-start; gap: 12px; }
+.picker-head p { margin: 0; flex: 1; color: var(--text-2); font-size: 0.9rem; line-height: 1.4; }
+.picker-count { font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.picker-count.full { color: var(--hot); }
+.picker-search {
+  display: flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 999px;
+  background: var(--input-bg); border: 1px solid var(--border);
+}
+.picker-search svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.picker-search input { border: 0; background: transparent; padding: 11px 0; flex: 1; min-width: 0; outline: none; color: var(--text); }
+.picker-group h4 { margin: 4px 0 8px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.title-note { margin-left: 8px; font-size: 0.8rem; font-weight: 700; color: var(--brand-soft); }
+.hero-shared {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 4px 10px; border-radius: 999px;
+  font-size: 0.78rem; font-weight: 700; color: #171522; background: var(--lime);
+}
+.hero-shared svg { width: 14px; height: 14px; }
+/* En la creación del perfil el selector necesita desplazarse dentro del paso */
+.onboarding .rule-slide .game-picker { max-height: 62vh; overflow-y: auto; padding-right: 4px; }
+.form .picker-search, .picker-search { flex-direction: row; align-items: center; gap: 8px; margin: 0; }
+.form .picker-search input, .picker-search input {
+  border: 0; background: transparent; box-shadow: none; padding: 11px 0; margin: 0; height: auto; flex: 1; min-width: 0; border-radius: 0;
+}
+.tag.interest { font-size: 0.85rem; }

@@ -1,6 +1,7 @@
 import { useState, useRef, useId, useEffect } from 'react';
 import { PLAYERS, STORES, pokeImg, opImg } from './data';
 import { GAMES, GAME_IDS } from './games';
+import { CATALOG, GAME_CATEGORIES, MAX_GAMES, gameName, isGameId } from './catalog';
 import { supabase } from './supabase';
 import { loadMe, saveMe, uploadAvatar, removeAvatars, isAvatarPath, avatarUrl, ageFrom } from './profileStore';
 
@@ -83,6 +84,7 @@ const DEFAULT_PROFILES = {
 const STARTER_PROFILES = Object.fromEntries(Object.entries(DEFAULT_PROFILES).map(([g, x]) => [g, { ...x, decks: [] }]));
 const DEFAULT_ME = {
   name: 'Planeswalker', birthDate: '1998-03-14', avatar: '', game: 'magic', profiles: DEFAULT_PROFILES,
+  interests: ['magic', 'pokemon', 'lorcana', 'fab', 'wh40k'],
   bio: 'Jugador de cartas de toda la vida. Busco mesa fija entre semana y algún torneo de tienda.',
   stores: ['s1'], days: ['X', 'V'], slots: ['Tarde'],
   radius: 5, onlyVerified: false,
@@ -110,6 +112,9 @@ const migrateMe = (v) => {
   ['favCard', 'colors', 'formats', 'level', 'decks', 'games', 'showAge', 'age'].forEach((k) => delete me[k]);
   if (typeof me.avatar !== 'string' || (me.avatar && !me.avatar.startsWith('data:image/') && !isAvatarPath(me.avatar))) me.avatar = '';
   if (!GAMES[me.game]) me.game = 'magic';
+  // Lista de juegos: solo identificadores del catálogo, sin repetir y como mucho MAX_GAMES
+  me.interests = Array.isArray(v.interests) ? [...new Set(v.interests.filter(isGameId))].slice(0, MAX_GAMES) : [me.game];
+  if (!me.interests.length) me.interests = [me.game];
   return me;
 };
 
@@ -324,6 +329,57 @@ const ModNote = ({ kind }) => kind && (
 const GameTag = ({ game }) => <span className={`game-tag g-${game}`}>{GAME_ICON[game]}{GAMES[game].name}</span>;
 const GAME_OPTIONS = GAME_IDS.map((g) => [g, GAMES[g].name, GAME_ICON[g]]);
 
+/* ---------- Tus juegos: lista del catálogo y juegos en común ---------- */
+const sharedGames = (me, p) => (p.interests ?? []).filter((g) => me.interests.includes(g));
+const fold = (t) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+function GamePicker({ value, onChange }) {
+  const [q, setQ] = useState('');
+  const full = value.length >= MAX_GAMES;
+  const nq = fold(q.trim());
+  const groups = GAME_CATEGORIES
+    .map((cat) => [cat, CATALOG.filter((g) => g.cat === cat && (!nq || fold(`${g.name} ${g.alias}`).includes(nq)))])
+    .filter(([, games]) => games.length);
+  return (
+    <div className="game-picker">
+      <div className="picker-head">
+        <p>Elige los juegos a los que juegas. Te mostraremos antes a la gente con más juegos en común.</p>
+        <span className={`picker-count${full ? ' full' : ''}`} aria-live="polite">({value.length}/{MAX_GAMES})</span>
+      </div>
+      <label className="picker-search">{I.search}
+        <input type="search" value={q} placeholder="Buscar juego" aria-label="Buscar juego" onChange={(e) => setQ(e.target.value)} />
+      </label>
+      {groups.map(([cat, games]) => (
+        <div key={cat} className="picker-group">
+          <h4>{cat}</h4>
+          <div className="tags">
+            {games.map((g) => {
+              const on = value.includes(g.id);
+              return (
+                <button type="button" key={g.id} className={`tag interest${on ? ' on' : ''}`} aria-pressed={on} disabled={!on && full}
+                  onClick={() => onChange(on ? value.filter((x) => x !== g.id) : [...value, g.id])}>{on && I.check}{g.name}</button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      {!groups.length && <p className="field-hint">No encontramos «{q}». Pronto añadiremos más juegos.</p>}
+    </div>
+  );
+}
+
+/* Juegos de otro jugador, con los que compartís resaltados primero */
+const GameList = ({ me, p }) => {
+  const shared = sharedGames(me, p);
+  const rest = (p.interests ?? []).filter((g) => !shared.includes(g));
+  return (
+    <div className="tags">
+      {shared.map((g) => <span key={g} className="tag interest on shared">{I.check}{gameName(g)}</span>)}
+      {rest.map((g) => <span key={g} className="tag interest">{gameName(g)}</span>)}
+    </div>
+  );
+};
+
 /* Hexágono regular (punta arriba) con esquinas redondeadas, como path SVG */
 function hexPath(cx, cy, R, r) {
   const pts = Array.from({ length: 6 }, (_, i) => {
@@ -381,7 +437,8 @@ const LEAVE = {
   like: 'translate(135%, 4%) rotate(22deg)',
   super: 'translateY(-125%) scale(0.85)',
 };
-function TableCard({ p, leaving, onInfo }) {
+function TableCard({ p, me, leaving, onInfo }) {
+  const shared = sharedGames(me, p).length;
   const ref = useRef(null);
   // Inclinación 3D sutil hacia el puntero (máx. ~6°); el reflejo y la ilustración también lo siguen
   const tilt = (e) => {
@@ -420,6 +477,7 @@ function TableCard({ p, leaving, onInfo }) {
           <span className="hero-fav">{GAME_ICON[p.game]}{p.favCard.name}</span>
         </div>
         <div className="hero-sub">{I.store}{storeName(p.stores[0])}<i className="dot-sep" />{p.level}</div>
+        {shared > 0 && <div className="hero-shared">{I.deck}{shared === 1 ? '1 juego en común' : `${shared} juegos en común`}</div>}
       </div>
       <div className={`stamp like${leaving === 'like' || leaving === 'super' ? ' show' : ''}`}>¡Duelo!</div>
       <div className={`stamp nope${leaving === 'nope' ? ' show' : ''}`}>Paso</div>
@@ -428,7 +486,8 @@ function TableCard({ p, leaving, onInfo }) {
 }
 
 /* ================= Profile sheet ================= */
-function ProfileSheet({ p, onClose, onLike, onReport, onBlock }) {
+function ProfileSheet({ p, me, onClose, onLike, onReport, onBlock }) {
+  const shared = sharedGames(me, p).length;
   const { list } = frameOf(p.game, p.colors);
   const pal = GAMES[p.game].palette;
   return (
@@ -457,6 +516,11 @@ function ProfileSheet({ p, onClose, onLike, onReport, onBlock }) {
             <span className="info-pill">{I.clock}{p.availability}</span>
           </div>
           <p className="bio">{p.bio}</p>
+
+          {p.interests?.length > 0 && <>
+            <h3 className="section-title">Juegos{shared > 0 && <small className="title-note">{shared} en común</small>}</h3>
+            <GameList me={me} p={p} />
+          </>}
 
           <h3 className="section-title">Mazos</h3>
           <div className="decks">
@@ -1001,7 +1065,7 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind }) {
             <div className="art-frame"><img className={`hero-art${imgCls(next.game)}`} src={artOf(next.game, next.favCard)} alt="" /></div>
           </article>
         )}
-        {top && <TableCard key={top.id} p={top} leaving={leaving} onInfo={() => onInfo(top)} />}
+        {top && <TableCard key={top.id} p={top} me={me} leaving={leaving} onInfo={() => onInfo(top)} />}
         {impact && (
           <div key={impact.key} className={`impact ${impact.id}`} aria-hidden="true" onAnimationEnd={(e) => { if (e.target === e.currentTarget) setImpact(null); }}>
             <span className="impact-ring" /><span className="impact-icon">{HAND.find((c) => c.id === impact.id).icon}</span>
@@ -1254,7 +1318,7 @@ const AgeNotice = () => (
   </div>
 );
 const maxBirthDate = () => { const t = new Date(); t.setFullYear(t.getFullYear() - 18); return t.toISOString().slice(0, 10); };
-const NEW_ME = { ...DEFAULT_ME, name: '', birthDate: '', bio: '', stores: [], days: [], slots: [], profiles: STARTER_PROFILES };
+const NEW_ME = { ...DEFAULT_ME, name: '', birthDate: '', bio: '', stores: [], days: [], slots: [], interests: [], profiles: STARTER_PROFILES };
 
 function CreateProfileScreen({ onCreate }) {
   const [d, setD] = useState(NEW_ME);
@@ -1269,7 +1333,9 @@ function CreateProfileScreen({ onCreate }) {
   const age = ageFrom(d.birthDate);
   const ageOk = age !== null && age >= 18 && age <= 99;
   // Cada paso se completa antes de pasar al siguiente
-  const done = [!!(d.name.trim() && ageOk), true, !!p.favCard?.name, true];
+  const done = [!!(d.name.trim() && ageOk), d.interests.length > 0, !!p.favCard?.name, true];
+  // El perfil con cartas empieza en el primero de tus juegos que lo tenga (Magic, Pokémon u One Piece)
+  const pickGames = (v) => { const main = GAME_IDS.find((g) => v.includes(g)); set({ interests: v, ...(main && { game: main }) }); };
   const stepOk = done[page];
   const reachable = done.indexOf(false) === -1 ? last : done.indexOf(false);
   const go = (i) => setPage(Math.max(0, Math.min(i, reachable)));
@@ -1299,22 +1365,16 @@ function CreateProfileScreen({ onCreate }) {
           <div className="rule-hero small"><RuleArt anim="clash" /></div>
           <span className="eyebrow">Paso 2 de 3</span>
           <h2 className="rules-title">¿A qué juegas?</h2>
-          <p className="rules-lead">Elige tu juego principal. Luego podrás tener perfil en los tres.</p>
-          <div className="game-pick">
-            {GAME_IDS.map((g) => (
-              <button key={g} type="button" id={`new-game-${g}`} className={`game-option g-${g} ${d.game === g ? 'on' : ''}`} aria-pressed={d.game === g} onClick={() => set({ game: g })}>
-                <span className="game-option-icon">{GAME_ICON[g]}</span>
-                <span className="grow"><b>{GAMES[g].name}</b><small>{GAMES[g].fullName}</small></span>
-                <span className="check">{d.game === g && I.check}</span>
-              </button>
-            ))}
-          </div>
+          <GamePicker value={d.interests} onChange={pickGames} />
         </section>
         <section {...step(2)}>
           <div className={`rule-hero small g-${d.game}`}><div className="art">{GAME_ICON[d.game]}</div></div>
           <span className="eyebrow">Paso 3 de 3</span>
           <h2 className="rules-title">Tu estilo de juego</h2>
           <div className="form onboard-form">
+            <fieldset><legend>Perfil con cartas</legend>
+              <Segmented name="Juego" value={d.game} onChange={(g) => set({ game: g })} options={GAME_OPTIONS} />
+            </fieldset>
             <fieldset><legend>Nivel</legend>
               <Segmented name="Nivel" value={p.level} onChange={(v) => setProf({ level: v })} options={LEVELS.map((l) => [l, l])} />
             </fieldset>
@@ -1397,7 +1457,7 @@ function EditProfileSheet({ me, onSave, onClose }) {
   const bioFlag = checkMessage(d.bio) === 'conduct' ? 'conduct' : null;
   const age = ageFrom(d.birthDate);
   const ageOk = age !== null && age >= 18 && age <= 99;
-  const valid = d.name.trim() && ageOk && p.favCard?.name?.trim() && p.colors.length && p.formats.length && !bioFlag;
+  const valid = d.name.trim() && ageOk && d.interests.length > 0 && p.favCard?.name?.trim() && p.colors.length && p.formats.length && !bioFlag;
   return (
     <>
       <div className="sheet-bg" onClick={onClose} />
@@ -1434,6 +1494,11 @@ function EditProfileSheet({ me, onSave, onClose }) {
             <textarea id="edit-bio" rows="3" maxLength={160} value={d.bio} placeholder="Qué juegas, qué buscas en una mesa…" onChange={(e) => set({ bio: e.target.value })} />
           </label>
           <ModNote kind={bioFlag} />
+
+          <fieldset><legend>Tus juegos</legend>
+            <GamePicker value={d.interests} onChange={(v) => set({ interests: v })} />
+            {!d.interests.length && <p className="upload-error" role="alert">Elige al menos un juego.</p>}
+          </fieldset>
 
           <label>{game.favLabel} de {game.name}
             <CardInput key={d.game} id="edit-fav" game={d.game} value={p.favCard} onChange={(c) => setProf({ favCard: c })} placeholder="Busca una carta…" />
@@ -1556,6 +1621,12 @@ function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
         </div>
       </div>
       <button className="primary edit-cta" onClick={onEdit}>{I.edit}Editar perfil</button>
+
+      <h3 className="section-title">Mis juegos<small className="title-note">{me.interests.length}/{MAX_GAMES}</small></h3>
+      <div className="tags">
+        {me.interests.map((g) => <span key={g} className="tag interest on">{gameName(g)}</span>)}
+        <button type="button" className="tag interest add" onClick={onEdit}>{I.plus}Añadir</button>
+      </div>
 
       <h3 className="section-title">Mis mazos de {GAMES[me.game].name}</h3>
       <div className="decks">
@@ -2067,7 +2138,7 @@ export default function App() {
 
       {profile && (
         <ProfileSheet
-          p={profile} onClose={() => setProfile(null)}
+          p={profile} me={me} onClose={() => setProfile(null)}
           onLike={visibleQueue.some((q) => q.id === profile.id) ? () => decide(profile, true) : null}
           onReport={() => setReporting(profile)} onBlock={() => setBlocking(profile)}
         />
