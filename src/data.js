@@ -26,7 +26,7 @@ export const PLAYERS = [
       { name: 'Tatyova Landfall', format: 'Commander', card: { name: 'Tatyova, Benthic Druid' } },
       { name: 'Simic Ramp', format: 'Pioneer', card: { name: 'Hydroid Krasis' } },
     ],
-    stores: ['s1', 's3'], availability: 'Miércoles y fines de semana',
+    stores: ['s1', 's3'], availability: 'Miércoles y fines de semana', days: ['X', 'S', 'D'], slots: ['Tarde'],
   },
   {
     id: 2, interests: ['magic', 'fab', 'yugioh'], game: 'magic', avatar: 'https://randomuser.me/api/portraits/men/32.jpg', verified: false, name: 'Marcos', dist: 0.6,
@@ -37,7 +37,7 @@ export const PLAYERS = [
       { name: 'Izzet Murktide', format: 'Modern', card: { name: 'Murktide Regent' } },
       { name: 'Delver', format: 'Legacy', card: { name: 'Delver of Secrets' } },
     ],
-    stores: ['s3'], availability: 'Martes y jueves por la tarde',
+    stores: ['s3'], availability: 'Martes y jueves por la tarde', days: ['M', 'J'], slots: ['Tarde'],
   },
   {
     id: 3, interests: ['pokemon', 'lorcana', 'onepiece'], game: 'pokemon', avatar: 'https://randomuser.me/api/portraits/women/68.jpg', verified: true, name: 'Irene', dist: 2.1,
@@ -48,7 +48,7 @@ export const PLAYERS = [
       { name: 'Pikachu ex', format: 'Estándar', card: { name: 'Pikachu ex', img: pokeImg('sv2', 63) } },
       { name: 'Charizard VSTAR', format: 'Expandido', card: { name: 'Charizard VSTAR', img: pokeImg('swsh9', 18) } },
     ],
-    stores: ['s2', 's4'], availability: 'Sábados',
+    stores: ['s2', 's4'], availability: 'Sábados', days: ['S'], slots: ['Mañana', 'Tarde'],
   },
   {
     id: 4, interests: ['magic', 'wh40k', 'kill-team', 'blood-bowl'], game: 'magic', avatar: 'https://randomuser.me/api/portraits/men/75.jpg', verified: false, name: 'Dani', dist: 3.4,
@@ -59,7 +59,7 @@ export const PLAYERS = [
       { name: 'Korvold Aristocrats', format: 'Commander', card: { name: 'Korvold, Fae-Cursed King' } },
       { name: 'Prossh Food Chain', format: 'cEDH', card: { name: 'Prossh, Skyraider of Kher' } },
     ],
-    stores: ['s1', 's2'], availability: 'Viernes noche',
+    stores: ['s1', 's2'], availability: 'Viernes noche', days: ['V'], slots: ['Noche'],
   },
   {
     id: 5, interests: ['magic', 'pokemon', 'fab', 'lorcana', 'swu'], game: 'magic', avatar: 'https://randomuser.me/api/portraits/women/90.jpg', verified: true, name: 'Sara', dist: 1.9,
@@ -70,7 +70,7 @@ export const PLAYERS = [
       { name: 'Boros Kuldotha', format: 'Pauper', card: { name: 'Kuldotha Rebirth' } },
       { name: 'Mono Red Burn', format: 'Modern', card: { name: 'Lightning Bolt' } },
     ],
-    stores: ['s3', 's4'], availability: 'Domingos',
+    stores: ['s3', 's4'], availability: 'Domingos', days: ['D'], slots: ['Mañana'],
   },
   {
     id: 6, interests: ['pokemon', 'yugioh', 'digimon'], game: 'pokemon', avatar: 'https://randomuser.me/api/portraits/men/46.jpg', verified: true, name: 'Hugo', dist: 0.9,
@@ -81,7 +81,7 @@ export const PLAYERS = [
       { name: 'Charizard ex', format: 'Estándar', card: { name: 'Charizard ex', img: pokeImg('sv3', 125) } },
       { name: 'Lugia VSTAR', format: 'Expandido', card: { name: 'Lugia VSTAR', img: pokeImg('swsh12', 139) } },
     ],
-    stores: ['s2'], availability: 'Lunes y miércoles por la tarde',
+    stores: ['s2'], availability: 'Lunes y miércoles por la tarde', days: ['L', 'X'], slots: ['Tarde'],
   },
   {
     id: 7, interests: ['pokemon', 'magic', 'gloomhaven'], game: 'pokemon', avatar: 'https://randomuser.me/api/portraits/women/33.jpg', verified: false, name: 'Marta', dist: 1.7,
@@ -91,7 +91,7 @@ export const PLAYERS = [
     decks: [
       { name: 'Gardevoir ex', format: 'Estándar', card: { name: 'Gardevoir ex', img: pokeImg('sv1', 86) } },
     ],
-    stores: ['s2', 's1'], availability: 'Sábados por la mañana',
+    stores: ['s2', 's1'], availability: 'Sábados por la mañana', days: ['S'], slots: ['Mañana'],
   },
   {
     id: 8, interests: ['onepiece', 'dbs', 'union-arena'], game: 'onepiece', avatar: 'https://randomuser.me/api/portraits/men/22.jpg', verified: true, name: 'Nico', dist: 1.4,
@@ -102,7 +102,7 @@ export const PLAYERS = [
       { name: 'Luffy Morado', format: 'Estándar', card: { name: 'Monkey.D.Luffy (OP05-060)', img: opImg('OP05-060') } },
       { name: 'Ace Rojo', format: 'Treasure Cup', card: { name: 'Portgas.D.Ace (OP03-001)', img: opImg('OP03-001') } },
     ],
-    stores: ['s4'], availability: 'Lunes por la tarde',
+    stores: ['s4'], availability: 'Lunes por la tarde', days: ['L'], slots: ['Tarde'],
   },
   {
     id: 9, interests: ['onepiece', 'pokemon', 'lorcana', 'root'], game: 'onepiece', avatar: 'https://randomuser.me/api/portraits/women/12.jpg', verified: false, name: 'Carla', dist: 2.8,
@@ -113,6 +113,6 @@ export const PLAYERS = [
       { name: 'Katakuri Amarillo', format: 'Estándar', card: { name: 'Charlotte Katakuri (OP03-099)', img: opImg('OP03-099') } },
       { name: 'Luffy de inicio', format: 'Casual', card: { name: 'Monkey.D.Luffy (ST01-001)', img: opImg('ST01-001') } },
     ],
-    stores: ['s4', 's3'], availability: 'Fines de semana',
+    stores: ['s4', 's3'], availability: 'Fines de semana', days: ['S', 'D'], slots: ['Tarde'],
   },
 ];

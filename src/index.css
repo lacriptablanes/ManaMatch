@@ -2142,3 +2142,25 @@ body { background: var(--body-bg); }
   border: 0; background: transparent; box-shadow: none; padding: 11px 0; margin: 0; height: auto; flex: 1; min-width: 0; border-radius: 0;
 }
 .tag.interest { font-size: 0.85rem; }
+
+/* =====================================================================
+   COMPATIBILIDAD
+   ===================================================================== */
+.hero-shared b { font-weight: 800; margin-right: 2px; }
+.compat-box {
+  display: flex; gap: 14px; align-items: flex-start; padding: 14px; margin: 14px 0 4px;
+  border-radius: 18px; background: var(--card); border: 1px solid var(--border);
+}
+.compat-ring {
+  --v: 0; flex: none; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(var(--hot) calc(var(--v) * 1%), var(--bg3) 0);
+}
+.compat-ring b {
+  width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--bg2); font-weight: 800; font-size: 0.95rem; color: var(--text);
+}
+.compat-title { font-weight: 800; margin-bottom: 6px; }
+.compat-reasons { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.compat-reasons li { display: flex; gap: 8px; align-items: flex-start; font-size: 0.88rem; color: var(--text-2); line-height: 1.35; }
+.compat-reasons svg { width: 16px; height: 16px; flex: none; margin-top: 1px; color: var(--brand-soft); }
+.compat-none { margin: 0; font-size: 0.88rem; color: var(--muted); }

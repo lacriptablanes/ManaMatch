@@ -2,6 +2,7 @@ import { useState, useRef, useId, useEffect } from 'react';
 import { PLAYERS, STORES, pokeImg, opImg } from './data';
 import { GAMES, GAME_IDS } from './games';
 import { CATALOG, GAME_CATEGORIES, MAX_GAMES, gameName, isGameId } from './catalog';
+import { compat, byCompat } from './compat';
 import { supabase } from './supabase';
 import { loadMe, saveMe, uploadAvatar, removeAvatars, isAvatarPath, avatarUrl, ageFrom } from './profileStore';
 
@@ -438,7 +439,8 @@ const LEAVE = {
   super: 'translateY(-125%) scale(0.85)',
 };
 function TableCard({ p, me, leaving, onInfo }) {
-  const shared = sharedGames(me, p).length;
+  const c = compat(me, p);
+  const shared = c.shared.length;
   const ref = useRef(null);
   // Inclinación 3D sutil hacia el puntero (máx. ~6°); el reflejo y la ilustración también lo siguen
   const tilt = (e) => {
@@ -477,7 +479,9 @@ function TableCard({ p, me, leaving, onInfo }) {
           <span className="hero-fav">{GAME_ICON[p.game]}{p.favCard.name}</span>
         </div>
         <div className="hero-sub">{I.store}{storeName(p.stores[0])}<i className="dot-sep" />{p.level}</div>
-        {shared > 0 && <div className="hero-shared">{I.deck}{shared === 1 ? '1 juego en común' : `${shared} juegos en común`}</div>}
+        <div className="hero-shared" title="Compatibilidad contigo">
+          <b>{c.score}%</b>{shared > 0 ? (shared === 1 ? '1 juego en común' : `${shared} juegos en común`) : 'compatible'}
+        </div>
       </div>
       <div className={`stamp like${leaving === 'like' || leaving === 'super' ? ' show' : ''}`}>¡Duelo!</div>
       <div className={`stamp nope${leaving === 'nope' ? ' show' : ''}`}>Paso</div>
@@ -487,7 +491,16 @@ function TableCard({ p, me, leaving, onInfo }) {
 
 /* ================= Profile sheet ================= */
 function ProfileSheet({ p, me, onClose, onLike, onReport, onBlock }) {
-  const shared = sharedGames(me, p).length;
+  const c = compat(me, p);
+  const shared = c.shared.length;
+  const dayName = (k) => DAYS.find(([d]) => d === k)?.[1].toLowerCase();
+  const reasons = [
+    shared > 0 && [I.deck, `Jugáis a ${c.shared.map(gameName).join(', ')}`],
+    c.sharedFormats.length > 0 && [I.sword, `Mismos formatos: ${c.sharedFormats.join(', ')}`],
+    c.sameLevel && [I.check, `Mismo nivel: ${p.level}`],
+    c.sharedDays.length > 0 && [I.clock, `Coincidís los ${c.sharedDays.map(dayName).join(', ')}${c.sharedSlots.length ? ` por la ${c.sharedSlots.join(', ').toLowerCase()}` : ''}`],
+    c.sharedStores.length > 0 && [I.store, `Vais a ${c.sharedStores.map(storeName).join(', ')}`],
+  ].filter(Boolean);
   const { list } = frameOf(p.game, p.colors);
   const pal = GAMES[p.game].palette;
   return (
@@ -516,6 +529,16 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onBlock }) {
             <span className="info-pill">{I.clock}{p.availability}</span>
           </div>
           <p className="bio">{p.bio}</p>
+
+          <div className="compat-box">
+            <div className="compat-ring" style={{ '--v': c.score }}><b>{c.score}%</b></div>
+            <div className="grow">
+              <div className="compat-title">Compatibilidad</div>
+              {reasons.length ? (
+                <ul className="compat-reasons">{reasons.map(([icon, text]) => <li key={text}>{icon}<span>{text}</span></li>)}</ul>
+              ) : <p className="compat-none">No tenéis mucho en común todavía, pero un duelo nunca se sabe.</p>}
+            </div>
+          </div>
 
           {p.interests?.length > 0 && <>
             <h3 className="section-title">Juegos{shared > 0 && <small className="title-note">{shared} en común</small>}</h3>
@@ -1027,8 +1050,8 @@ function ThrowCard({ card, index, total, disabled, targetRef, onPlay, onTap }) {
 
 /* ================= Discover ================= */
 function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind }) {
-  // Por defecto se muestran jugadores del juego de tu perfil activo
-  const [filter, setFilter] = useState(me.game);
+  // Por defecto se muestran todos, ordenados por compatibilidad contigo
+  const [filter, setFilter] = useState('all');
   const [leaving, setLeaving] = useState(null);
   const [impact, setImpact] = useState(null);
   const [tipSeen, setTipSeen] = useStoredState('manamatch-hand-tip', false);
@@ -1036,7 +1059,8 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind }) {
   const tableRef = useRef(null);
   const impactKey = useRef(0);
   const list = queue.filter((p) =>
-    (filter === 'all' || p.game === filter) && p.dist <= me.radius && (!me.onlyVerified || p.verified));
+    (filter === 'all' || p.game === filter || p.interests?.includes(filter)) && p.dist <= me.radius && (!me.onlyVerified || p.verified))
+    .sort(byCompat(me));
   const [top, next] = list;
 
   // Jugar una carta: impacto sobre el jugador y, después, su salida de la mesa
