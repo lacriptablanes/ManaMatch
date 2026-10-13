@@ -2055,3 +2055,13 @@ body { background: var(--body-bg); }
 .page-bar h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 1.3rem; }
 .page-body { padding-top: 0; }
 .page-body > .section-title:first-child { margin-top: 6px; }
+
+/* Cuenta en ajustes */
+.account-row { cursor: default; }
+.account-icon svg { width: 18px; height: 18px; }
+.account-hint { margin: 2px 4px 2px; }
+.dialog-form { display: flex; flex-direction: column; gap: 12px; text-align: left; }
+.dialog-form p { margin: 0; }
+.dialog-form label { display: flex; flex-direction: column; gap: 8px; font-size: 0.84rem; font-weight: 600; color: var(--text-2); }
+.dialog-form .btn-row { margin-top: 4px; }
+.dialog > .primary { width: 100%; }

@@ -18,6 +18,8 @@ const I = {
   undo: svg(<><path d="M9 14L4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></>, { strokeWidth: 2.4 }),
   send: svg(<><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4z" /></>),
   cal: svg(<><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></>),
+  mail: svg(<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></>),
+  logout: svg(<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5M21 12H9" /></>),
   back: svg(<path d="M15 6l-6 6 6 6" />, { strokeWidth: 2.5 }),
   gear: svg(<><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></>),
   close: svg(<path d="M6 6l12 12M18 6L6 18" />, { strokeWidth: 2.5 }),
@@ -1464,9 +1466,92 @@ function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
   );
 }
 
+/* ================= Cuenta: cambiar correo y eliminar cuenta ================= */
+// Supabase envía la confirmación al correo antiguo y al nuevo: no cambia hasta confirmar los dos
+function ChangeEmailDialog({ current, onClose }) {
+  const [email, setEmail] = useState('');
+  const [state, setState] = useState(null); // null | 'sending' | 'sent' | 'error'
+  const clean = email.trim();
+  const same = clean.toLowerCase() === current.toLowerCase();
+  const submit = async (e) => {
+    e.preventDefault();
+    setState('sending');
+    const { error } = await supabase.auth.updateUser({ email: clean }, { emailRedirectTo: location.origin });
+    setState(error ? 'error' : 'sent');
+  };
+  return (
+    <>
+      <div className="sheet-bg top" onClick={onClose} />
+      <div className="dialog" role="dialog" aria-label="Cambiar correo">
+        <div className="dialog-icon">{I.mail}</div>
+        <h3>Cambiar correo</h3>
+        {state === 'sent' ? (
+          <>
+            <p>Te hemos enviado un enlace a <b>{current}</b> y otro a <b>{clean}</b>. Ábrelos los dos para confirmar el cambio.</p>
+            <button className="primary" onClick={onClose}>Entendido</button>
+          </>
+        ) : (
+          <form className="form dialog-form" onSubmit={submit}>
+            <p>Ahora entras con <b>{current}</b>. Por seguridad, tendrás que confirmar desde las dos direcciones.</p>
+            <input id="new-email" type="email" required autoComplete="email" placeholder="nuevo@correo.com" value={email} onChange={(e) => { setEmail(e.target.value); setState(null); }} />
+            {same && <p className="upload-error" role="alert">Es el mismo correo que ya usas.</p>}
+            {state === 'error' && <p className="upload-error" role="alert">No se ha podido cambiar. Revisa el correo o inténtalo más tarde.</p>}
+            <div className="btn-row">
+              <button type="button" className="ghost" onClick={onClose}>Cancelar</button>
+              <button id="send-new-email" className="primary" disabled={!clean || same || state === 'sending'}>{state === 'sending' ? 'Enviando…' : 'Cambiar'}</button>
+            </div>
+          </form>
+        )}
+      </div>
+    </>
+  );
+}
+
+// Borrar la cuenta pide escribir una palabra para evitar pulsaciones por error. Lo borra el servidor
+// (función delete_my_account en supabase/migrations/002_delete_account.sql) y después se limpia el dispositivo.
+const DELETE_WORD = 'ELIMINAR';
+function DeleteAccountDialog({ onClose }) {
+  const [word, setWord] = useState('');
+  const [state, setState] = useState(null); // null | 'deleting' | 'error'
+  const ok = word.trim().toUpperCase() === DELETE_WORD;
+  const remove = async () => {
+    setState('deleting');
+    const { error } = await supabase.rpc('delete_my_account');
+    if (error) { setState('error'); return; }
+    try { Object.keys(localStorage).filter((k) => k.startsWith('manamatch-')).forEach((k) => localStorage.removeItem(k)); } catch { /* sin almacenamiento */ }
+    caches?.delete?.('mm-media-v1');
+    await supabase.auth.signOut({ scope: 'local' });
+    location.replace('/');
+  };
+  return (
+    <>
+      <div className="sheet-bg top" onClick={state === 'deleting' ? undefined : onClose} />
+      <div className="dialog" role="alertdialog" aria-label="Eliminar mi cuenta">
+        <div className="dialog-icon">{I.trash}</div>
+        <h3>¿Eliminar tu cuenta?</h3>
+        <p>Se borrarán para siempre tu perfil, tus mazos, tus duelos y tus mensajes. No se puede deshacer.</p>
+        <div className="form dialog-form">
+          <label>Escribe <b>{DELETE_WORD}</b> para confirmar
+            <input id="delete-word" autoComplete="off" autoCapitalize="characters" value={word} onChange={(e) => setWord(e.target.value)} />
+          </label>
+          {state === 'error' && <p className="upload-error" role="alert">No se ha podido eliminar la cuenta. Inténtalo de nuevo en unos minutos.</p>}
+          <div className="btn-row">
+            <button type="button" className="ghost" disabled={state === 'deleting'} onClick={onClose}>Cancelar</button>
+            <button id="confirm-delete-account" className="primary danger-fill" disabled={!ok || state === 'deleting'} onClick={remove}>{state === 'deleting' ? 'Eliminando…' : 'Eliminar'}</button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 /* ================= Ajustes (se abren desde el botón de la rueda en el perfil) ================= */
-function SettingsScreen({ me, setMe, theme, setTheme, blocked, onUnblock, onReset, onRules, onNorms, onWipe, installer, account, onSignOut, onClose }) {
+function SettingsScreen({ me, setMe, theme, setTheme, blocked, onUnblock, onReset, onRules, onNorms, onWipe, installer, user, onSignOut, onClose }) {
   const set = (patch) => setMe((x) => ({ ...x, ...patch }));
+  const [accountDialog, setAccountDialog] = useState(null); // 'email' | 'delete'
+  useBack(!!accountDialog, () => setAccountDialog(null));
+  // Cómo entró: con Google o con el enlace al correo (sin contraseña en ningún caso)
+  const viaGoogle = user?.app_metadata?.provider === 'google';
   const setNotif = (k, v) => setMe((x) => ({ ...x, notif: { ...x.notif, [k]: v } }));
   const blockedPlayers = PLAYERS.filter((x) => blocked.includes(x.id));
   return (
@@ -1546,13 +1631,27 @@ function SettingsScreen({ me, setMe, theme, setTheme, blocked, onUnblock, onRese
           </>
         )}
 
-        {account && (
+        {user && (
           <>
             <h3 className="section-title">Cuenta</h3>
             <div className="list">
+              <div className="row account-row">
+                <span className="row-icon account-icon">{viaGoogle ? GOOGLE_G : I.mail}</span>
+                <div className="grow"><div className="title">{viaGoogle ? 'Conectado con Google' : 'Conectado con enlace al correo'}</div><div className="sub">{user.email}</div></div>
+              </div>
+              <p className="field-hint account-hint">{I.shield}{viaGoogle
+                ? 'ManaMatch no guarda contraseñas: tu correo y tu contraseña se cambian en tu cuenta de Google.'
+                : 'ManaMatch no usa contraseñas: cada vez que entras te enviamos un enlace nuevo.'}</p>
+              {!viaGoogle && (
+                <button id="change-email" className="row" onClick={() => setAccountDialog('email')}>
+                  <span className="row-icon">{I.mail}</span>
+                  <div className="grow"><div className="title">Cambiar correo</div><div className="sub">Confirmarás desde el antiguo y el nuevo</div></div>
+                  <span className="chev">{I.chevron}</span>
+                </button>
+              )}
               <button id="sign-out" className="row" onClick={onSignOut}>
-                <span className="row-icon">{I.user}</span>
-                <div className="grow"><div className="title">Cerrar sesión</div><div className="sub">{account}</div></div>
+                <span className="row-icon">{I.logout}</span>
+                <div className="grow"><div className="title">Cerrar sesión</div><div className="sub">Podrás volver a entrar cuando quieras</div></div>
                 <span className="chev">{I.chevron}</span>
               </button>
             </div>
@@ -1561,7 +1660,10 @@ function SettingsScreen({ me, setMe, theme, setTheme, blocked, onUnblock, onRese
 
         <button id="reset-profile" className="danger-btn" onClick={onReset}>{I.reset}Restablecer perfil de ejemplo</button>
         <button id="wipe-data" className="danger-btn" onClick={onWipe}>{I.trash}Borrar mis datos de este dispositivo</button>
+        {user && <button id="delete-account" className="danger-btn" onClick={() => setAccountDialog('delete')}>{I.ban}Eliminar mi cuenta</button>}
       </div>
+      {accountDialog === 'email' && <ChangeEmailDialog current={user.email} onClose={() => setAccountDialog(null)} />}
+      {accountDialog === 'delete' && <DeleteAccountDialog onClose={() => setAccountDialog(null)} />}
     </div>
   );
 }
@@ -1768,7 +1870,7 @@ export default function App() {
           blocked={blocked} onUnblock={(id) => setBlocked((b) => b.filter((x) => x !== id))}
           onRules={() => setRulesOpen(true)} onNorms={() => setNormsOpen(true)} onWipe={() => setWiping(true)}
           onReset={() => { setMe(DEFAULT_ME); flash('Perfil restablecido', I.reset); }}
-          account={session?.user.email} onSignOut={() => supabase.auth.signOut()}
+          user={session?.user} onSignOut={() => supabase.auth.signOut()}
           onClose={() => setSettingsOpen(false)}
         />
       )}
