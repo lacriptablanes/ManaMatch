@@ -2239,3 +2239,17 @@ body { background: var(--body-bg); }
   flex: none; min-width: 128px; padding: 9px 12px; border-radius: 12px; font: inherit; font-weight: 600;
   color: var(--text); background: var(--input-bg); border: 1px solid var(--border-hi);
 }
+
+/* Login en modo noche: mismo diseño sobre carbón, para que no cambie de tema al entrar */
+:root:not([data-theme="light"]) .login { background: #171522; color: #F8F7FC; }
+:root:not([data-theme="light"]) .login-rain::after { background: radial-gradient(ellipse 62% 46% at 50% 50%, rgba(23, 21, 34, 0.94), rgba(23, 21, 34, 0.45) 75%, rgba(23, 21, 34, 0)); }
+:root:not([data-theme="light"]) .rain-track img { box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45); opacity: 0.75; }
+:root:not([data-theme="light"]) .login .its { color: #F8F7FC; }
+:root:not([data-theme="light"]) .login .swiped { color: #cfcbe0; }
+:root:not([data-theme="light"]) .login-google { border-color: transparent; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4); }
+:root:not([data-theme="light"]) .login-or { color: #8f8aa3; }
+:root:not([data-theme="light"]) .login-or::before, :root:not([data-theme="light"]) .login-or::after { background: rgba(233, 230, 243, 0.14); }
+:root:not([data-theme="light"]) .login .match-reply { border-color: rgba(233, 230, 243, 0.14); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4); }
+:root:not([data-theme="light"]) .login .match-reply button { color: #C4F56A; }
+:root:not([data-theme="light"]) .login-note { background: #211e2e; color: #F8F7FC; }
+:root:not([data-theme="light"]) .login-legal { color: #cfcbe0; background: rgba(33, 30, 46, 0.9); border-color: rgba(233, 230, 243, 0.14); }

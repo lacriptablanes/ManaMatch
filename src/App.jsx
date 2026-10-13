@@ -2186,7 +2186,9 @@ export default function App() {
   // Imágenes que has denunciado (y, con cuenta, las ocultas para todos): se sincronizan con el conjunto global
   const [hidden, setHidden] = useStoredState('manamatch-hidden-imgs', [], (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(-200) : []));
   hidden.forEach((x) => hiddenImgs.add(x));
-  const [theme, setTheme] = useStoredState('manamatch-theme', 'dark');
+  // Por defecto sigue el modo del móvil (día o noche), igual que el login. Clave nueva: la anterior guardaba
+  // "noche" aunque nadie lo hubiera elegido, y el login (que sigue al móvil) no coincidía con el resto de la app
+  const [theme, setTheme] = useStoredState('manamatch-theme-v2', 'system');
   const [blocked, setBlocked] = useStoredState('manamatch-blocked', []);
   const [accepted, setAccepted] = useStoredState('manamatch-rules', false);
   useAppearance(theme, me.game);
@@ -2326,6 +2328,8 @@ export default function App() {
   if (import.meta.env.DEV && new URLSearchParams(location.search).has('onboarding')) {
     return <main className="phone"><CreateProfileScreen onCreate={async () => { location.search = ''; }} /></main>;
   }
+  // Solo en desarrollo: ?login muestra la pantalla de inicio de sesión aunque no haya Supabase configurado
+  if (import.meta.env.DEV && new URLSearchParams(location.search).has('login')) return <main className="phone"><LoginScreen /></main>;
   // Con cuentas activadas, sin sesión no se ve nada de la app
   if (session === undefined) return <main className="phone" aria-busy="true" />;
   if (supabase && !session) return <main className="phone"><LoginScreen /></main>;
