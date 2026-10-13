@@ -27,15 +27,17 @@ Este documento recoge qué está hecho y qué falta antes de abrir la app al pú
 
 ### Pendiente al montar el servidor (imprescindible)
 
-- [ ] **Autenticación** con un proveedor (Supabase Auth, Firebase Auth…): inicio con Google/Apple o enlace por email,
-  verificación de email y límite de intentos. Nunca un sistema de contraseñas propio.
-- [ ] **Permisos por usuario en la base de datos** (ver `supabase/schema.sql`): cada usuario solo lee perfiles públicos,
-  edita el suyo y lee los chats en los que participa.
+- [x] **Autenticación** con Supabase Auth: inicio con Google o enlace por email, sin contraseñas propias.
+  Cambio de correo con doble confirmación y borrado de cuenta (`supabase/migrations/002_delete_account.sql`).
+- [x] **Permisos por usuario en la base de datos** (`supabase/schema.sql` y `migrations/`): cada usuario solo lee perfiles
+  públicos, edita el suyo y lee los chats en los que participa. Comprobado: no puede verificarse a sí mismo,
+  poner una fecha de menor de edad ni apuntar su foto a la carpeta de otro.
 - [ ] **Ubicación en el servidor**: guardar coordenadas solo en el servidor y devolver a la app únicamente el rango
   de distancia. Nunca enviar coordenadas de otros usuarios, aunque la app no las muestre.
 - [ ] **Repetir en el servidor** la moderación del chat, los límites de velocidad, la validación de textos y los bloqueos.
   Para el chat, usar además un modelo de moderación (el filtro de palabras se puede esquivar).
-- [ ] **Fotos en el servidor**: volver a quitar EXIF, moderar imágenes, enlaces no adivinables y tamaño máximo.
+- [ ] **Fotos en el servidor**: hecho — enlaces no adivinables, solo JPEG de 1 MB máx., cada usuario solo en su carpeta.
+  Falta: moderar imágenes y volver a quitar EXIF en el servidor.
 - [ ] **Edad**: verificación real con un proveedor externo para el chat 1 contra 1 (la casilla "tengo 18" no basta).
 - [ ] **Límites de uso** por cuenta e IP (likes, mensajes, denuncias, registros), más estrictos en cuentas nuevas.
 - [ ] **Secretos solo en el servidor**: ninguna clave privada en el código de la app (todo lo que va en la app es público).

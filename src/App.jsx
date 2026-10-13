@@ -2,6 +2,7 @@ import { useState, useRef, useId, useEffect } from 'react';
 import { PLAYERS, STORES, pokeImg, opImg } from './data';
 import { GAMES, GAME_IDS } from './games';
 import { supabase } from './supabase';
+import { loadMe, saveMe, uploadAvatar, removeAvatars, isAvatarPath, avatarUrl, ageFrom } from './profileStore';
 
 /* ---------- Iconos SVG inline (sin dependencias) ---------- */
 const svg = (children, extra = {}) => (
@@ -78,8 +79,10 @@ const DEFAULT_PROFILES = {
     decks: [{ id: 3, name: 'Luffy de inicio', format: 'Estándar', card: { name: 'Monkey.D.Luffy (ST01-001)', img: opImg('ST01-001') } }],
   },
 };
+// Perfiles de juego con los que empieza una cuenta nueva: los mismos de ejemplo, sin mazos
+const STARTER_PROFILES = Object.fromEntries(Object.entries(DEFAULT_PROFILES).map(([g, x]) => [g, { ...x, decks: [] }]));
 const DEFAULT_ME = {
-  name: 'Planeswalker', age: 28, avatar: '', game: 'magic', profiles: DEFAULT_PROFILES,
+  name: 'Planeswalker', birthDate: '1998-03-14', avatar: '', game: 'magic', profiles: DEFAULT_PROFILES,
   bio: 'Jugador de cartas de toda la vida. Busco mesa fija entre semana y algún torneo de tienda.',
   stores: ['s1'], days: ['X', 'V'], slots: ['Tarde'],
   radius: 5, onlyVerified: false,
@@ -102,8 +105,10 @@ const migrateMe = (v) => {
       },
     };
   }
-  ['favCard', 'colors', 'formats', 'level', 'decks', 'games', 'showAge'].forEach((k) => delete me[k]);
-  if (typeof me.avatar !== 'string' || (me.avatar && !me.avatar.startsWith('data:image/'))) me.avatar = '';
+  // Antes se guardaba la edad; ahora la fecha de nacimiento (aproximada si solo había edad)
+  if (!v.birthDate) me.birthDate = v.age ? `${new Date().getFullYear() - v.age}-01-01` : DEFAULT_ME.birthDate;
+  ['favCard', 'colors', 'formats', 'level', 'decks', 'games', 'showAge', 'age'].forEach((k) => delete me[k]);
+  if (typeof me.avatar !== 'string' || (me.avatar && !me.avatar.startsWith('data:image/') && !isAvatarPath(me.avatar))) me.avatar = '';
   if (!GAMES[me.game]) me.game = 'magic';
   return me;
 };
@@ -276,7 +281,9 @@ const artOf = (game, card) => GAMES[game].art(card);
 const fullOf = (game, card) => GAMES[game].full(card);
 /* Las cartas de Pokémon y One Piece son la carta completa: se encuadra hacia la ilustración */
 const imgCls = (game) => (game === 'magic' ? '' : ` full-card fc-${game}`);
-const myAvatar = (me) => me.avatar || artOf(me.game, prof(me).favCard);
+// La foto puede ser una subida a la cuenta (ruta en Storage), una recién elegida (data URL) o, si no hay, la carta favorita
+const photoSrc = (me) => (isAvatarPath(me.avatar) ? avatarUrl(me.avatar) : me.avatar);
+const myAvatar = (me, game = me.game) => photoSrc(me) || artOf(game, me.profiles[game].favCard);
 const avatarIsCard = (me, game = me.game) => (!me.avatar && game !== 'magic' ? game : false);
 const frameOf = (game, colors) => {
   const pal = GAMES[game].palette;
@@ -1239,6 +1246,102 @@ function CardInput({ id, game, value, onChange, placeholder }) {
   );
 }
 
+/* ================= Crear perfil (la primera vez que entra una cuenta nueva) ================= */
+const maxBirthDate = () => { const t = new Date(); t.setFullYear(t.getFullYear() - 18); return t.toISOString().slice(0, 10); };
+const NEW_ME = { ...DEFAULT_ME, name: '', birthDate: '', bio: '', stores: [], days: [], slots: [], profiles: STARTER_PROFILES };
+
+function CreateProfileScreen({ onCreate }) {
+  const [d, setD] = useState(NEW_ME);
+  const [state, setState] = useState(null); // null | 'saving' | 'error'
+  const { page, last, track, go, onScroll, slide, dots } = useCarousel(4);
+  const set = (patch) => setD((x) => ({ ...x, ...patch }));
+  const p = d.profiles[d.game];
+  const setProf = (patch) => setD((x) => ({ ...x, profiles: { ...x.profiles, [x.game]: { ...x.profiles[x.game], ...patch } } }));
+  const age = ageFrom(d.birthDate);
+  const ageOk = age !== null && age >= 18 && age <= 99;
+  // Cada paso se completa antes de pasar al siguiente
+  const stepOk = [d.name.trim() && ageOk, true, !!p.favCard?.name, true][page];
+  const create = async () => {
+    setState('saving');
+    try { await onCreate({ ...d, name: d.name.trim() }); } catch { setState('error'); }
+  };
+  return (
+    <div className="rules onboarding" role="dialog" aria-label="Crear tu perfil">
+      {page > 0 && <button className="icon-btn rules-close back" onClick={() => go(page - 1)} aria-label="Paso anterior">{I.back}</button>}
+      <div className="rules-slides locked" ref={track} onScroll={onScroll}>
+        <section className={`${slide(0)} dense`}>
+          <div className="rule-hero small"><RuleArt anim="adult" /></div>
+          <span className="eyebrow">Paso 1 de 3</span>
+          <h1 className="rules-title">Crea tu perfil</h1>
+          <div className="form onboard-form">
+            <label>Nombre de jugador<input id="new-name" value={d.name} maxLength={24} autoComplete="nickname" placeholder="Cómo te verán los demás" onChange={(e) => set({ name: e.target.value })} /></label>
+            <label>Fecha de nacimiento<input id="new-birth" type="date" max={maxBirthDate()} value={d.birthDate} onChange={(e) => set({ birthDate: e.target.value })} /></label>
+            {d.birthDate && !ageOk && <p className="upload-error" role="alert">{age < 18 ? 'ManaMatch es solo para mayores de 18.' : 'Revisa la fecha de nacimiento.'}</p>}
+            <p className="field-hint">{I.shield}Tu fecha de nacimiento es privada: nadie la verá. Solo sirve para confirmar que eres mayor de 18.</p>
+          </div>
+        </section>
+        <section className={`${slide(1)} dense`}>
+          <div className="rule-hero small"><RuleArt anim="clash" /></div>
+          <span className="eyebrow">Paso 2 de 3</span>
+          <h2 className="rules-title">¿A qué juegas?</h2>
+          <p className="rules-lead">Elige tu juego principal. Luego podrás tener perfil en los tres.</p>
+          <div className="game-pick">
+            {GAME_IDS.map((g) => (
+              <button key={g} type="button" id={`new-game-${g}`} className={`game-option g-${g} ${d.game === g ? 'on' : ''}`} aria-pressed={d.game === g} onClick={() => set({ game: g })}>
+                <span className="game-option-icon">{GAME_ICON[g]}</span>
+                <span className="grow"><b>{GAMES[g].name}</b><small>{GAMES[g].fullName}</small></span>
+                <span className="check">{d.game === g && I.check}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+        <section className={`${slide(2)} dense`}>
+          <div className={`rule-hero small g-${d.game}`}><div className="art">{GAME_ICON[d.game]}</div></div>
+          <span className="eyebrow">Paso 3 de 3</span>
+          <h2 className="rules-title">Tu estilo de juego</h2>
+          <div className="form onboard-form">
+            <fieldset><legend>Nivel</legend>
+              <Segmented name="Nivel" value={p.level} onChange={(v) => setProf({ level: v })} options={LEVELS.map((l) => [l, l])} />
+            </fieldset>
+            <label>{GAMES[d.game].favLabel} de {GAMES[d.game].name}
+              <CardInput key={d.game} id="new-fav" game={d.game} value={p.favCard} onChange={(card) => setProf({ favCard: card })} placeholder="Busca una carta…" />
+            </label>
+            <div className={`fav-preview g-${d.game}`}><img className={imgCls(d.game).trim()} src={artOf(d.game, p.favCard)} alt="" /><span>{p.favCard.name}</span></div>
+          </div>
+        </section>
+        <section className={slide(3)}>
+          <Hex src={artOf(d.game, p.favCard)} alt="" size={130} colors={frameOf(d.game, p.colors).list} fullCard={d.game !== 'magic' ? d.game : false} />
+          <span className="eyebrow onboard-ready">Todo listo</span>
+          <h2 className="rules-title">{d.name.trim() || 'Jugador'}</h2>
+          <p className="rules-lead">{GAMES[d.game].name} · {p.level}. Tu foto, mazos, disponibilidad y tiendas los añades después desde tu perfil.</p>
+          {state === 'error' && <p className="upload-error" role="alert">No se ha podido crear el perfil. Revisa la conexión e inténtalo de nuevo.</p>}
+        </section>
+      </div>
+      <div className="rules-cta">
+        {dots}
+        {page < last
+          ? <button id="onboard-next" className="primary" disabled={!stepOk} onClick={() => go(page + 1)}>Siguiente{I.chevron}</button>
+          : <button id="onboard-create" className="primary" disabled={state === 'saving'} onClick={create}>{I.sword}{state === 'saving' ? 'Creando…' : 'Crear perfil'}</button>}
+      </div>
+    </div>
+  );
+}
+
+/* Pantallas de espera y de error mientras se carga el perfil de la cuenta */
+function BootScreen({ error, onRetry }) {
+  return (
+    <div className="boot" role="status">
+      {error ? (
+        <>
+          <div className="dialog-icon">{I.wifiOff}</div>
+          <p>No hemos podido cargar tu perfil.</p>
+          <button className="primary" onClick={onRetry}>Reintentar</button>
+        </>
+      ) : <><span className="spinner big" /><p>Cargando tu perfil…</p></>}
+    </div>
+  );
+}
+
 /* ================= Editar perfil ================= */
 function EditProfileSheet({ me, onSave, onClose }) {
   const [d, setD] = useState(me);
@@ -1276,7 +1379,8 @@ function EditProfileSheet({ me, onSave, onClose }) {
   };
 
   const bioFlag = checkMessage(d.bio) === 'conduct' ? 'conduct' : null;
-  const ageOk = d.age >= 18 && d.age <= 99;
+  const age = ageFrom(d.birthDate);
+  const ageOk = age !== null && age >= 18 && age <= 99;
   const valid = d.name.trim() && ageOk && p.colors.length && p.formats.length && !bioFlag;
   return (
     <>
@@ -1304,13 +1408,11 @@ function EditProfileSheet({ me, onSave, onClose }) {
             </div>
           </div>
 
-          <div className="field-row">
-            <label className="grow">Nombre de jugador<input id="edit-name" value={d.name} maxLength={24} onChange={(e) => set({ name: e.target.value })} /></label>
-            <label style={{ width: 90 }}>Edad<input id="edit-age" type="number" min="18" max="99" value={d.age} onChange={(e) => set({ age: e.target.value === '' ? '' : +e.target.value })} /></label>
-          </div>
-          {d.age !== '' && !ageOk && <p className="upload-error" role="alert">{d.age < 18 ? 'ManaMatch es solo para mayores de 18.' : 'Revisa la edad: como máximo 99.'}</p>}
+          <label>Nombre de jugador<input id="edit-name" value={d.name} maxLength={24} onChange={(e) => set({ name: e.target.value })} /></label>
           {!d.name.trim() && <p className="upload-error" role="alert">Escribe un nombre de jugador.</p>}
-          <p className="field-hint">{I.shield}Tu edad no se muestra a nadie: solo sirve para confirmar que eres mayor de 18.</p>
+          <label>Fecha de nacimiento<input id="edit-birth" type="date" max={maxBirthDate()} value={d.birthDate} onChange={(e) => set({ birthDate: e.target.value })} /></label>
+          {d.birthDate && !ageOk && <p className="upload-error" role="alert">{age < 18 ? 'ManaMatch es solo para mayores de 18.' : 'Revisa la fecha de nacimiento.'}</p>}
+          <p className="field-hint">{I.shield}Tu fecha de nacimiento no se muestra a nadie: solo sirve para confirmar que eres mayor de 18.</p>
           <label>
             <span className="label-row">Sobre ti como jugador <small>{d.bio.length}/160</small></span>
             <textarea id="edit-bio" rows="3" maxLength={160} value={d.bio} placeholder="Qué juegas, qué buscas en una mesa…" onChange={(e) => set({ bio: e.target.value })} />
@@ -1395,7 +1497,7 @@ function DeckSheet({ game, onSave, onClose }) {
           </label>
         </div>
         <div className="sheet-cta">
-          <button id="save-deck" className="primary" disabled={!valid} onClick={() => onSave({ ...deck, id: Date.now(), name: deck.name.trim() })}>{I.plus}Añadir mazo</button>
+          <button id="save-deck" className="primary" disabled={!valid} onClick={() => onSave({ ...deck, id: crypto.randomUUID(), name: deck.name.trim() })}>{I.plus}Añadir mazo</button>
         </div>
       </section>
     </>
@@ -1510,12 +1612,14 @@ function ChangeEmailDialog({ current, onClose }) {
 // Borrar la cuenta pide escribir una palabra para evitar pulsaciones por error. Lo borra el servidor
 // (función delete_my_account en supabase/migrations/002_delete_account.sql) y después se limpia el dispositivo.
 const DELETE_WORD = 'ELIMINAR';
-function DeleteAccountDialog({ onClose }) {
+function DeleteAccountDialog({ uid, onClose }) {
   const [word, setWord] = useState('');
   const [state, setState] = useState(null); // null | 'deleting' | 'error'
   const ok = word.trim().toUpperCase() === DELETE_WORD;
   const remove = async () => {
     setState('deleting');
+    // Las fotos están en Storage y no se borran solas con la cuenta
+    await removeAvatars(uid).catch(() => {});
     const { error } = await supabase.rpc('delete_my_account');
     if (error) { setState('error'); return; }
     try { Object.keys(localStorage).filter((k) => k.startsWith('manamatch-')).forEach((k) => localStorage.removeItem(k)); } catch { /* sin almacenamiento */ }
@@ -1658,12 +1762,12 @@ function SettingsScreen({ me, setMe, theme, setTheme, blocked, onUnblock, onRese
           </>
         )}
 
-        <button id="reset-profile" className="danger-btn" onClick={onReset}>{I.reset}Restablecer perfil de ejemplo</button>
+        {!user && <button id="reset-profile" className="danger-btn" onClick={onReset}>{I.reset}Restablecer perfil de ejemplo</button>}
         <button id="wipe-data" className="danger-btn" onClick={onWipe}>{I.trash}Borrar mis datos de este dispositivo</button>
         {user && <button id="delete-account" className="danger-btn" onClick={() => setAccountDialog('delete')}>{I.ban}Eliminar mi cuenta</button>}
       </div>
       {accountDialog === 'email' && <ChangeEmailDialog current={user.email} onClose={() => setAccountDialog(null)} />}
-      {accountDialog === 'delete' && <DeleteAccountDialog onClose={() => setAccountDialog(null)} />}
+      {accountDialog === 'delete' && <DeleteAccountDialog uid={user.id} onClose={() => setAccountDialog(null)} />}
     </div>
   );
 }
@@ -1700,7 +1804,7 @@ function MatchScreen({ p, me, onSend, onContinue }) {
       <p className="its">¡Duelo</p>
       <h2 className="match-title" data-text="ACEPTADO!">ACEPTADO!</h2>
       <div className="pair">
-        <Hex src={me.avatar || artOf(myGame, mine.favCard)} alt={me.name} size={124} colors={frameOf(myGame, mine.colors).list} fullCard={avatarIsCard(me, myGame)} />
+        <Hex src={myAvatar(me, myGame)} alt={me.name} size={124} colors={frameOf(myGame, mine.colors).list} fullCard={avatarIsCard(me, myGame)} />
         <span className="vs" aria-label="contra">VS</span>
         <Hex src={p.avatar} alt={p.name} size={124} colors={frameOf(p.game, p.colors).list} />
       </div>
@@ -1766,6 +1870,36 @@ export default function App() {
   const online = useOnline();
   const installer = useInstall();
   const session = useSession();
+  const uid = session?.user.id;
+
+  // Perfil en la cuenta: se carga al entrar y se guarda (con una pequeña espera) cada vez que cambia.
+  // El navegador guarda una copia para abrir rápido y sin conexión.
+  const [cloud, setCloud] = useState({ uid: null, status: 'loading' }); // status: loading · ready · new · error
+  const [syncFailed, setSyncFailed] = useState(false);
+  const [loadTry, setLoadTry] = useState(0);
+  const lastSaved = useRef('');
+  const cloudStatus = !supabase || !uid ? 'off' : cloud.uid === uid ? cloud.status : 'loading';
+  useEffect(() => {
+    if (!supabase || !uid) return;
+    let alive = true;
+    loadMe(uid, STARTER_PROFILES)
+      .then((m) => {
+        if (!alive) return;
+        if (m) { lastSaved.current = JSON.stringify(m); setMe(m); }
+        setCloud({ uid, status: m ? 'ready' : 'new' });
+      })
+      .catch(() => alive && setCloud({ uid, status: 'error' }));
+    return () => { alive = false; };
+  }, [uid, loadTry, setMe]);
+  useEffect(() => {
+    if (cloudStatus !== 'ready') return;
+    const json = JSON.stringify(me);
+    if (json === lastSaved.current || me.avatar.startsWith('data:')) return;
+    const t = setTimeout(() => {
+      saveMe(uid, me).then(() => { lastSaved.current = json; setSyncFailed(false); }).catch(() => setSyncFailed(true));
+    }, 800);
+    return () => clearTimeout(t);
+  }, [me, cloudStatus, uid, online]);
 
   // El botón "atrás" cierra primero lo último que se abrió
   useBack(tab !== 'discover', () => setTab('discover'));
@@ -1827,9 +1961,43 @@ export default function App() {
   const openChat = (p) => { setChatWith(p); setTab('chat'); setMatchFx(null); setUnread(0); };
   const inChat = tab === 'chat' && chatWith;
 
+  // Al guardar la edición, la foto nueva se sube a la cuenta y la anterior se borra
+  const saveProfile = async (v) => {
+    setEditing(null);
+    let next = v;
+    if (uid && v.avatar.startsWith('data:')) {
+      try { next = { ...v, avatar: await uploadAvatar(uid, v.avatar) }; } catch { next = { ...v, avatar: me.avatar }; flash('No se ha podido subir la foto', I.alert); }
+    } else if (uid && !v.avatar && isAvatarPath(me.avatar)) removeAvatars(uid).catch(() => {});
+    setMe(next);
+    flash('Perfil actualizado', I.check);
+  };
+  const createProfile = async (draft) => {
+    await saveMe(uid, draft);
+    lastSaved.current = JSON.stringify(draft);
+    setMe(draft);
+    setCloud({ uid, status: 'ready' });
+  };
+  // Al cerrar sesión se borra la copia local para que otra persona en este móvil no vea nada tuyo
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    try { ['manamatch-me', 'manamatch-blocked', 'manamatch-rules'].forEach((k) => localStorage.removeItem(k)); } catch { /* sin almacenamiento */ }
+    location.replace('/');
+  };
+
   // Con cuentas activadas, sin sesión no se ve nada de la app
   if (session === undefined) return <main className="phone" aria-busy="true" />;
   if (supabase && !session) return <main className="phone"><LoginScreen /></main>;
+  if (cloudStatus === 'loading' || cloudStatus === 'error') {
+    return <main className="phone"><BootScreen error={cloudStatus === 'error'} onRetry={() => { setCloud({ uid: null, status: 'loading' }); setLoadTry((n) => n + 1); }} /></main>;
+  }
+  if (cloudStatus === 'new') {
+    return (
+      <main className="phone">
+        <CreateProfileScreen onCreate={createProfile} />
+        {!accepted && <RulesScreen firstTime onAccept={() => setAccepted(true)} onClose={() => {}} />}
+      </main>
+    );
+  }
 
   return (
     <main className={`phone ${tab === 'discover' ? 'discover' : ''}`}>
@@ -1870,7 +2038,7 @@ export default function App() {
           blocked={blocked} onUnblock={(id) => setBlocked((b) => b.filter((x) => x !== id))}
           onRules={() => setRulesOpen(true)} onNorms={() => setNormsOpen(true)} onWipe={() => setWiping(true)}
           onReset={() => { setMe(DEFAULT_ME); flash('Perfil restablecido', I.reset); }}
-          user={session?.user} onSignOut={() => supabase.auth.signOut()}
+          user={session?.user} onSignOut={signOut}
           onClose={() => setSettingsOpen(false)}
         />
       )}
@@ -1883,7 +2051,7 @@ export default function App() {
         />
       )}
 
-      {editing === 'profile' && <EditProfileSheet me={me} onClose={() => setEditing(null)} onSave={(v) => { setMe(v); setEditing(null); flash('Perfil actualizado', I.check); }} />}
+      {editing === 'profile' && <EditProfileSheet me={me} onClose={() => setEditing(null)} onSave={saveProfile} />}
       {editing === 'deck' && <DeckSheet game={me.game} onClose={() => setEditing(null)} onSave={(d) => { addDeck(d); setEditing(null); flash(`Mazo «${d.name}» añadido`, I.plus); }} />}
 
       {matchFx && (
@@ -1929,6 +2097,7 @@ export default function App() {
       )}
 
       {!online && <div className="offline" role="status">{I.wifiOff}Sin conexión: verás lo último que se guardó</div>}
+      {online && syncFailed && <div className="offline" role="status">{I.alert}No se han podido guardar tus cambios en la cuenta. Lo reintentaremos.</div>}
 
       {toast && <div className="toast" role="status"><span className="toast-icon">{toast.icon}</span>{toast.text}</div>}
     </main>
