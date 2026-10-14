@@ -39,8 +39,8 @@ export const GAMES = {
     formats: ['Commander', 'cEDH', 'Modern', 'Pioneer', 'Standard', 'Legacy', 'Vintage', 'Pauper', 'Draft', 'Sealed'],
     keyCard: (format) => (format === 'Commander' || format === 'cEDH' ? 'Comandante' : 'Carta principal'),
     favLabel: 'Carta favorita',
-    art: (c) => c.img || cardArt(c.name),
-    full: (c) => c.img || cardImg(c.name),
+    art: (c) => c.img || (c.name?.trim() ? cardArt(c.name) : ''),
+    full: (c) => c.img || (c.name?.trim() ? cardImg(c.name) : ''),
     search: async (q, signal) => {
       const d = await (await fetch(`https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(q)}`, { signal })).json();
       return (d.data || []).slice(0, 8).map((name) => ({ name }));
@@ -93,13 +93,54 @@ export const GAMES = {
 // Juegos con buscador de cartas e imágenes oficiales (perfil "destacado")
 export const GAME_IDS = Object.keys(GAMES);
 
-/* Imagen por defecto de un juego sin carta: fondo carbón liso con sus iniciales en lima */
-export const placeholderArt = (name) => {
-  const initials = name.replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+/* Imagen por defecto de cada juego (cuando no hay carta ni imagen subida). Es un dibujo propio, sin logos ni arte
+   oficial: un motivo según el tipo de juego, el nombre del juego y un fondo con su propio tono y patrón.
+   El motivo va en la mitad superior para no quedar debajo del nombre del jugador en su tarjeta. */
+const BG = ['#2c2840', '#241f3a', '#2a2238', '#1f2638', '#2b2333', '#262a3d', '#30253f'];
+const ACCENT = ['#C4F56A', '#B79CFB', '#D4FF8A', '#CDB8FF'];
+const MOTIF = {
+  // tres cartas en abanico
+  cards: (a) => `<g transform="translate(200 175)" fill="none" stroke-width="6" stroke-linejoin="round">`
+    + `<rect x="-46" y="-66" width="92" height="128" rx="10" transform="rotate(-16)" stroke="${a}" opacity=".45"/>`
+    + `<rect x="-46" y="-66" width="92" height="128" rx="10" transform="rotate(14)" stroke="${a}" opacity=".7"/>`
+    + `<rect x="-46" y="-70" width="92" height="128" rx="10" fill="#171522" stroke="${a}"/>`
+    + `<path d="M0 -38l14 26-14 26-14-26z" fill="${a}" stroke="none"/></g>`,
+  // escudo con espada (wargames)
+  army: (a) => `<g transform="translate(200 172)" fill="none" stroke="${a}" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">`
+    + `<path d="M0 -72l58 22v42c0 46-26 76-58 88-32-12-58-42-58-88v-42z" fill="#171522"/>`
+    + `<path d="M0 -40v92M-22 24h44M-8 52h16" /></g>`,
+  // dado de 20 caras (rol)
+  d20: (a) => `<g transform="translate(200 172)" fill="none" stroke="${a}" stroke-width="6" stroke-linejoin="round">`
+    + `<path d="M0 -76l66 38v76L0 76l-66-38v-76z" fill="#171522"/>`
+    + `<path d="M0 -76L-40 20h80zM-66 -38l26 58M66 -38l-26 58M-40 20L0 76l40-56M-66 38l26-18M66 38l-26-18"/></g>`,
+  // meeple (juegos de mesa)
+  meeple: (a) => `<g transform="translate(200 175)">`
+    + `<path d="M0 -74c20 0 32 14 32 30 0 10-4 18-10 24 26 6 52 16 60 28 6 10-4 16-18 14l-30-4 22 48c4 10-2 16-12 16h-28L0 46l-16 36h-28c-10 0-16-6-12-16l22-48-30 4c-14 2-24-4-18-14 8-12 34-22 60-28-6-6-10-14-10-24 0-16 12-30 32-30z" fill="#171522" stroke="${a}" stroke-width="6" stroke-linejoin="round"/></g>`,
+};
+const MOTIF_BY_CAT = { 'Cartas coleccionables': 'cards', 'Cartas LCG': 'cards', Wargames: 'army', Rol: 'd20', 'Juegos de mesa': 'meeple' };
+const hash = (str) => [...str].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
+const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const artCache = {};
+export const placeholderArt = (id) => {
+  if (artCache[id]) return artCache[id];
+  const g = CATALOG.find((x) => x.id === id) ?? { name: id, cat: 'Cartas coleccionables' };
+  const h = hash(id);
+  const bg = BG[h % BG.length], a = ACCENT[(h >> 3) % ACCENT.length];
+  // Patrón de fondo distinto por juego: rombos, puntos o rayas
+  const pattern = [
+    `<pattern id="p" width="36" height="36" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="36" height="36" fill="none"/><rect x="0" y="0" width="18" height="18" fill="#fff" opacity=".035"/></pattern>`,
+    `<pattern id="p" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="14" cy="14" r="3" fill="#fff" opacity=".06"/></pattern>`,
+    `<pattern id="p" width="24" height="24" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)"><rect width="10" height="24" fill="#fff" opacity=".035"/></pattern>`,
+  ][(h >> 5) % 3];
+  const name = esc(g.name.length > 26 ? `${g.name.slice(0, 25)}…` : g.name);
+  const size = g.name.length > 18 ? 24 : 30;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500">`
-    + `<rect width="400" height="500" fill="#2c2840"/><rect x="24" y="24" width="352" height="452" rx="22" fill="none" stroke="#8B5CF6" stroke-width="3" opacity=".55"/>`
-    + `<text x="200" y="200" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="110" fill="#C4F56A" opacity=".9">${initials}</text></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    + `<defs>${pattern}<radialGradient id="g" cx="50%" cy="34%" r="55%"><stop offset="0" stop-color="${a}" stop-opacity=".22"/><stop offset="1" stop-color="${a}" stop-opacity="0"/></radialGradient></defs>`
+    + `<rect width="400" height="500" fill="${bg}"/><rect width="400" height="500" fill="url(#p)"/><rect width="400" height="500" fill="url(#g)"/>`
+    + MOTIF[MOTIF_BY_CAT[g.cat] ?? 'cards'](a)
+    + `<text x="200" y="300" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-weight="800" font-size="${size}" fill="#F8F7FC">${name}</text>`
+    + `</svg>`;
+  return (artCache[id] = `data:image/svg+xml,${encodeURIComponent(svg)}`);
 };
 
 /* El resto del catálogo: perfil genérico, sin buscador; la imagen la sube el jugador */
@@ -109,7 +150,7 @@ const FAV_LABEL = {
 };
 for (const g of CATALOG) {
   if (GAMES[g.id]) continue;
-  const ph = placeholderArt(g.name);
+  const ph = placeholderArt(g.id);
   GAMES[g.id] = {
     id: g.id, name: g.name, fullName: g.name, generic: true,
     paletteLabel: '', palette: {},
@@ -127,6 +168,6 @@ for (const g of CATALOG) {
 const uploaded = (c) => (isCardUpload(c?.upload) ? (c.upload.startsWith('data:') ? c.upload : cardUploadUrl(c.upload)) : '');
 for (const cfg of Object.values(GAMES)) {
   const { art, full } = cfg;
-  cfg.art = (c) => uploaded(c) || art(c ?? {}) || placeholderArt(cfg.name);
-  cfg.full = (c) => uploaded(c) || full(c ?? {}) || placeholderArt(cfg.name);
+  cfg.art = (c) => uploaded(c) || art(c ?? {}) || placeholderArt(cfg.id);
+  cfg.full = (c) => uploaded(c) || full(c ?? {}) || placeholderArt(cfg.id);
 }

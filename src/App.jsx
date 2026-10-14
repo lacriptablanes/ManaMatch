@@ -312,8 +312,8 @@ const storeName = (id) => STORES.find((s) => s.id === id)?.name;
 // Imágenes denunciadas por ti o por varias personas: se sustituyen por la imagen por defecto del juego
 const hiddenImgs = new Set();
 const isHidden = (card) => !!card?.upload && hiddenImgs.has(card.upload);
-const artOf = (game, card) => (isHidden(card) ? placeholderArt(GAMES[game].name) : GAMES[game].art(card));
-const fullOf = (game, card) => (isHidden(card) ? placeholderArt(GAMES[game].name) : GAMES[game].full(card));
+const artOf = (game, card) => (isHidden(card) ? placeholderArt(game) : GAMES[game].art(card));
+const fullOf = (game, card) => (isHidden(card) ? placeholderArt(game) : GAMES[game].full(card));
 // Solo las cartas oficiales completas de Pokémon y One Piece se recortan; las subidas y las de Magic ya son ilustración
 const isFullCard = (game, card) => (game === 'pokemon' || game === 'onepiece') && !card?.upload && !!card?.img;
 const cardOk = (game, c) => !!(c?.name?.trim() || c?.upload) || !!GAMES[game]?.generic;
