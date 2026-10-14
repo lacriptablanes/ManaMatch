@@ -116,10 +116,16 @@ const ICON = {
   // dado de 20 caras (rol)
   d20: (ink, bg) => `<g fill="${bg}" stroke="${ink}" stroke-width="7" stroke-linejoin="round">`
     + `<path d="M0 -76l66 38v76L0 76l-66-38v-76z"/><path d="M0 -76L-40 20h80zM-66 -38l26 58M66 -38l-26 58M-40 20L0 76l40-56M-66 38l26-18M66 38l-26-18" fill="none"/></g>`,
-  // meeple (juegos de mesa y foto de perfil por defecto)
-  meeple: (ink) => `<path d="M0 -74c20 0 32 14 32 30 0 10-4 18-10 24 26 6 52 16 60 28 6 10-4 16-18 14l-30-4 22 48c4 10-2 16-12 16h-28L0 46l-16 36h-28c-10 0-16-6-12-16l22-48-30 4c-14 2-24-4-18-14 8-12 34-22 60-28-6-6-10-14-10-24 0-16 12-30 32-30z" fill="${ink}"/>`,
+  // dos dados (juegos de mesa)
+  dice: (ink, bg) => `<g fill="${bg}" stroke="${ink}" stroke-width="7" stroke-linejoin="round">`
+    + `<rect x="-78" y="-34" width="82" height="82" rx="14" transform="rotate(-12 -37 7)"/>`
+    + `<rect x="-6" y="-66" width="82" height="82" rx="14" transform="rotate(10 35 -25)"/>`
+    + `<g fill="${ink}" stroke="none"><circle cx="-52" cy="-6" r="7"/><circle cx="-22" cy="22" r="7"/><circle cx="-37" cy="8" r="7"/>`
+    + `<circle cx="16" cy="-44" r="7"/><circle cx="54" cy="-6" r="7"/><circle cx="20" cy="-8" r="7"/><circle cx="50" cy="-42" r="7"/></g></g>`,
+  // silueta de persona (foto de perfil por defecto)
+  person: (ink) => `<g fill="${ink}"><circle cx="0" cy="-30" r="34"/><path d="M-62 70c0-40 28-62 62-62s62 22 62 62z"/></g>`,
 };
-const ICON_BY_CAT = { 'Cartas coleccionables': 'cards', 'Cartas LCG': 'cards', Wargames: 'army', Rol: 'd20', 'Juegos de mesa': 'meeple' };
+const ICON_BY_CAT = { 'Cartas coleccionables': 'cards', 'Cartas LCG': 'cards', Wargames: 'army', Rol: 'd20', 'Juegos de mesa': 'dice' };
 const svgUrl = (svg) => `data:image/svg+xml,${encodeURIComponent(svg)}`;
 const cache = {};
 
@@ -133,13 +139,13 @@ export const placeholderArt = (id) => {
     + `<rect width="400" height="500" fill="${bg}"/><g transform="translate(200 180)">${ICON[ICON_BY_CAT[g.cat] ?? 'cards'](ink, bg)}</g></svg>`));
 };
 
-/* Foto de perfil por defecto: un meeple (nuestro "huevo") sobre el color de cada persona */
+/* Foto de perfil por defecto: una silueta pequeña y discreta sobre el color de cada persona (nuestro "huevo") */
 export const defaultAvatar = (seed) => {
   const key = `avatar:${seed}`;
   if (cache[key]) return cache[key];
   const [bg, ink] = colorFor(`p${seed}`);
   return (cache[key] = svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">`
-    + `<rect width="200" height="200" fill="${bg}"/><g transform="translate(100 112) scale(.95)">${ICON.meeple(ink)}</g></svg>`));
+    + `<rect width="200" height="200" fill="${bg}"/><g transform="translate(100 118) scale(.6)" opacity=".85">${ICON.person(ink)}</g></svg>`));
 };
 
 /* El resto del catálogo: perfil genérico, sin buscador; la imagen la sube el jugador */
