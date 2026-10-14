@@ -1350,49 +1350,72 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, o
 /* ================= Nearby (radar + tiendas) ================= */
 /* Los jugadores se colocan en una franja según su rango de distancia y con un ángulo
    que no depende de su posición real: el radar nunca revela dónde está alguien. */
-const fuzzyPos = (p) => {
-  const band = p.dist < 1 ? 0.32 : p.dist < 2 ? 0.55 : 0.78;
+// El radar se escala a tu distancia máxima. La posición sale de un tramo aproximado (1, 2, 5, 10 km…),
+// nunca de la distancia exacta, y el ángulo no depende de dónde esté: el radar no revela dónde vive nadie.
+const distBucket = (km) => (km < 1 ? 1 : km < 2 ? 2 : km < 5 ? 5 : Math.ceil(km / 5) * 5);
+const fuzzyPos = (p, radius) => {
+  const band = Math.min(0.9, Math.max(0.24, (distBucket(p.dist) - 0.5) / radius));
   const a = ((p.id * 137 + 40) % 360) * (Math.PI / 180);
   return { left: `${50 + Math.cos(a) * band * 46}%`, top: `${50 + Math.sin(a) * band * 46}%` };
 };
-const storePos = (km, i, n) => {
+const storePos = (km, i, n, radius) => {
   const a = ((i + 0.5) / n) * Math.PI * 2 + 0.6;
-  const r = Math.min(km / 4.5, 0.92) * 50;
+  const r = Math.min(km / radius, 0.92) * 50;
   return { left: `${50 + Math.cos(a) * r}%`, top: `${50 + Math.sin(a) * r}%` };
 };
+const RADIUS_STEPS = [1, 2, 5, 10, 25, 50];
 
-function Nearby({ players, onInfo }) {
+function Nearby({ players, me, onRadius, onInfo }) {
+  const R = me.radius;
+  const stores = STORES.filter((st) => st.dist <= R);
   return (
     <>
+      <div className="radius-ctl panel">
+        <div className="label-row"><b>{t('Distancia máxima')}</b><span className="radius-val">{R} km</span></div>
+        <input id="nearby-radius" type="range" min="1" max="50" value={R} aria-label={t('Distancia máxima')}
+          onChange={(e) => onRadius(+e.target.value)} style={{ '--p': `${((R - 1) / 49) * 100}%` }} />
+        <div className="radius-steps">
+          {RADIUS_STEPS.map((km) => <button key={km} type="button" className={R === km ? 'on' : ''} onClick={() => onRadius(km)}>{km} km</button>)}
+        </div>
+        <p className="radius-count">
+          {players.length === 1 ? t('1 jugador con tus juegos') : t('{n} jugadores con tus juegos', { n: players.length })}
+          {' · '}
+          {stores.length === 1 ? t('1 tienda') : t('{n} tiendas', { n: stores.length })}
+        </p>
+      </div>
+
       <div className="radar" role="img" aria-label={t('Radar de jugadores cercanos')}>
+        <span className="ring-label half">{Math.round(R / 2 * 10) / 10} km</span>
+        <span className="ring-label full">{R} km</span>
         <div className="me" />
         {players.map((p) => (
-          <button key={p.id} className="dot" style={{ ...fuzzyPos(p), '--c': FRAME.glow }} onClick={() => onInfo(p)} title={`${p.name} · ${GAMES[p.favCard.game].name} · ${fuzzyDist(p.dist)}`}>
+          <button key={p.id} className="dot" style={{ ...fuzzyPos(p, R), '--c': FRAME.glow }} onClick={() => onInfo(p)} title={`${p.name} · ${GAMES[p.favCard.game].name} · ${fuzzyDist(p.dist)}`}>
             <img src={avatarOf(p)} alt={p.name} />
             <span className={`dot-game g-${p.favCard.game}`}>{gameIcon(p.favCard.game)}</span>
           </button>
         ))}
-        {STORES.map((s, i) => <span key={s.id} className="shop" title={s.name} style={storePos(s.dist, i, STORES.length)}>{I.store}</span>)}
+        {stores.map((st, i) => <span key={st.id} className="shop" title={st.name} style={storePos(st.dist, i, stores.length, R)}>{I.store}</span>)}
       </div>
       <div className="legend"><span><i className="lg-player" />{t('Jugadores (zona aproximada)')}</span><span><i className="lg-store" />{t('Tiendas')}</span></div>
       <p className="privacy-note">{I.shield}{t('Por tu seguridad, nunca mostramos dónde está un jugador: solo su rango de distancia.')}</p>
 
       <h3 className="section-title">{t('Tiendas cercanas')}</h3>
+      {!stores.length && <p className="section-hint">{t('No hay tiendas en esa distancia. Amplíala para ver más.')}</p>}
       <div className="list">
-        {STORES.map((s) => {
-          const regulars = players.filter((p) => p.stores.includes(s.id));
+        {stores.map((st) => {
+          const regulars = players.filter((p) => p.stores.includes(st.id));
           return (
-            <div key={s.id} className="row">
+            <div key={st.id} className="row">
               <span className="row-icon">{I.store}</span>
               <div className="grow">
-                <div className="title">{s.name}</div>
-                <div className="sub">{t(s.events)}</div>
+                <div className="title">{st.name}</div>
+                <div className="sub">{t(st.events)}</div>
                 <div className="regulars">
                   <div className="stack">{regulars.slice(0, 3).map((p) => <img loading="lazy" decoding="async" key={p.id} src={avatarOf(p)} alt={p.name} />)}</div>
                   <span>{regulars.length === 1 ? t('1 habitual') : t('{n} habituales', { n: regulars.length })}</span>
                 </div>
               </div>
-              <span className="dist">{s.dist} km</span>
+              <span className="dist">{st.dist} km</span>
             </div>
           );
         })}
@@ -2538,7 +2561,7 @@ export default function App() {
           </header>
         )}
         {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} credits={credits} onNeedCredits={() => setShopOpen(true)} />}
-        {tab === 'nearby' && <Nearby players={PLAYERS.filter((p) => notBlocked(p) && sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))} onInfo={setProfile} />}
+        {tab === 'nearby' && <Nearby players={PLAYERS.filter((p) => notBlocked(p) && sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))} me={me} onRadius={(km) => setMe((x) => ({ ...x, radius: km }))} onInfo={setProfile} />}
         {tab === 'chat' && (chatWith
           ? <Chat p={chatWith} me={me} attended={attendance[chatWith.id]} onAttend={(v) => setAttendance((a) => ({ ...a, [chatWith.id]: v }))} msgs={chats[chatWith.id] || []} onSend={(m) => send(chatWith, m)} onBack={() => setChatWith(null)} onInfo={setProfile} onReport={() => setReporting(chatWith)} />
           : <Matches matches={visibleMatches} chats={chats} openChat={openChat} />)}

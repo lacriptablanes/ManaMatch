@@ -2449,3 +2449,23 @@ body { background: var(--body-bg); }
 /* Súper duelo: el borde del retrato pasa de lila a verde lima (sin etiquetas extra) */
 .super-ring .hex-svg { filter: drop-shadow(0 0 5px rgba(196, 245, 106, 0.55)) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.2)); }
 .avatar.super { box-shadow: 0 0 0 2.5px #C4F56A; }
+
+/* Cerca de ti: control de distancia */
+.radius-ctl { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.radius-ctl .label-row { display: flex; justify-content: space-between; align-items: baseline; }
+.radius-val { font-weight: 800; font-size: 1.1rem; color: var(--text); }
+.radius-ctl input[type=range] { width: 100%; }
+.radius-steps { display: flex; gap: 6px; flex-wrap: wrap; }
+.radius-steps button {
+  flex: 1; min-width: 44px; padding: 6px 0; border-radius: 999px; font: inherit; font-size: 0.76rem; font-weight: 700;
+  color: var(--text-2); background: var(--bg3); border: 1px solid transparent; cursor: pointer;
+}
+.radius-steps button.on { background: var(--hot); color: var(--on-sec); }
+:root[data-theme="light"] .radius-steps button.on { background: var(--lime-soft); color: #171522; border-color: #A9DB4E; }
+.radius-count { margin: 0; font-size: 0.82rem; color: var(--muted); }
+.radar .ring-label {
+  position: absolute; left: 50%; transform: translateX(-50%); padding: 1px 6px; border-radius: 999px; pointer-events: none;
+  font-size: 0.62rem; font-weight: 700; color: var(--muted); background: var(--bg);
+}
+.radar .ring-label.half { top: 25%; margin-top: -8px; }
+.radar .ring-label.full { top: 0; margin-top: -8px; }

@@ -561,4 +561,10 @@ export default {
   "Los pagos aún no están activados.": "Ordainketak ez daude oraindik aktibatuta.",
   "No se ha podido iniciar el pago.": "Ezin izan da ordainketa hasi.",
   "¡Súper duelo aceptado! Propón una partida": "Superduelua onartuta! Proposatu partida bat",
+  "Distancia máxima": "Gehieneko distantzia",
+  "1 jugador con tus juegos": "Zure jokoak dituen jokalari 1",
+  "{n} jugadores con tus juegos": "Zure jokoak dituzten {n} jokalari",
+  "1 tienda": "Denda 1",
+  "{n} tiendas": "{n} denda",
+  "No hay tiendas en esa distancia. Amplíala para ver más.": "Ez dago dendarik distantzia horretan. Handitu gehiago ikusteko.",
 };

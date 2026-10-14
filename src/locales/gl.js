@@ -561,4 +561,10 @@ export default {
   "Los pagos aún no están activados.": "Os pagamentos aínda non están activados.",
   "No se ha podido iniciar el pago.": "Non se puido iniciar o pagamento.",
   "¡Súper duelo aceptado! Propón una partida": "Superduelo aceptado! Propón unha partida",
+  "Distancia máxima": "Distancia máxima",
+  "1 jugador con tus juegos": "1 xogador cos teus xogos",
+  "{n} jugadores con tus juegos": "{n} xogadores cos teus xogos",
+  "1 tienda": "1 tenda",
+  "{n} tiendas": "{n} tendas",
+  "No hay tiendas en esa distancia. Amplíala para ver más.": "Non hai tendas nesa distancia. Ampliala para ver máis.",
 };

@@ -559,4 +559,10 @@ export default {
   "Los pagos aún no están activados.": "Payments are not enabled yet.",
   "No se ha podido iniciar el pago.": "Couldn't start the payment.",
   "¡Súper duelo aceptado! Propón una partida": "Super duel accepted! Suggest a game",
+  "Distancia máxima": "Maximum distance",
+  "1 jugador con tus juegos": "1 player with your games",
+  "{n} jugadores con tus juegos": "{n} players with your games",
+  "1 tienda": "1 store",
+  "{n} tiendas": "{n} stores",
+  "No hay tiendas en esa distancia. Amplíala para ver más.": "No stores within that distance. Widen it to see more.",
 };

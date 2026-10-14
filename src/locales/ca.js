@@ -561,4 +561,10 @@ export default {
   "Los pagos aún no están activados.": "Els pagaments encara no estan activats.",
   "No se ha podido iniciar el pago.": "No s'ha pogut iniciar el pagament.",
   "¡Súper duelo aceptado! Propón una partida": "Superduel acceptat! Proposa una partida",
+  "Distancia máxima": "Distància màxima",
+  "1 jugador con tus juegos": "1 jugador amb els teus jocs",
+  "{n} jugadores con tus juegos": "{n} jugadors amb els teus jocs",
+  "1 tienda": "1 botiga",
+  "{n} tiendas": "{n} botigues",
+  "No hay tiendas en esa distancia. Amplíala para ver más.": "No hi ha botigues en aquesta distància. Amplia-la per veure'n més.",
 };
