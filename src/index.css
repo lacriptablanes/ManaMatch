@@ -2392,3 +2392,7 @@ body { background: var(--body-bg); }
    Más margen interior (compensado fuera) y un halo más corto para que nunca se corte. */
 .new-matches { padding: 14px 14px 16px; margin: -10px -14px -8px; }
 .nm .hex-svg { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand) 40%, transparent)) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2)); }
+/* Nuevos rivales más juntos: cada uno ocupa lo que su retrato y el nombre se recorta si es largo */
+.new-matches { gap: 6px; }
+.nm { width: 70px; flex: none; }
+.nm > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
