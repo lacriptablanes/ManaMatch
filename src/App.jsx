@@ -4,7 +4,7 @@ import { PLAYERS, STORES, pokeImg, opImg } from './data';
 import { GAMES, placeholderArt, defaultAvatar } from './games';
 import { CATALOG, GAME_CATEGORIES, MAX_GAMES, gameName, isGameId } from './catalog';
 import { compat, byCompat, reliability } from './compat';
-import { TITLES, unlockedTitles, titleFor } from './titles';
+import { TITLES, TITLE_GROUPS, unlockedTitles, titleFor } from './titles';
 import { t, useLang, setLang, getLang, LANGS, locale } from './i18n';
 import { supabase } from './supabase';
 import {
@@ -440,9 +440,57 @@ function GamesSheet({ value, onSave, onClose }) {
 
 /* Datos con los que se desbloquean los títulos */
 const playerStats = (p) => ({
-  played: p.rel?.played ?? 0, reliable: reliability(p).level === 'reliable', verified: !!p.verified,
-  games: p.interests?.length ?? 0, decks: p.decks?.length ?? 0, stores: p.stores?.length ?? 0, level: p.level,
+  played: p.rel?.played ?? 0, matches: p.matches ?? 0, reliable: reliability(p).level === 'reliable',
+  games: p.interests ?? [], formats: p.formats ?? [], decks: p.decks?.length ?? 0, stores: p.stores?.length ?? 0,
+  level: p.level, days: p.days ?? [], slots: p.slots ?? [], hasPhoto: !!p.avatar,
+  hasFav: !!(p.favCard?.name || p.favCard?.upload || p.favCard?.img), bio: p.bio ?? '',
 });
+
+/* Hoja para elegir título, como la de los juegos: etiquetas agrupadas; las bloqueadas explican cómo conseguirlas */
+function TitlesSheet({ value, unlocked, onSave, onClose }) {
+  const [pick, setPick] = useState(value);
+  const [info, setInfo] = useState(null);
+  useBack(true, onClose);
+  return createPortal(
+    <>
+      <div className="sheet-bg top" onClick={onClose} />
+      <section className="sheet edit-sheet top games-sheet" aria-label={t('Título')}>
+        <header className="sheet-bar">
+          <button className="icon-btn" onClick={onClose} aria-label={t('Cancelar')}>{I.close}</button>
+          <h2>{t('Título')}</h2>
+          <span style={{ width: 44 }} />
+        </header>
+        <div className="body">
+          <div className="picker-head">
+            <p>{t('Se muestra bajo tu foto. Desbloquea más jugando.')}</p>
+            <span className="picker-count">({unlocked.length}/{TITLES.length})</span>
+          </div>
+          {TITLE_GROUPS.map((group) => (
+            <div key={group} className="picker-group">
+              <h4>{t(group)}</h4>
+              <div className="tags">
+                {TITLES.filter((x) => x.group === group).map((x) => {
+                  const open = unlocked.includes(x.id);
+                  return (
+                    <button type="button" key={x.id} className={`tag interest${pick === x.id ? ' on' : ''}${open ? '' : ' locked'}`}
+                      aria-pressed={pick === x.id} onClick={() => (open ? (setPick(x.id), setInfo(null)) : setInfo(x))}>
+                      {open ? (pick === x.id ? I.check : I.star) : I.lock}{t(x.label)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+        {info && <p className="title-info" role="status">{I.lock}<span><b>{t(info.label)}</b> · {t(info.hint)}</span></p>}
+        <div className="sheet-cta">
+          <button id="title-done" className="primary" onClick={() => { onSave(pick); onClose(); }}>{I.check}{t('Listo')}</button>
+        </div>
+      </section>
+    </>,
+    document.querySelector('.phone') ?? document.body,
+  );
+}
 const playerTitle = (p) => t(titleFor(p.title, playerStats(p)).label);
 /* "Casual competitivo · Commander, cEDH": nivel y, detrás, los formatos */
 const levelLine = (p, max = 2) => [t(p.level), p.formats.slice(0, max).map((f) => t(f)).join(', ')].filter(Boolean).join(' · ');
@@ -1758,7 +1806,8 @@ function MyProfile({ me, setMe, matchCount, played, onPhoto, onAddDeck, flash })
     try { setPhotoError(''); onPhoto(await readPhoto(file)); } catch (err) { setPhotoError(err.message); }
   };
   const dayNames = DAYS.filter(([k]) => me.days.includes(k)).map(([, n]) => t(n).slice(0, 3)).join(', ');
-  const stats = { ...playerStats(me), played, reliable: played >= 3 };
+  const stats = { ...playerStats(me), played, matches: matchCount, reliable: played >= 3 };
+  const [titlesOpen, setTitlesOpen] = useState(false);
   const unlocked = unlockedTitles(stats);
   const title = titleFor(me.title, stats);
   return (
@@ -1805,19 +1854,14 @@ function MyProfile({ me, setMe, matchCount, played, onPhoto, onAddDeck, flash })
       </div>
 
       <h3 className="section-title">{t('Título')}<small className="title-note">{unlocked.length}/{TITLES.length}</small></h3>
-      <p className="section-hint">{t('Se muestra bajo tu foto. Desbloquea más jugando.')}</p>
-      <div className="titles">
-        {TITLES.map((x) => {
-          const open = unlocked.includes(x.id);
-          return (
-            <button type="button" key={x.id} className={`title-opt${title.id === x.id ? ' on' : ''}${open ? '' : ' locked'}`} disabled={!open}
-              aria-pressed={title.id === x.id} title={open ? '' : t(x.hint)} onClick={() => set({ title: x.id })}>
-              <span className="title-ico">{open ? I.star : I.lock}</span>
-              <span className="grow"><b>{t(x.label)}</b>{!open && <small>{t(x.hint)}</small>}</span>
-            </button>
-          );
-        })}
+      <div className="tags">
+        <span className="title-chip big">{I.star}{t(title.label)}</span>
+        <button type="button" id="change-title" className="tag interest add" onClick={() => setTitlesOpen(true)}>{I.edit}{t('Cambiar')}</button>
       </div>
+      {titlesOpen && (
+        <TitlesSheet value={title.id} unlocked={unlocked} onClose={() => setTitlesOpen(false)}
+          onSave={(id) => { set({ title: id }); flash(t('Título actualizado'), I.star); }} />
+      )}
 
       <h3 className="section-title">{t('Mis juegos')}<small className="title-note">{me.interests.length}/{MAX_GAMES}</small></h3>
       <div className="tags">

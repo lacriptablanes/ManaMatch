@@ -2352,3 +2352,12 @@ body { background: var(--body-bg); }
 .title-opt.on .title-ico { background: #171522; color: #C4F56A; }
 .title-opt.locked { opacity: 0.55; cursor: not-allowed; }
 .title-opt.locked b { color: var(--muted); }
+
+.title-chip.big { margin-top: 0; padding: 8px 14px; font-size: 0.8rem; }
+.tag.interest.locked { opacity: 0.5; border-style: dashed; }
+.tag.interest.locked svg { width: 12px; height: 12px; }
+.title-info {
+  display: flex; gap: 8px; align-items: flex-start; margin: 0 16px 8px; padding: 10px 12px; border-radius: 12px;
+  font-size: 0.82rem; color: var(--text-2); background: var(--bg3);
+}
+.title-info svg { width: 15px; height: 15px; flex: none; margin-top: 1px; }
