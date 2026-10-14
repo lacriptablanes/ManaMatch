@@ -543,4 +543,5 @@ export default {
   "Sube una foto de perfil": "Igo profileko argazki bat",
   "Cuentacuentos": "Ipuin-kontalaria",
   "Escribe una bio de 80 letras o más": "Idatzi 80 hizki edo gehiagoko biografia",
+  "Desbloqueado": "Desblokeatuta",
 };

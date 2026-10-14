@@ -7,9 +7,8 @@ const inCat = (cat) => new Set(CATALOG.filter((g) => g.cat === cat).map((g) => g
 const WARGAMES = inCat('Wargames'), BOARD = inCat('Juegos de mesa'), CARD_GAMES = inCat('Cartas coleccionables');
 const LIMITED = ['Draft', 'Sealed', 'Sellado', 'Prerelease'];
 
-export const TITLE_GROUPS = ['Partidas', 'Comunidad', 'Juegos', 'Colección', 'Estilo de juego', 'Perfil'];
-
 // s = { played, matches, reliable, games[], formats[], decks, stores, level, days[], slots[], hasPhoto, hasFav, bio }
+// El primer dato (grupo) solo ordena la lista en el código; en la app se muestran todos juntos
 const T = (group, id, label, hint, test) => ({ group, id, label, hint, test });
 export const TITLES = [
   T('Partidas', 'rookie', 'Recién llegado', 'Disponible desde el principio', () => true),

@@ -4,7 +4,7 @@ import { PLAYERS, STORES, pokeImg, opImg } from './data';
 import { GAMES, placeholderArt, defaultAvatar } from './games';
 import { CATALOG, GAME_CATEGORIES, MAX_GAMES, gameName, isGameId } from './catalog';
 import { compat, byCompat, reliability } from './compat';
-import { TITLES, TITLE_GROUPS, unlockedTitles, titleFor } from './titles';
+import { TITLES, unlockedTitles, titleFor } from './titles';
 import { t, useLang, setLang, getLang, LANGS, locale } from './i18n';
 import { supabase } from './supabase';
 import {
@@ -449,7 +449,6 @@ const playerStats = (p) => ({
 /* Hoja para elegir título, como la de los juegos: etiquetas agrupadas; las bloqueadas explican cómo conseguirlas */
 function TitlesSheet({ value, unlocked, onSave, onClose }) {
   const [pick, setPick] = useState(value);
-  const [info, setInfo] = useState(null);
   useBack(true, onClose);
   return createPortal(
     <>
@@ -465,24 +464,20 @@ function TitlesSheet({ value, unlocked, onSave, onClose }) {
             <p>{t('Se muestra bajo tu foto. Desbloquea más jugando.')}</p>
             <span className="picker-count">({unlocked.length}/{TITLES.length})</span>
           </div>
-          {TITLE_GROUPS.map((group) => (
-            <div key={group} className="picker-group">
-              <h4>{t(group)}</h4>
-              <div className="tags">
-                {TITLES.filter((x) => x.group === group).map((x) => {
-                  const open = unlocked.includes(x.id);
-                  return (
-                    <button type="button" key={x.id} className={`tag interest${pick === x.id ? ' on' : ''}${open ? '' : ' locked'}`}
-                      aria-pressed={pick === x.id} onClick={() => (open ? (setPick(x.id), setInfo(null)) : setInfo(x))}>
-                      {open ? (pick === x.id ? I.check : I.star) : I.lock}{t(x.label)}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+          {/* Primero los que ya tienes; los bloqueados dicen cómo conseguirlos */}
+          <div className="titles">
+            {[...TITLES].sort((a, b) => unlocked.includes(b.id) - unlocked.includes(a.id)).map((x) => {
+              const open = unlocked.includes(x.id);
+              return (
+                <button type="button" key={x.id} className={`title-opt${pick === x.id ? ' on' : ''}${open ? '' : ' locked'}`}
+                  disabled={!open} aria-pressed={pick === x.id} onClick={() => setPick(x.id)}>
+                  <span className="title-ico">{open ? (pick === x.id ? I.check : I.star) : I.lock}</span>
+                  <span className="grow"><b>{t(x.label)}</b><small>{open ? t('Desbloqueado') : t(x.hint)}</small></span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        {info && <p className="title-info" role="status">{I.lock}<span><b>{t(info.label)}</b> · {t(info.hint)}</span></p>}
         <div className="sheet-cta">
           <button id="title-done" className="primary" onClick={() => { onSave(pick); onClose(); }}>{I.check}{t('Listo')}</button>
         </div>

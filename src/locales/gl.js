@@ -543,4 +543,5 @@ export default {
   "Sube una foto de perfil": "Sube unha foto de perfil",
   "Cuentacuentos": "Contacontos",
   "Escribe una bio de 80 letras o más": "Escribe unha bio de 80 letras ou máis",
+  "Desbloqueado": "Desbloqueado",
 };
