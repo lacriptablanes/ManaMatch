@@ -469,6 +469,6 @@ export default {
   "¿Una partida de {game} esta semana?": "A game of {game} this week?",
   "Muy pronto el personal de {store} podrá verificarte en persona y conseguirás la insignia de jugador verificado.": "Soon the staff at {store} will be able to verify you in person and you'll get the verified player badge.",
   "Próximamente": "Coming soon",
-  "Si no subes foto, verás un icono con tu color. La foto es opcional.": "If you don't upload a photo, you'll get an icon in your colour. The photo is optional.",
   "Quitar foto": "Remove photo",
+  "Si no subes foto, se verá un icono genérico. La foto es opcional.": "If you don't upload a photo, a generic icon is shown. The photo is optional.",
 };

@@ -321,9 +321,9 @@ const cardOk = (game, c) => !!(c?.name?.trim() || c?.upload) || !!GAMES[game]?.g
 const imgCls = (game, card) => (isFullCard(game, card) ? ` full-card fc-${game}` : '');
 // La foto puede ser una subida a la cuenta (ruta en Storage), una recién elegida (data URL) o, si no hay, la carta favorita
 const photoSrc = (me) => (isAvatarPath(me.avatar) ? avatarUrl(me.avatar) : me.avatar);
-// Sin foto subida: el icono genérico con tu color (como el huevo de Twitter)
-const myAvatar = (me) => photoSrc(me) || defaultAvatar(me.name || 'yo');
-const avatarOf = (p) => p.avatar || defaultAvatar(p.id ?? p.name);
+// Sin foto subida: un meeple gris claro, como una imagen pendiente de cargar (el "huevo" de Twitter)
+const myAvatar = (me) => photoSrc(me) || defaultAvatar();
+const avatarOf = (p) => p.avatar || defaultAvatar();
 // Marco del retrato: el morado de la app para todos (los colores por juego ya no existen en el perfil)
 const FRAME = { list: ['#8B5CF6'], grad: '#8B5CF6', glow: '#8B5CF6' };
 const toggleIn = (arr, v) => arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
@@ -1699,7 +1699,7 @@ function EditProfileSheet({ me, onSave, onClose }) {
           <div className="photo-edit">
             <Hex src={myAvatar(d)} alt={t('Tu imagen')} size={96} colors={['#8B5CF6']} ring={false} />
             <div className="photo-actions">
-              <span className="photo-hint">{t('Si no subes foto, verás un icono con tu color. La foto es opcional.')}</span>
+              <span className="photo-hint">{t('Si no subes foto, se verá un icono genérico. La foto es opcional.')}</span>
               <button type="button" id="upload-photo" className="ghost small" onClick={() => fileRef.current.click()}>{I.camera}{t('Subir foto')}</button>
               {d.avatar && <button type="button" className="link-btn" onClick={() => set({ avatar: '' })}>{t('Quitar foto')}</button>}
               <input ref={fileRef} type="file" accept="image/*" hidden onChange={upload} />
