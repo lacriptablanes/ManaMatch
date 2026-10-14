@@ -81,7 +81,7 @@ const DEFAULT_ME = {
   name: 'Planeswalker', birthDate: '1998-03-14', avatar: '',
   interests: ['magic', 'pokemon', 'lorcana', 'fab', 'wh40k'],
   level: 'Casual competitivo', formats: ['Commander', 'Modern', 'Estándar'],
-  favCard: { game: 'magic', name: 'Atraxa, Praetors\' Voice' },
+  favCard: { game: 'magic', name: '' },
   decks: [
     { id: 1, game: 'magic', name: 'Atraxa Superfriends', format: 'Commander', card: { name: 'Atraxa, Praetors\' Voice' } },
     { id: 2, game: 'pokemon', name: 'Charizard ex', format: 'Estándar', card: { name: 'Charizard ex', img: pokeImg('sv3', 125) } },
@@ -126,8 +126,9 @@ const migrateMe = (v) => {
 /* Mantiene el perfil coherente: la carta favorita es de uno de tus juegos y los datos tienen la forma esperada */
 function normalizeMe(me) {
   const first = me.interests[0] ?? 'magic';
-  let favCard = cleanCard(me.favCard);
-  if (!me.interests.includes(favCard.game)) favCard = { game: first, name: '' };
+  // El banner es solo una imagen subida; el juego solo decide la imagen por defecto si no hay ninguna
+  const fc = cleanCard(me.favCard);
+  const favCard = { game: me.interests.includes(fc.game) ? fc.game : first, name: '', ...(fc.upload && { upload: fc.upload }) };
   return {
     ...me,
     level: LEVELS.includes(me.level) ? me.level : 'Casual',
@@ -318,7 +319,6 @@ const storeName = (id) => STORES.find((s) => s.id === id)?.name;
 const hiddenImgs = new Set();
 const isHidden = (card) => !!card?.upload && hiddenImgs.has(card.upload);
 const artOf = (game, card) => (isHidden(card) ? placeholderArt(game) : GAMES[game].art(card));
-const fullOf = (game, card) => (isHidden(card) ? placeholderArt(game) : GAMES[game].full(card));
 // Solo las cartas oficiales completas de Pokémon y One Piece se recortan; las subidas y las de Magic ya son ilustración
 const isFullCard = (game, card) => (game === 'pokemon' || game === 'onepiece') && !card?.upload && !!card?.img;
 const cardOk = (game, c) => !!(c?.name?.trim() || c?.upload) || !!GAMES[game]?.generic;
@@ -445,7 +445,7 @@ const playerStats = (p) => ({
   played: p.rel?.played ?? 0, matches: p.matches ?? 0, reliable: reliability(p).level === 'reliable',
   games: p.interests ?? [], formats: p.formats ?? [], decks: p.decks?.length ?? 0, stores: p.stores?.length ?? 0,
   level: p.level, days: p.days ?? [], slots: p.slots ?? [], hasPhoto: !!p.avatar,
-  hasFav: !!(p.favCard?.name || p.favCard?.upload || p.favCard?.img), bio: p.bio ?? '',
+  hasFav: !!(p.favCard?.upload || p.favCard?.img), bio: p.bio ?? '',
 });
 
 /* Aviso de logro, al estilo de las consolas: sale arriba unos segundos al desbloquear un título */
@@ -610,10 +610,10 @@ function TableCard({ p, me, leaving, onInfo }) {
     >
       {p.superLikedYou && <div className="super-banner">{I.star}{t('{name} te ha retado con un Súper duelo', { name: p.name })}</div>}
       <div className="art-frame">
-        <img className={`hero-art${imgCls(p.favCard.game, p.favCard)}`} src={artOf(p.favCard.game, p.favCard)} alt={p.favCard.name ? t('Carta {name}', { name: p.favCard.name }) : ''} draggable="false" />
+        <img className={`hero-art${imgCls(p.favCard.game, p.favCard)}`} src={artOf(p.favCard.game, p.favCard)} alt="" draggable="false" />
         <div className="foil" />
         <div className="hero-top">
-          <span className="glass-chip game-chip">{gameIcon(p.favCard.game)}{GAMES[p.favCard.game].name}</span>
+          <span className="glass-chip game-chip">{gameIcon(duelGame(me, p))}{GAMES[duelGame(me, p)]?.name ?? gameName(duelGame(me, p))}</span>
           <span className="glass-chip dist-chip">{I.pin}{fuzzyDist(p.dist)}</span>
         </div>
       </div>
@@ -622,7 +622,6 @@ function TableCard({ p, me, leaving, onInfo }) {
         <Hex src={avatarOf(p)} alt={p.name} size={100} badge={playerTitle(p)} colors={list} />
         <h2 className="hero-name">{p.name}{p.verified && <span className="verified" title={t('Verificado')}>{I.check}</span>}</h2>
         {deck && <div className="hero-deck">{I.deck}<b>{deck.name}</b><i className="dot-sep" />{t(deck.format)}</div>}
-        {p.favCard.name && <div className="hero-tags"><span className="hero-fav">{gameIcon(p.favCard.game)}{p.favCard.name}</span></div>}
         <div className="hero-sub">{levelLine(p)}</div>
         <div className="hero-chips">
           <div className="hero-shared" title={t('Compatibilidad contigo')}>
@@ -653,8 +652,6 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock
     c.sharedStores.length > 0 && [I.store, t('Vais a {stores}', { stores: list2(c.sharedStores.map(storeName)) })],
   ].filter(Boolean);
   const { list } = FRAME;
-  // La carta favorita solo se enseña si tiene imagen (oficial o subida); sin ella sería la imagen por defecto repetida
-  const hasFav = !!(p.favCard.upload || p.favCard.img || (p.favCard.game === 'magic' && p.favCard.name));
   const stores = p.stores.map((id) => STORES.find((x) => x.id === id)).filter(Boolean);
   return (
     <>
@@ -666,6 +663,9 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock
         <div className="sheet-hero">
           <img className={imgCls(p.favCard.game, p.favCard).trim()} src={artOf(p.favCard.game, p.favCard)} alt="" />
           <span className="sheet-handle" />
+          {p.favCard.upload && !isHidden(p.favCard) && (
+            <button type="button" className="img-flag" onClick={() => onReportImage(p.favCard.upload)} aria-label={t('Denunciar esta imagen')}>{I.flag}{t('Denunciar imagen')}</button>
+          )}
         </div>
         <div className="body">
           <div className="sheet-id">
@@ -713,16 +713,6 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock
             ))}
           </div>
 
-          {hasFav && <>
-          <h3 className="section-title">{t(GAMES[p.favCard.game].favLabel)}</h3>
-          <div className="fav-wrap">
-            <img loading="lazy" decoding="async" className="fav-full" src={fullOf(p.favCard.game, p.favCard)} alt={p.favCard.name} />
-            {p.favCard.upload && !isHidden(p.favCard) && (
-              <button type="button" className="img-flag" onClick={() => onReportImage(p.favCard.upload)} aria-label={t('Denunciar esta imagen')}>{I.flag}{t('Denunciar imagen')}</button>
-            )}
-          </div>
-          {p.favCard.upload && <p className="field-hint upload-note">{t('Imagen subida por {name}', { name: p.name })}</p>}
-          </>}
 
           {stores.length > 0 && <h3 className="section-title">{t('Dónde juega')}</h3>}
           <div className="list">
@@ -1678,6 +1668,40 @@ function CardField({ id, game, value, onChange }) {
   );
 }
 
+/* Imagen de banner: solo se sube una imagen (se encuadra antes de guardarla). Sin imagen se usa la de por defecto. */
+function BannerField({ value, game, onChange }) {
+  const fileRef = useRef(null);
+  const [crop, setCrop] = useState(null);
+  const [err, setErr] = useState('');
+  const pickFile = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.type && !file.type.startsWith('image/')) { setErr('Ese archivo no es una imagen.'); return; }
+    if (file.size > 10 * 1024 * 1024) { setErr('La imagen pesa demasiado (máximo 10 MB).'); return; }
+    setErr('');
+    setCrop(URL.createObjectURL(file));
+  };
+  const closeCrop = () => { URL.revokeObjectURL(crop); setCrop(null); };
+  return (
+    <div className="banner-field">
+      <div className="banner-preview"><img src={artOf(game, value)} alt="" /></div>
+      <div className="upload-row">
+        <button type="button" id="banner-upload" className="ghost small" onClick={() => fileRef.current.click()}>{I.camera}{value?.upload ? t('Cambiar imagen') : t('Subir imagen')}</button>
+        {value?.upload && <button type="button" className="link-btn" onClick={() => onChange({ game, name: '' })}>{t('Quitar imagen')}</button>}
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickFile} />
+      </div>
+      {err && <p className="upload-error" role="alert">{t(err)}</p>}
+      <p className="field-hint">{I.shield}{t('Te recomendamos una carta de alguno de tus juegos, tu ejército, tu mesa… Las imágenes denunciadas se ocultan.')}</p>
+      {crop && createPortal(
+        <CropSheet src={crop} onClose={closeCrop} onError={() => { closeCrop(); setErr('No se ha podido abrir esa imagen. Prueba con una JPG o PNG.'); }}
+          onDone={(dataUrl) => { onChange({ game, name: '', upload: dataUrl }); closeCrop(); }} />,
+        document.querySelector('.phone') ?? document.body,
+      )}
+    </div>
+  );
+}
+
 /* Encuadre: arrastra para mover y usa el zoom; se guarda un JPEG de 640×800 sin metadatos */
 const CROP_W = 260, CROP_H = 325, OUT_W = 640, OUT_H = 800;
 function CropSheet({ src, onDone, onClose, onError }) {
@@ -1841,14 +1865,8 @@ function CreateProfileScreen({ onCreate }) {
             <fieldset><legend>{t('Nivel')}</legend>
               <Segmented name={t('Nivel')} value={d.level} onChange={(v) => set({ level: v })} options={LEVELS.map((l) => [l, t(l)])} />
             </fieldset>
-            <fieldset><legend>{t('Carta favorita (opcional)')}</legend>
-              {d.interests.length > 1 && (
-                <label className="inline-field">{t('Juego')}
-                  <GameSelect id="new-fav-game" games={d.interests} value={fav.game} onChange={(g) => set({ favCard: { game: g, name: '' } })} />
-                </label>
-              )}
-              <CardField key={fav.game} id="new-fav" game={fav.game} value={fav} onChange={(card) => set({ favCard: { ...card, game: fav.game } })} />
-              <p className="field-hint">{t('Es la imagen grande de tu tarjeta. Puedes añadirla o cambiarla cuando quieras desde tu perfil.')}</p>
+            <fieldset><legend>{t('Imagen de banner (opcional)')}</legend>
+              <BannerField value={fav} game={fav.game} onChange={(c) => set({ favCard: c })} />
             </fieldset>
           </div>
         </section>
@@ -1995,7 +2013,6 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickPhoto} />
         <h2 className="me-name">{me.name}</h2>
         <div className="me-sub">{levelLine(me, 3)}</div>
-        {fav.name && <div className="me-fav">{gameIcon(fav.game)}{fav.name}</div>}
         {me.bio && <p className="me-bio">{me.bio}</p>}
         <div className="me-avail">{I.clock}{dayNames || t('Sin días')}{me.slots.length > 0 && ` · ${me.slots.map((x) => t(x)).join(', ')}`}</div>
         <div className="stats">
@@ -2052,14 +2069,9 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
       <h3 className="section-title">{t('Formatos')}</h3>
       <ChipPicker options={formatOptions(me.interests)} value={me.formats} onChange={(v) => set({ formats: v })} toggle={(o) => set((x) => ({ formats: toggleIn(x.formats, o) }))} />
 
-      <h3 className="section-title">{t('Carta favorita')}</h3>
+      <h3 className="section-title">{t('Imagen de banner')}</h3>
       <div className="panel form me-form">
-        {me.interests.length > 1 && (
-          <label className="inline-field">{t('Juego')}
-            <GameSelect id="me-fav-game" games={me.interests} value={fav.game} onChange={(g) => set({ favCard: { game: g, name: '' } })} />
-          </label>
-        )}
-        <CardField key={fav.game} id="me-fav" game={fav.game} value={fav} onChange={(c) => set({ favCard: { ...c, game: fav.game } })} />
+        <BannerField value={fav} game={fav.game} onChange={(c) => set({ favCard: c })} />
       </div>
 
       <h3 className="section-title">{t('Mis mazos')}</h3>

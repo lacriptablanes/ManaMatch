@@ -589,4 +589,8 @@ export default {
   "Torneo One Piece": "Torneig One Piece",
   "Noche de juegos de mesa": "Nit de jocs de taula",
   "Liga Lorcana": "Lliga Lorcana",
+  "Imagen de banner": "Imatge de bàner",
+  "Imagen de banner (opcional)": "Imatge de bàner (opcional)",
+  "Te recomendamos una carta de alguno de tus juegos, tu ejército, tu mesa… Las imágenes denunciadas se ocultan.": "Et recomanem una carta d'algun dels teus jocs, el teu exèrcit, la teva taula… Les imatges denunciades s'amaguen.",
+  "Sube una imagen de banner": "Puja una imatge de bàner",
 };

@@ -589,4 +589,8 @@ export default {
   "Torneo One Piece": "One Piece txapelketa",
   "Noche de juegos de mesa": "Mahai-jokoen gaua",
   "Liga Lorcana": "Lorcana liga",
+  "Imagen de banner": "Banner-irudia",
+  "Imagen de banner (opcional)": "Banner-irudia (aukerakoa)",
+  "Te recomendamos una carta de alguno de tus juegos, tu ejército, tu mesa… Las imágenes denunciadas se ocultan.": "Zure jokoren bateko karta bat, zure armada, zure mahaia… gomendatzen dizugu. Salatutako irudiak ezkutatu egiten dira.",
+  "Sube una imagen de banner": "Igo banner-irudi bat",
 };

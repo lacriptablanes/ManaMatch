@@ -589,4 +589,8 @@ export default {
   "Torneo One Piece": "Torneo One Piece",
   "Noche de juegos de mesa": "Noite de xogos de mesa",
   "Liga Lorcana": "Liga Lorcana",
+  "Imagen de banner": "Imaxe de bánner",
+  "Imagen de banner (opcional)": "Imaxe de bánner (opcional)",
+  "Te recomendamos una carta de alguno de tus juegos, tu ejército, tu mesa… Las imágenes denunciadas se ocultan.": "Recomendámosche unha carta dalgún dos teus xogos, o teu exército, a túa mesa… As imaxes denunciadas ocúltanse.",
+  "Sube una imagen de banner": "Sube unha imaxe de bánner",
 };

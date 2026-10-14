@@ -2515,3 +2515,20 @@ body { background: var(--body-bg); }
 /* La ficha de tienda no tiene retrato que monte sobre la cabecera: el contenido empieza debajo */
 .store-sheet .body { margin-top: 0; padding-top: 16px; position: relative; }
 .store-sheet .sheet-name { margin: 0; }
+
+/* Imagen de banner */
+.banner-field { display: flex; flex-direction: column; gap: 10px; }
+.banner-preview { aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: var(--bg3); }
+.banner-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.banner-field .field-hint { display: flex; gap: 6px; align-items: flex-start; margin: 0; }
+.banner-field .field-hint svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+.sheet-hero { position: relative; }
+.sheet-hero .img-flag { bottom: 82px; }
+/* Tarjeta de mi perfil: el banner se ve nítido arriba (como una cabecera) y se funde con la tarjeta,
+   en lugar de un fondo difuminado. El texto queda sobre el fondo de la tarjeta para leerse bien. */
+.me-cover {
+  inset: 0 0 auto 0; height: 160px; transform: none; filter: none;
+  -webkit-mask-image: linear-gradient(#000 55%, transparent);
+  mask-image: linear-gradient(#000 55%, transparent);
+}
+.me-card { padding-top: 34px; }

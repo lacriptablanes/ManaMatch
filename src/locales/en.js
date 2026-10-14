@@ -587,4 +587,8 @@ export default {
   "Torneo One Piece": "One Piece tournament",
   "Noche de juegos de mesa": "Board game night",
   "Liga Lorcana": "Lorcana League",
+  "Imagen de banner": "Banner image",
+  "Imagen de banner (opcional)": "Banner image (optional)",
+  "Te recomendamos una carta de alguno de tus juegos, tu ejército, tu mesa… Las imágenes denunciadas se ocultan.": "We recommend a card from one of your games, your army, your table… Reported images get hidden.",
+  "Sube una imagen de banner": "Upload a banner image",
 };

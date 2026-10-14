@@ -34,7 +34,7 @@ export const TITLES = [
   T('Colección', 'deckbuilder', 'Arquitecto de mazos', 'Añade 6 mazos', (s) => s.decks >= 6),
   T('Colección', 'commander', 'Comandante', 'Juega al formato Commander', (s) => s.formats.includes('Commander')),
   T('Colección', 'pack-hunter', 'Cazador de sobres', 'Juega Draft, Sellado o presentaciones', (s) => s.formats.some((f) => LIMITED.includes(f))),
-  T('Colección', 'stylish', 'Con estilo', 'Elige tu carta favorita', (s) => s.hasFav),
+  T('Colección', 'stylish', 'Con estilo', 'Sube una imagen de banner', (s) => s.hasFav),
 
   T('Estilo de juego', 'competitor', 'Competidor', 'Juega a nivel competitivo', (s) => s.level === 'Competitivo'),
   T('Estilo de juego', 'chill', 'Sin prisas', 'Juega a nivel casual', (s) => s.level === 'Casual'),
