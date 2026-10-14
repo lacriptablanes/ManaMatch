@@ -2396,3 +2396,52 @@ body { background: var(--body-bg); }
 .new-matches { gap: 6px; }
 .nm { width: 70px; flex: none; }
 .nm > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* =====================================================================
+   SÚPER DUELOS
+   ===================================================================== */
+.super-banner {
+  position: absolute; z-index: 5; left: 50%; top: 52px; transform: translateX(-50%); white-space: nowrap; max-width: calc(100% - 24px);
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; overflow: hidden; text-overflow: ellipsis;
+  font-size: 0.76rem; font-weight: 800; color: #171522; background: #C4F56A; box-shadow: 0 6px 14px -8px rgba(0, 0, 0, 0.5);
+  animation: pop 0.5s var(--ease-spring) both;
+}
+.super-banner svg { width: 14px; height: 14px; flex: none; }
+.hand-card { position: relative; }
+.hc-count {
+  position: absolute; top: 6px; right: 6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px;
+  display: grid; place-items: center; font-size: 0.7rem; font-weight: 800; color: #171522; background: #C4F56A;
+}
+.hc-count.empty { background: #F8F7FC; }
+.hc-count.empty::before { content: '+'; margin-right: 1px; }
+.nm { position: relative; }
+.nm-star {
+  position: absolute; top: 0; right: 4px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  color: #171522; background: #C4F56A; box-shadow: 0 0 0 2px var(--bg);
+}
+.nm-star svg { width: 13px; height: 13px; }
+.super-tag {
+  display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding: 2px 8px; border-radius: 999px; vertical-align: middle;
+  font-size: 0.68rem; font-weight: 800; color: #171522; background: #C4F56A;
+}
+.super-tag svg { width: 11px; height: 11px; }
+.super-tag.mini { font-size: 0.62rem; padding: 1px 6px; }
+.shop-sheet .body { display: flex; flex-direction: column; gap: 14px; }
+.shop-hero { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 18px; background: #171522; color: #F8F7FC; }
+.shop-hero p { margin: 0; font-size: 0.85rem; line-height: 1.45; color: #cfcbe0; }
+.shop-hero b { display: block; color: #F8F7FC; font-size: 1rem; margin-bottom: 2px; }
+.shop-star { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; color: #171522; background: #C4F56A; }
+.shop-star svg { width: 24px; height: 24px; }
+.shop-balance { margin: 0; font-weight: 800; }
+.shop-packs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.shop-pack {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 18px 6px 12px; border-radius: 16px;
+  font: inherit; color: var(--text); background: var(--card); border: 1.5px solid var(--border-hi); cursor: pointer;
+}
+.shop-pack b { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+.shop-pack span { font-size: 0.72rem; color: var(--muted); }
+.shop-pack em { margin-top: 6px; font-style: normal; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: var(--hot); color: var(--on-sec); font-size: 0.8rem; }
+.shop-pack:hover { border-color: var(--hot); }
+.shop-tag { position: absolute; top: -9px; padding: 2px 8px; border-radius: 999px; font-size: 0.62rem; font-weight: 800; color: #171522; background: #C4F56A; white-space: nowrap; }
+.shop-sheet .field-hint { display: flex; gap: 6px; align-items: center; }
+.shop-sheet .field-hint svg { width: 14px; height: 14px; }

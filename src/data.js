@@ -14,6 +14,7 @@ export const STORES = [
   { id: 's4', name: 'Meeple & Mana', dist: 3.9, events: 'One Piece lunes · Lorcana sábados' },
 ];
 
+// superLikedYou: te ha retado con un Súper duelo (sale la primera en tu mazo).
 // rel: partidas confirmadas por sus rivales y veces que no se presentó (lo calcula el servidor).
 // Cada jugador tiene su lista de juegos (interests, ids de catalog.js) y un juego principal (game) con su paleta de colores, formatos y mazos.
 // Las cartas son { name, img? }: en Magic la imagen se resuelve por nombre.
@@ -44,7 +45,7 @@ const RAW_PLAYERS = [
     stores: ['s3'], availability: 'Martes y jueves por la tarde', days: ['M', 'J'], slots: ['Tarde'],
   },
   {
-    id: 3, rel: { played: 6, noShow: 0 }, interests: ['pokemon', 'lorcana', 'onepiece'], game: 'pokemon', avatar: 'https://randomuser.me/api/portraits/women/68.jpg', verified: true, name: 'Irene', dist: 2.1,
+    id: 3, superLikedYou: true, rel: { played: 6, noShow: 0 }, interests: ['pokemon', 'lorcana', 'onepiece'], game: 'pokemon', avatar: 'https://randomuser.me/api/portraits/women/68.jpg', verified: true, name: 'Irene', dist: 2.1,
     formats: ['Estándar', 'Prerelease'], colors: ['lightning', 'colorless'], level: 'Casual',
     favCard: { name: 'Pikachu', img: pokeImg('sv3pt5', 25) },
     bio: 'Coleccionista de full arts ✨ Juego la Liga Pokémon de los sábados y me apunto a cualquier prerelease.',
@@ -66,7 +67,7 @@ const RAW_PLAYERS = [
     stores: ['s1', 's2'], availability: 'Viernes noche', days: ['V'], slots: ['Noche'],
   },
   {
-    id: 5, rel: { played: 21, noShow: 1 }, interests: ['magic', 'pokemon', 'fab', 'lorcana', 'swu'], game: 'magic', avatar: 'https://randomuser.me/api/portraits/women/90.jpg', verified: true, name: 'Sara', dist: 1.9,
+    id: 5, superLikedYou: true, rel: { played: 21, noShow: 1 }, interests: ['magic', 'pokemon', 'fab', 'lorcana', 'swu'], game: 'magic', avatar: 'https://randomuser.me/api/portraits/women/90.jpg', verified: true, name: 'Sara', dist: 1.9,
     formats: ['Pauper', 'Draft'], colors: ['R', 'W'], level: 'Casual competitivo',
     favCard: { name: 'Lightning Bolt' },
     bio: 'Pauper es el mejor formato y lo defenderé. Drafteo cada set nuevo.',

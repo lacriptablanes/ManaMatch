@@ -606,6 +606,7 @@ function TableCard({ p, me, leaving, onInfo }) {
       style={{ '--frame': grad, '--glow': glow, transform: LEAVE[leaving] ?? 'perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg))' }}
       onPointerMove={tilt} onPointerLeave={untilt} onPointerCancel={untilt}
     >
+      {p.superLikedYou && <div className="super-banner">{I.star}{t('{name} te ha retado con un Súper duelo', { name: p.name })}</div>}
       <div className="art-frame">
         <img className={`hero-art${imgCls(p.favCard.game, p.favCard)}`} src={artOf(p.favCard.game, p.favCard)} alt={p.favCard.name ? t('Carta {name}', { name: p.favCard.name }) : ''} draggable="false" />
         <div className="foil" />
@@ -1167,7 +1168,7 @@ const HAND = [
   { id: 'super', label: 'Súper duelo', hint: 'reto destacado', icon: I.star },
 ];
 
-function ThrowCard({ card, index, total, disabled, targetRef, onPlay, onTap }) {
+function ThrowCard({ card, index, total, disabled, targetRef, onPlay, onTap, count }) {
   const ref = useRef(null);
   const drag = useRef(null);
   const fan = index - (total - 1) / 2; // posición en el abanico: -1.5 … 1.5
@@ -1234,13 +1235,62 @@ function ThrowCard({ card, index, total, disabled, targetRef, onPlay, onTap }) {
       <span className="hc-frame">
         <span className="hc-gem"><svg className="hc-hex" viewBox="0 0 100 112" aria-hidden="true"><path d={HEX_PHOTO} /></svg>{card.icon}</span>
         <span className="hc-name">{t(card.label)}</span>
+        {count !== undefined && <span className={`hc-count${count ? '' : ' empty'}`}>{count}</span>}
       </span>
     </button>
   );
 }
 
+/* ================= Tienda de súper duelos ================= */
+// Precios de ejemplo: los reales se configuran en Stripe (ver supabase/functions/create-checkout)
+const SUPER_PACKS = [
+  { id: 'pack1', credits: 1, price: '0,99 €' },
+  { id: 'pack5', credits: 5, price: '3,99 €', tag: 'Más elegido' },
+  { id: 'pack15', credits: 15, price: '9,99 €', tag: 'Mejor precio' },
+];
+function SuperShop({ credits, onBuy, onClose }) {
+  const [busy, setBusy] = useState(null);
+  const [error, setError] = useState('');
+  useBack(true, onClose);
+  const buy = async (pack) => {
+    setBusy(pack.id); setError('');
+    try { await onBuy(pack); } catch (err) { setError(err.message || 'No se ha podido iniciar el pago.'); } finally { setBusy(null); }
+  };
+  return createPortal(
+    <>
+      <div className="sheet-bg top" onClick={onClose} />
+      <section className="sheet edit-sheet top shop-sheet" aria-label={t('Súper duelos')}>
+        <header className="sheet-bar">
+          <button className="icon-btn" onClick={onClose} aria-label={t('Cerrar')}>{I.close}</button>
+          <h2>{t('Súper duelos')}</h2>
+          <span style={{ width: 44 }} />
+        </header>
+        <div className="body">
+          <div className="shop-hero">
+            <span className="shop-star">{I.star}</span>
+            <p><b>{t('Sal el primero en su mazo')}</b>{t('Con un Súper duelo apareces antes que nadie a esa persona, con un aviso de que la has retado. En Mensajes se verá marcado.')}</p>
+          </div>
+          <p className="shop-balance">{t('Te quedan {n}', { n: credits })}</p>
+          <div className="shop-packs">
+            {SUPER_PACKS.map((pk) => (
+              <button key={pk.id} type="button" className="shop-pack" disabled={!!busy} onClick={() => buy(pk)}>
+                {pk.tag && <span className="shop-tag">{t(pk.tag)}</span>}
+                <b>{pk.credits}</b><span>{pk.credits === 1 ? t('Súper duelo') : t('Súper duelos')}</span>
+                <em>{busy === pk.id ? t('Abriendo pago…') : pk.price}</em>
+              </button>
+            ))}
+          </div>
+          {error && <p className="upload-error" role="alert">{t(error)}</p>}
+          <p className="field-hint">{I.shield}{t('Pago seguro con Stripe. ManaMatch nunca ve ni guarda los datos de tu tarjeta.')}</p>
+        </div>
+      </section>
+    </>,
+    document.querySelector('.phone') ?? document.body,
+  );
+}
+
 /* ================= Discover ================= */
-function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind }) {
+function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, onNeedCredits }) {
   // Solo jugadores con algún juego en común contigo, ordenados por compatibilidad
   const [leaving, setLeaving] = useState(null);
   const [impact, setImpact] = useState(null);
@@ -1248,13 +1298,15 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind }) {
   const [tapHint, setTapHint] = useState(false);
   const tableRef = useRef(null);
   const impactKey = useRef(0);
+  // Quien te ha retado con un Súper duelo sale siempre el primero (es lo que se paga); después, por compatibilidad
   const list = queue.filter((p) =>
     sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))
-    .sort(byCompat(me));
+    .sort((a, b) => (b.superLikedYou ? 1 : 0) - (a.superLikedYou ? 1 : 0) || byCompat(me)(a, b));
   const [top, next] = list;
 
   // Jugar una carta: impacto sobre el jugador y, después, su salida de la mesa
   const play = (id) => {
+    if (id === 'super' && credits <= 0) { onNeedCredits(); return; }
     setTipSeen(true);
     impactKey.current += 1;
     setImpact({ id, key: impactKey.current });
@@ -1284,7 +1336,8 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind }) {
           {(top || canRewind) && (!tipSeen || tapHint) && <div className="hand-tip" role="status">{I.sword}{t('Arrastra una carta hacia arriba y lánzala')}</div>}
           {HAND.map((c, i) => (
             <ThrowCard
-              key={c.id} card={c} index={i} total={HAND.length} targetRef={tableRef} onPlay={play} onTap={showTapHint}
+              key={c.id} card={c} index={i} total={HAND.length} targetRef={tableRef} onPlay={play}
+              onTap={c.id === 'super' && credits <= 0 ? onNeedCredits : showTapHint} count={c.id === 'super' ? credits : undefined}
               disabled={!!leaving || (c.id === 'rewind' ? !canRewind : !top)}
             />
           ))}
@@ -1356,8 +1409,9 @@ function Matches({ matches, chats, openChat }) {
       <h3 className="section-title">{t('Nuevos rivales')}</h3>
       <div className="new-matches">
         {matches.map((p) => (
-          <button key={p.id} className="nm" onClick={() => openChat(p)}>
-            <Hex src={avatarOf(p)} alt={p.name} size={68} colors={FRAME.list} ring={false} />
+          <button key={p.id} className={`nm${p.superDuel ? ' super' : ''}`} onClick={() => openChat(p)}>
+            <Hex src={avatarOf(p)} alt={p.name} size={68} colors={p.superDuel ? ['#C4F56A'] : FRAME.list} ring={false} />
+            {p.superDuel && <span className="nm-star" aria-label={t('Súper duelo')}>{I.star}</span>}
             <span>{p.name}</span>
           </button>
         ))}
@@ -1370,7 +1424,8 @@ function Matches({ matches, chats, openChat }) {
             <button key={p.id} id={`match-${p.id}`} className="row" onClick={() => openChat(p)}>
               <img loading="lazy" decoding="async" className="avatar" src={avatarOf(p)} alt="" />
               <div className="grow">
-                <div className="title">{p.name} <span className={`mini-game g-${p.favCard.game}`}>{gameIcon(p.favCard.game)}</span></div>
+                <div className="title">{p.name} <span className={`mini-game g-${p.favCard.game}`}>{gameIcon(p.favCard.game)}</span>
+                  {p.superDuel && <span className="super-tag">{I.star}{p.superDuel === 'sent' ? t('Le enviaste un Súper duelo') : t('Te retó con un Súper duelo')}</span>}</div>
                 <div className={`sub ${last ? '' : 'new'}`}>{last ? (last.type === 'meetup' ? `📅 ${t('Partida propuesta')}` : last.text) : t('¡Duelo aceptado! Propón una partida')}</div>
               </div>
               <span className="chev">{I.chevron}</span>
@@ -1435,7 +1490,7 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport, attended, onAtten
         <button id="chat-back" className="icon-btn" onClick={onBack} aria-label={t('Volver')}>{I.back}</button>
         <button className="chat-who" onClick={() => onInfo(p)}>
           <Hex src={avatarOf(p)} alt="" size={46} colors={theirs.list} ring={false} />
-          <div><b>{p.name}</b><span>{gameIcon(game.id)}{p.decks[0]?.name ?? game.name}</span></div>
+          <div><b>{p.name}{p.superDuel && <span className="super-tag mini">{I.star}{t('Súper duelo')}</span>}</b><span>{gameIcon(game.id)}{p.decks[0]?.name ?? game.name}</span></div>
         </button>
         <button id="chat-report" className="icon-btn" onClick={onReport} aria-label={t('Denunciar o bloquear a {name}', { name: p.name })} title={t('Denunciar o bloquear')}>{I.flag}</button>
       </div>
@@ -2347,6 +2402,27 @@ export default function App() {
     else if (fresh.length) { setSeenTitles([...seenTitles, ...fresh]); setAchievements((q) => [...q, ...fresh]); }
   }
 
+  // Súper duelos: saldo. En la demo se guarda en el móvil; con cuenta lo lleva el servidor (tabla super_credits),
+  // que es el único que puede sumar saldo (tras un pago confirmado por Stripe).
+  const [credits, setCredits] = useStoredState('manamatch-super-credits', 1, (v) => (Number.isInteger(v) && v >= 0 ? v : 0));
+  const [shopOpen, setShopOpen] = useState(false);
+  useEffect(() => {
+    if (!supabase || !uid) return;
+    supabase.from('super_credits').select('balance').eq('user_id', uid).maybeSingle()
+      .then(({ data }) => setCredits(data?.balance ?? 0)).catch(() => {});
+  }, [uid, setCredits]);
+  const buySuper = async (pack) => {
+    if (!supabase) {
+      // Demo sin cuenta: se suma sin cobrar para poder probarlo
+      setCredits((c) => c + pack.credits); setShopOpen(false);
+      flash(t('+{n} súper duelos (demo, sin cobro)', { n: pack.credits }), I.star);
+      return;
+    }
+    const { data, error } = await supabase.functions.invoke('create-checkout', { body: { pack: pack.id } });
+    if (error || !data?.url) throw new Error('Los pagos aún no están activados.');
+    window.location.assign(data.url);
+  };
+
   const flash = (text, icon = I.sword) => { setToast({ text, icon }); setTimeout(() => setToast(null), 2200); };
 
   const decide = (p, like, isSuper = false) => {
@@ -2354,11 +2430,14 @@ export default function App() {
     setProfile(null);
     haptic(like ? 15 : 8);
     if (!like) { setPassed((h) => [...h, p]); return; }
-    // Demo: los jugadores competitivos/cercanos aceptan el reto; un súper duelo siempre se acepta
-    if (isSuper || p.dist < 2.5 || p.id % 2 === 0) {
-      setMatches((m) => [p, ...m]);
+    if (isSuper) setCredits((c) => Math.max(0, c - 1));
+    // Duelo marcado como Súper duelo si lo enviaste tú o si te lo enviaron a ti
+    const duel = { ...p, superDuel: isSuper ? 'sent' : p.superLikedYou ? 'received' : null };
+    // Demo: los jugadores competitivos/cercanos aceptan el reto; un súper duelo (o si ya te retó) siempre se acepta
+    if (isSuper || p.superLikedYou || p.dist < 2.5 || p.id % 2 === 0) {
+      setMatches((m) => [duel, ...m]);
       setUnread((u) => u + 1);
-      setMatchFx(p);
+      setMatchFx(duel);
       setTimeout(() => haptic([30, 60, 40]), 300);
     } else flash(t('Has retado a {name}', { name: p.name }));
   };
@@ -2459,7 +2538,7 @@ export default function App() {
             {tab === 'me' && <button id="open-settings" className="icon-btn head-action" onClick={() => setSettingsOpen(true)} aria-label={t('Ajustes')} title={t('Ajustes')}>{I.gear}</button>}
           </header>
         )}
-        {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} />}
+        {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} credits={credits} onNeedCredits={() => setShopOpen(true)} />}
         {tab === 'nearby' && <Nearby players={PLAYERS.filter((p) => notBlocked(p) && sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))} onInfo={setProfile} />}
         {tab === 'chat' && (chatWith
           ? <Chat p={chatWith} me={me} attended={attendance[chatWith.id]} onAttend={(v) => setAttendance((a) => ({ ...a, [chatWith.id]: v }))} msgs={chats[chatWith.id] || []} onSend={(m) => send(chatWith, m)} onBack={() => setChatWith(null)} onInfo={setProfile} onReport={() => setReporting(chatWith)} />
@@ -2547,6 +2626,7 @@ export default function App() {
       {!online && <div className="offline" role="status">{I.wifiOff}{t('Sin conexión: verás lo último que se guardó')}</div>}
       {online && syncFailed && <div className="offline" role="status">{I.alert}{t('No se han podido guardar tus cambios en la cuenta. Lo reintentaremos.')}{typeof syncFailed === 'string' && <small className="sync-detail">{syncFailed}</small>}</div>}
 
+      {shopOpen && <SuperShop credits={credits} onBuy={buySuper} onClose={() => setShopOpen(false)} />}
       {toast && <div className="toast" role="status"><span className="toast-icon">{toast.icon}</span>{toast.text}</div>}
       {achievements[0] && (
         <Achievement key={achievements[0]} id={achievements[0]}
