@@ -567,4 +567,12 @@ export default {
   "1 tienda": "1 tenda",
   "{n} tiendas": "{n} tendas",
   "No hay tiendas en esa distancia. Amplíala para ver más.": "Non hai tendas nesa distancia. Ampliala para ver máis.",
+  "Guardar": "Gardar",
+  "Guardada": "Gardada",
+  "Tienda guardada en tu perfil": "Tenda gardada no teu perfil",
+  "Tienda quitada de tu perfil": "Tenda quitada do teu perfil",
+  "Guarda las tiendas donde juegas desde «Cerca de ti».": "Garda as tendas onde xogas desde «Preto de ti».",
+  "Quitar {name}": "Quitar {name}",
+  "Buscar tiendas cerca": "Buscar tendas preto",
+  "Guárdalas desde «Cerca de ti»": "Gárdaas desde «Preto de ti»",
 };

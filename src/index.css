@@ -2469,3 +2469,16 @@ body { background: var(--body-bg); }
 }
 .radar .ring-label.half { top: 25%; margin-top: -8px; }
 .radar .ring-label.full { top: 0; margin-top: -8px; }
+
+/* Guardar tiendas desde Cerca de ti */
+.store-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none; }
+.save-store {
+  display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 999px; font: inherit; font-size: 0.74rem; font-weight: 800;
+  color: var(--text-2); background: var(--bg3); border: 1px solid transparent; cursor: pointer;
+}
+.save-store svg { width: 13px; height: 13px; }
+.save-store.on { color: var(--on-sec); background: var(--hot); }
+:root[data-theme="light"] .save-store.on { color: #171522; background: var(--lime-soft); border-color: #A9DB4E; }
+.small-icon { width: 34px; height: 34px; }
+.small-icon svg { width: 16px; height: 16px; }
+.add-row { border-style: dashed; }

@@ -567,4 +567,12 @@ export default {
   "1 tienda": "Denda 1",
   "{n} tiendas": "{n} denda",
   "No hay tiendas en esa distancia. Amplíala para ver más.": "Ez dago dendarik distantzia horretan. Handitu gehiago ikusteko.",
+  "Guardar": "Gorde",
+  "Guardada": "Gordeta",
+  "Tienda guardada en tu perfil": "Denda zure profilean gordeta",
+  "Tienda quitada de tu perfil": "Denda zure profiletik kenduta",
+  "Guarda las tiendas donde juegas desde «Cerca de ti».": "Gorde jokatzen duzun dendak «Zure inguruan» ataletik.",
+  "Quitar {name}": "Kendu {name}",
+  "Buscar tiendas cerca": "Bilatu inguruko dendak",
+  "Guárdalas desde «Cerca de ti»": "Gorde «Zure inguruan» ataletik",
 };

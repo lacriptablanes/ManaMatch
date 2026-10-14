@@ -54,6 +54,7 @@ const I = {
   shield: svg(<><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></>),
   search: svg(<><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></>),
   lock: svg(<><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>),
+  bookmark: svg(<path d="M6 3h12v18l-6-4-6 4z" />),
   globe: svg(<><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z" /></>),
   reset: svg(<><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></>),
   palette: svg(<><path d="M12 3a9 9 0 0 0 0 18c1.5 0 2-1 2-2s-1-1.5-1-2.5 1-1.5 2-1.5h2a4 4 0 0 0 4-4c0-4.5-4-8-9-8z" /><circle cx="7.5" cy="11" r="1.2" fill="currentColor" /><circle cx="10" cy="7" r="1.2" fill="currentColor" /><circle cx="15" cy="7.5" r="1.2" fill="currentColor" /></>),
@@ -1365,7 +1366,7 @@ const storePos = (km, i, n, radius) => {
 };
 const RADIUS_STEPS = [1, 2, 5, 10, 25, 50];
 
-function Nearby({ players, me, onRadius, onInfo }) {
+function Nearby({ players, me, onRadius, onToggleStore, onInfo }) {
   const R = me.radius;
   const stores = STORES.filter((st) => st.dist <= R);
   return (
@@ -1415,7 +1416,11 @@ function Nearby({ players, me, onRadius, onInfo }) {
                   <span>{regulars.length === 1 ? t('1 habitual') : t('{n} habituales', { n: regulars.length })}</span>
                 </div>
               </div>
-              <span className="dist">{st.dist} km</span>
+              <div className="store-side">
+                <span className="dist">{st.dist} km</span>
+                <button type="button" className={`save-store${me.stores.includes(st.id) ? ' on' : ''}`} aria-pressed={me.stores.includes(st.id)}
+                  onClick={() => onToggleStore(st.id)}>{me.stores.includes(st.id) ? <>{I.check}{t('Guardada')}</> : <>{I.bookmark}{t('Guardar')}</>}</button>
+              </div>
             </div>
           );
         })}
@@ -1889,7 +1894,7 @@ function DeckSheet({ games, onSave, onClose }) {
 /* ================= My profile ================= */
 const THEMES = [['light', 'Día', I.sun], ['dark', 'Noche', I.moon], ['system', 'Auto', I.auto]];
 
-function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, flash }) {
+function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindStores, flash }) {
   const fav = me.favCard;
   const set = (patch) => setMe((x) => normalizeMe({ ...x, ...(typeof patch === 'function' ? patch(x) : patch) }));
   const [gamesOpen, setGamesOpen] = useState(false);
@@ -2004,17 +2009,20 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, flash }) 
       <ChipPicker options={SLOTS} value={me.slots} onChange={(v) => set({ slots: v })} toggle={(o) => set((x) => ({ slots: toggleIn(x.slots, o) }))} />
 
       <h3 className="section-title">{t('Tiendas habituales')}</h3>
+      {!me.stores.length && <p className="section-hint">{t('Guarda las tiendas donde juegas desde «Cerca de ti».')}</p>}
       <div className="list">
-        {STORES.map((st) => {
-          const on = me.stores.includes(st.id);
-          return (
-            <button type="button" key={st.id} className={`row pick ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => set((x) => ({ stores: toggleIn(x.stores, st.id) }))}>
-              <span className="row-icon">{I.store}</span>
-              <div className="grow"><div className="title">{st.name}</div><div className="sub">{st.dist} km · {t(st.events)}</div></div>
-              <span className="check">{on && I.check}</span>
-            </button>
-          );
-        })}
+        {me.stores.map((id) => STORES.find((st) => st.id === id)).filter(Boolean).map((st) => (
+          <div key={st.id} className="row">
+            <span className="row-icon">{I.store}</span>
+            <div className="grow"><div className="title">{st.name}</div><div className="sub">{st.dist} km · {t(st.events)}</div></div>
+            <button type="button" className="icon-btn small-icon" aria-label={t('Quitar {name}', { name: st.name })} onClick={() => set((x) => ({ stores: x.stores.filter((y) => y !== st.id) }))}>{I.close}</button>
+          </div>
+        ))}
+        <button type="button" id="find-stores" className="row add-row" onClick={onFindStores}>
+          <span className="row-icon">{I.radar}</span>
+          <div className="grow"><div className="title">{t('Buscar tiendas cerca')}</div><div className="sub">{t('Guárdalas desde «Cerca de ti»')}</div></div>
+          <span className="chev">{I.chevron}</span>
+        </button>
       </div>
 
       <h3 className="section-title">{t('Verificación')}</h3>
@@ -2561,7 +2569,12 @@ export default function App() {
           </header>
         )}
         {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} credits={credits} onNeedCredits={() => setShopOpen(true)} />}
-        {tab === 'nearby' && <Nearby players={PLAYERS.filter((p) => notBlocked(p) && sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))} me={me} onRadius={(km) => setMe((x) => ({ ...x, radius: km }))} onInfo={setProfile} />}
+        {tab === 'nearby' && <Nearby players={PLAYERS.filter((p) => notBlocked(p) && sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))} me={me} onRadius={(km) => setMe((x) => ({ ...x, radius: km }))} onInfo={setProfile}
+          onToggleStore={(id) => {
+            const saved = me.stores.includes(id);
+            setMe((x) => ({ ...x, stores: saved ? x.stores.filter((y) => y !== id) : [...x.stores, id].slice(0, 10) }));
+            flash(saved ? t('Tienda quitada de tu perfil') : t('Tienda guardada en tu perfil'), I.store);
+          }} />}
         {tab === 'chat' && (chatWith
           ? <Chat p={chatWith} me={me} attended={attendance[chatWith.id]} onAttend={(v) => setAttendance((a) => ({ ...a, [chatWith.id]: v }))} msgs={chats[chatWith.id] || []} onSend={(m) => send(chatWith, m)} onBack={() => setChatWith(null)} onInfo={setProfile} onReport={() => setReporting(chatWith)} />
           : <Matches matches={visibleMatches} chats={chats} openChat={openChat} />)}
@@ -2569,7 +2582,7 @@ export default function App() {
           <MyProfile
             me={me} setMe={setMe} matchCount={visibleMatches.length} flash={flash}
             stats={myStats}
-            onPhoto={savePhoto} onAddDeck={() => setEditing('deck')}
+            onPhoto={savePhoto} onAddDeck={() => setEditing('deck')} onFindStores={() => setTab('nearby')}
           />
         )}
       </section>

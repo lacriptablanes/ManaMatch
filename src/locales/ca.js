@@ -567,4 +567,12 @@ export default {
   "1 tienda": "1 botiga",
   "{n} tiendas": "{n} botigues",
   "No hay tiendas en esa distancia. Amplíala para ver más.": "No hi ha botigues en aquesta distància. Amplia-la per veure'n més.",
+  "Guardar": "Desa",
+  "Guardada": "Desada",
+  "Tienda guardada en tu perfil": "Botiga desada al teu perfil",
+  "Tienda quitada de tu perfil": "Botiga treta del teu perfil",
+  "Guarda las tiendas donde juegas desde «Cerca de ti».": "Desa les botigues on jugues des de «A prop teu».",
+  "Quitar {name}": "Treu {name}",
+  "Buscar tiendas cerca": "Cerca botigues a prop",
+  "Guárdalas desde «Cerca de ti»": "Desa-les des de «A prop teu»",
 };

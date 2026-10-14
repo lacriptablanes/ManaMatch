@@ -565,4 +565,12 @@ export default {
   "1 tienda": "1 store",
   "{n} tiendas": "{n} stores",
   "No hay tiendas en esa distancia. Amplíala para ver más.": "No stores within that distance. Widen it to see more.",
+  "Guardar": "Save",
+  "Guardada": "Saved",
+  "Tienda guardada en tu perfil": "Store saved to your profile",
+  "Tienda quitada de tu perfil": "Store removed from your profile",
+  "Guarda las tiendas donde juegas desde «Cerca de ti».": "Save the stores where you play from “Near you”.",
+  "Quitar {name}": "Remove {name}",
+  "Buscar tiendas cerca": "Find nearby stores",
+  "Guárdalas desde «Cerca de ti»": "Save them from “Near you”",
 };
