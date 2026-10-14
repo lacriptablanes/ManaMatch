@@ -473,4 +473,9 @@ export default {
   "Próximamente": "Properament",
   "Quitar foto": "Treu la foto",
   "Si no subes foto, se verá un icono genérico. La foto es opcional.": "Si no puges cap foto, es veurà una icona genèrica. La foto és opcional.",
+  "Sobre ti": "Sobre tu",
+  "máx. 160": "màx. 160",
+  "Cambiar foto": "Canvia la foto",
+  "Foto actualizada": "Foto actualitzada",
+  "Foto quitada": "Foto treta",
 };

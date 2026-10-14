@@ -473,4 +473,9 @@ export default {
   "Próximamente": "Laster",
   "Quitar foto": "Kendu argazkia",
   "Si no subes foto, se verá un icono genérico. La foto es opcional.": "Argazkirik igotzen ez baduzu, ikono generiko bat ikusiko da. Argazkia aukerakoa da.",
+  "Sobre ti": "Zuri buruz",
+  "máx. 160": "gehienez 160",
+  "Cambiar foto": "Aldatu argazkia",
+  "Foto actualizada": "Argazkia eguneratuta",
+  "Foto quitada": "Argazkia kenduta",
 };

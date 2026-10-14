@@ -2316,3 +2316,9 @@ body { background: var(--body-bg); }
 :root[data-theme="light"] .rules-dots > .on { background: #A9DB4E; }
 :root[data-theme="light"] .compat-ring { background: conic-gradient(#A9DB4E calc(var(--v) * 1%), var(--bg3) 0); }
 /* Distancia y estado de la tarjeta (como en tu captura) se mantienen en lima */
+
+/* Perfil editable en la propia pantalla */
+.me-form { display: flex; flex-direction: column; gap: 12px; }
+.me-form .field-hint { display: flex; gap: 6px; align-items: center; margin: 0; }
+.me-form .field-hint svg { width: 14px; height: 14px; }
+.photo-remove { display: block; margin: 8px auto 0; }

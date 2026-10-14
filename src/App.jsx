@@ -1651,117 +1651,43 @@ function BootScreen({ error, onRetry }) {
   );
 }
 
-/* ================= Editar perfil ================= */
-function EditProfileSheet({ me, onSave, onClose }) {
-  const [d, setD] = useState(me);
-  // Los cambios se calculan sobre el estado más reciente (patch puede ser una función) para no perder pulsaciones rápidas
-  const set = (patch) => setD((x) => normalizeMe({ ...x, ...(typeof patch === 'function' ? patch(x) : patch) }));
-  const fav = d.favCard;
-  const fileRef = useRef(null);
-
-  const [uploadError, setUploadError] = useState('');
-  const upload = (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    if (!file.type.startsWith('image/')) { setUploadError('Ese archivo no es una imagen.'); return; }
-    if (file.size > 10 * 1024 * 1024) { setUploadError('La foto pesa demasiado (máximo 10 MB).'); return; }
-    setUploadError('');
-    // Reducimos la foto a 320px para que quepa en el almacenamiento del navegador
+/* ================= Utilidades del perfil ================= */
+/* Foto de perfil: se reduce a 320 px y, al redibujarla en un canvas, se eliminan los metadatos (EXIF, incluida la ubicación GPS) */
+function readPhoto(file) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) { reject(new Error('Ese archivo no es una imagen.')); return; }
+    if (file.size > 10 * 1024 * 1024) { reject(new Error('La foto pesa demasiado (máximo 10 MB).')); return; }
     const img = new Image();
     img.onload = () => {
-      const s = 320, c = document.createElement('canvas');
-      const k = Math.max(s / img.width, s / img.height);
-      c.width = s; c.height = s;
-      c.getContext('2d').drawImage(img, (s - img.width * k) / 2, (s - img.height * k) / 2, img.width * k, img.height * k);
-      // Al redibujarla en un canvas se eliminan los metadatos (EXIF), incluida la ubicación GPS de la foto
-      set({ avatar: c.toDataURL('image/jpeg', 0.85) });
+      const size = 320, c = document.createElement('canvas');
+      const k = Math.max(size / img.width, size / img.height);
+      c.width = size; c.height = size;
+      c.getContext('2d').drawImage(img, (size - img.width * k) / 2, (size - img.height * k) / 2, img.width * k, img.height * k);
       URL.revokeObjectURL(img.src);
+      resolve(c.toDataURL('image/jpeg', 0.85));
     };
-    img.onerror = () => { setUploadError('No se ha podido leer la imagen.'); URL.revokeObjectURL(img.src); };
+    img.onerror = () => { URL.revokeObjectURL(img.src); reject(new Error('No se ha podido leer la imagen.')); };
     img.src = URL.createObjectURL(file);
-  };
+  });
+}
 
-  const bioFlag = checkMessage(d.bio) === 'conduct' ? 'conduct' : null;
-  const age = ageFrom(d.birthDate);
-  const ageOk = age !== null && age >= 18 && age <= 99;
-  const valid = d.name.trim() && ageOk && !bioFlag;
+/* Campo de texto que se guarda al salir de él (o con Intro). `check` devuelve un error para no guardar. */
+function InlineField({ id, value, onCommit, check, multiline, ...rest }) {
+  const [draft, setDraft] = useState(value);
+  const [err, setErr] = useState(null);
+  const [prev, setPrev] = useState(value);
+  if (prev !== value) { setPrev(value); setDraft(value); }
+  const commit = () => {
+    const e = check?.(draft) ?? null;
+    setErr(e);
+    if (!e && draft !== value) onCommit(draft);
+  };
+  const Tag = multiline ? 'textarea' : 'input';
   return (
     <>
-      <div className="sheet-bg" onClick={onClose} />
-      <section className="sheet edit-sheet" aria-label={t('Editar perfil')}>
-        <header className="sheet-bar">
-          <button className="icon-btn" onClick={onClose} aria-label={t('Cerrar')}>{I.close}</button>
-          <h2>{t('Editar perfil')}</h2>
-          <span style={{ width: 44 }} />
-        </header>
-        <div className="body form">
-          <div className="photo-edit">
-            <Hex src={myAvatar(d)} alt={t('Tu imagen')} size={96} colors={['#8B5CF6']} ring={false} />
-            <div className="photo-actions">
-              <span className="photo-hint">{t('Si no subes foto, se verá un icono genérico. La foto es opcional.')}</span>
-              <button type="button" id="upload-photo" className="ghost small" onClick={() => fileRef.current.click()}>{I.camera}{t('Subir foto')}</button>
-              {d.avatar && <button type="button" className="link-btn" onClick={() => set({ avatar: '' })}>{t('Quitar foto')}</button>}
-              <input ref={fileRef} type="file" accept="image/*" hidden onChange={upload} />
-              {uploadError && <span className="upload-error" role="alert">{t(uploadError)}</span>}
-            </div>
-          </div>
-
-          <label>{t('Nombre de jugador')}<input id="edit-name" value={d.name} maxLength={24} onChange={(e) => set({ name: e.target.value })} /></label>
-          {!d.name.trim() && <p className="upload-error" role="alert">{t('Escribe un nombre de jugador.')}</p>}
-          <label>{t('Fecha de nacimiento')}<input id="edit-birth" type="date" max={maxBirthDate()} value={d.birthDate} onChange={(e) => set({ birthDate: e.target.value })} /></label>
-          {d.birthDate && !ageOk && <p className="upload-error" role="alert">{age < 18 ? t('ManaMatch es solo para mayores de 18.') : t('Revisa la fecha de nacimiento.')}</p>}
-          <AgeNotice />
-          <label>
-            <span className="label-row">{t('Sobre ti como jugador')} <small>{d.bio.length}/160</small></span>
-            <textarea id="edit-bio" rows="3" maxLength={160} value={d.bio} placeholder={t('Qué juegas, qué buscas en una mesa…')} onChange={(e) => set({ bio: e.target.value })} />
-          </label>
-          <ModNote kind={bioFlag} />
-
-          <fieldset><legend>{t('Nivel de juego')}</legend>
-            <Segmented name={t('Nivel')} value={d.level} onChange={(v) => set({ level: v })} options={LEVELS.map((l) => [l, t(l)])} />
-          </fieldset>
-
-          <fieldset><legend>{t('Formatos')}</legend>
-            <ChipPicker options={formatOptions(d.interests)} value={d.formats} onChange={(v) => set({ formats: v })} toggle={(o) => set((x) => ({ formats: toggleIn(x.formats, o) }))} />
-          </fieldset>
-
-          <fieldset><legend>{t('Carta favorita')}</legend>
-            {d.interests.length > 1 && (
-              <label className="inline-field">{t('Juego')}
-                <GameSelect id="edit-fav-game" games={d.interests} value={fav.game} onChange={(g) => set({ favCard: { game: g, name: '' } })} />
-              </label>
-            )}
-            <CardField key={fav.game} id="edit-fav" game={fav.game} value={fav} onChange={(c) => set({ favCard: { ...c, game: fav.game } })} />
-            <div className={`fav-preview g-${fav.game}`}><img className={imgCls(fav.game, fav).trim()} src={artOf(fav.game, fav)} alt="" /><span>{fav.name || GAMES[fav.game].name}</span></div>
-          </fieldset>
-
-          <fieldset><legend>{t('Disponibilidad')}</legend>
-            <div className="days">
-              {DAYS.map(([k, full]) => <button type="button" key={k} title={t(full)} aria-label={t(full)} aria-pressed={d.days.includes(k)} className={`day ${d.days.includes(k) ? 'on' : ''}`} onClick={() => set((x) => ({ days: toggleIn(x.days, k) }))}>{t(k)}</button>)}
-            </div>
-            <ChipPicker options={SLOTS} value={d.slots} onChange={(v) => set({ slots: v })} toggle={(o) => set((x) => ({ slots: toggleIn(x.slots, o) }))} />
-          </fieldset>
-
-          <fieldset><legend>{t('Tiendas habituales')}</legend>
-            <div className="list">
-              {STORES.map((s) => {
-                const on = d.stores.includes(s.id);
-                return (
-                  <button type="button" key={s.id} className={`row pick ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => set((x) => ({ stores: toggleIn(x.stores, s.id) }))}>
-                    <span className="row-icon">{I.store}</span>
-                    <div className="grow"><div className="title">{s.name}</div><div className="sub">{s.dist} km · {t(s.events)}</div></div>
-                    <span className="check">{on && I.check}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
-        </div>
-        <div className="sheet-cta">
-          <button id="save-profile" className="primary" disabled={!valid} onClick={() => onSave({ ...d, name: d.name.trim() })}>{I.check}{t('Guardar cambios')}</button>
-        </div>
-      </section>
+      <Tag id={id} value={draft} {...rest} onChange={(e) => { setDraft(e.target.value); if (err) setErr(null); }} onBlur={commit}
+        onKeyDown={(e) => { if (e.key === 'Enter' && !multiline) e.currentTarget.blur(); }} />
+      {err && (err === 'conduct' ? <ModNote kind="conduct" /> : <p className="upload-error" role="alert">{t(err)}</p>)}
     </>
   );
 }
@@ -1806,19 +1732,29 @@ function DeckSheet({ games, onSave, onClose }) {
 /* ================= My profile ================= */
 const THEMES = [['light', 'Día', I.sun], ['dark', 'Noche', I.moon], ['system', 'Auto', I.auto]];
 
-function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
+function MyProfile({ me, setMe, matchCount, onPhoto, onAddDeck, flash }) {
   const fav = me.favCard;
+  const set = (patch) => setMe((x) => normalizeMe({ ...x, ...(typeof patch === 'function' ? patch(x) : patch) }));
   const [gamesOpen, setGamesOpen] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+  const fileRef = useRef(null);
+  const pickPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try { setPhotoError(''); onPhoto(await readPhoto(file)); } catch (err) { setPhotoError(err.message); }
+  };
   const dayNames = DAYS.filter(([k]) => me.days.includes(k)).map(([, n]) => t(n).slice(0, 3)).join(', ');
   return (
     <>
+      {/* Así te ven los demás */}
       <div className={`me-card g-${fav.game}`}>
         <img className={`me-cover${imgCls(fav.game, fav)}`} src={artOf(fav.game, fav)} alt="" />
-        <button id="edit-profile" className="icon-btn glass me-edit" aria-label={t('Editar perfil')} onClick={onEdit}>{I.edit}</button>
-        <button className="me-photo" onClick={onEdit} aria-label={t('Cambiar imagen')}>
+        <button id="edit-photo" className="me-photo" onClick={() => fileRef.current.click()} aria-label={t('Cambiar foto')}>
           <Hex src={myAvatar(me)} size={108} badge={me.formats[0] && t(me.formats[0])} colors={['#8B5CF6']} />
           <span className="cam">{I.camera}</span>
         </button>
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickPhoto} />
         <h2 className="me-name">{me.name}</h2>
         <div className="me-sub">{t(me.level)}</div>
         {fav.name && <div className="me-fav">{gameIcon(fav.game)}{fav.name}</div>}
@@ -1830,7 +1766,27 @@ function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
           <div><b>{me.stores.length}</b><span>{t('Tiendas')}</span></div>
         </div>
       </div>
-      <button className="primary edit-cta" onClick={onEdit}>{I.edit}{t('Editar perfil')}</button>
+      {photoError && <p className="upload-error" role="alert">{t(photoError)}</p>}
+      {me.avatar && <button type="button" className="link-btn photo-remove" onClick={() => onPhoto('')}>{t('Quitar foto')}</button>}
+
+      <h3 className="section-title">{t('Sobre ti')}</h3>
+      <div className="panel form me-form">
+        <label>{t('Nombre de jugador')}
+          <InlineField id="me-name" value={me.name} maxLength={24} autoComplete="nickname"
+            check={(v) => (v.trim() ? null : 'Escribe un nombre de jugador.')} onCommit={(v) => set({ name: v.trim() })} />
+        </label>
+        <label>
+          <span className="label-row">{t('Sobre ti como jugador')} <small>{t('máx. 160')}</small></span>
+          <InlineField id="me-bio" multiline rows="3" maxLength={160} value={me.bio} placeholder={t('Qué juegas, qué buscas en una mesa…')}
+            check={(v) => (checkMessage(v) === 'conduct' ? 'conduct' : null)} onCommit={(v) => set({ bio: v })} />
+        </label>
+        <label>{t('Fecha de nacimiento')}
+          <InlineField id="me-birth" type="date" max={maxBirthDate()} value={me.birthDate}
+            check={(v) => { const a = ageFrom(v); return a === null || a > 99 ? 'Revisa la fecha de nacimiento.' : a < 18 ? 'ManaMatch es solo para mayores de 18.' : null; }}
+            onCommit={(v) => set({ birthDate: v })} />
+        </label>
+        <p className="field-hint">{I.eye}{t('Tu edad no se muestra nunca.')}</p>
+      </div>
 
       <h3 className="section-title">{t('Mis juegos')}<small className="title-note">{me.interests.length}/{MAX_GAMES}</small></h3>
       <div className="tags">
@@ -1839,13 +1795,24 @@ function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
       </div>
       {gamesOpen && (
         <GamesSheet value={me.interests} onClose={() => setGamesOpen(false)}
-          onSave={(v) => { setMe((x) => normalizeMe({ ...x, interests: v })); flash(t('Juegos actualizados'), I.check); }} />
+          onSave={(v) => { set({ interests: v }); flash(t('Juegos actualizados'), I.check); }} />
       )}
 
-      {me.formats.length > 0 && <>
-        <h3 className="section-title">{t('Formatos')}</h3>
-        <div className="tags">{me.formats.map((f) => <span key={f} className="tag">{t(f)}</span>)}</div>
-      </>}
+      <h3 className="section-title">{t('Nivel de juego')}</h3>
+      <Segmented name={t('Nivel')} value={me.level} onChange={(v) => set({ level: v })} options={LEVELS.map((l) => [l, t(l)])} />
+
+      <h3 className="section-title">{t('Formatos')}</h3>
+      <ChipPicker options={formatOptions(me.interests)} value={me.formats} onChange={(v) => set({ formats: v })} toggle={(o) => set((x) => ({ formats: toggleIn(x.formats, o) }))} />
+
+      <h3 className="section-title">{t('Carta favorita')}</h3>
+      <div className="panel form me-form">
+        {me.interests.length > 1 && (
+          <label className="inline-field">{t('Juego')}
+            <GameSelect id="me-fav-game" games={me.interests} value={fav.game} onChange={(g) => set({ favCard: { game: g, name: '' } })} />
+          </label>
+        )}
+        <CardField key={fav.game} id="me-fav" game={fav.game} value={fav} onChange={(c) => set({ favCard: { ...c, game: fav.game } })} />
+      </div>
 
       <h3 className="section-title">{t('Mis mazos')}</h3>
       <div className="decks">
@@ -1853,11 +1820,31 @@ function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
           <div key={d.id ?? d.name} className="deck-card">
             <img loading="lazy" decoding="async" className={imgCls(d.game, d.card).trim()} src={artOf(d.game, d.card)} alt="" />
             <span className="deck-format">{t(d.format)}</span>
-            <button className="deck-del" aria-label={t('Borrar {name}', { name: d.name })} onClick={() => setMe((x) => ({ ...x, decks: x.decks.filter((y) => y !== d) }))}>{I.trash}</button>
+            <button className="deck-del" aria-label={t('Borrar {name}', { name: d.name })} onClick={() => set((x) => ({ decks: x.decks.filter((y) => y !== d) }))}>{I.trash}</button>
             <div><b>{d.name}</b><small>{GAMES[d.game].name}</small></div>
           </div>
         ))}
         <button id="add-deck" className="deck-card add" onClick={onAddDeck}><span className="add-icon">{I.plus}</span>{t('Añadir mazo')}<small>{t('De cualquiera de tus juegos')}</small></button>
+      </div>
+
+      <h3 className="section-title">{t('Disponibilidad')}</h3>
+      <div className="days">
+        {DAYS.map(([k, full]) => <button type="button" key={k} title={t(full)} aria-label={t(full)} aria-pressed={me.days.includes(k)} className={`day ${me.days.includes(k) ? 'on' : ''}`} onClick={() => set((x) => ({ days: toggleIn(x.days, k) }))}>{t(k)}</button>)}
+      </div>
+      <ChipPicker options={SLOTS} value={me.slots} onChange={(v) => set({ slots: v })} toggle={(o) => set((x) => ({ slots: toggleIn(x.slots, o) }))} />
+
+      <h3 className="section-title">{t('Tiendas habituales')}</h3>
+      <div className="list">
+        {STORES.map((st) => {
+          const on = me.stores.includes(st.id);
+          return (
+            <button type="button" key={st.id} className={`row pick ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => set((x) => ({ stores: toggleIn(x.stores, st.id) }))}>
+              <span className="row-icon">{I.store}</span>
+              <div className="grow"><div className="title">{st.name}</div><div className="sub">{st.dist} km · {t(st.events)}</div></div>
+              <span className="check">{on && I.check}</span>
+            </button>
+          );
+        })}
       </div>
 
       <h3 className="section-title">{t('Verificación')}</h3>
@@ -2171,7 +2158,7 @@ export default function App() {
   const [matchFx, setMatchFx] = useState(null);
   const [chatWith, setChatWith] = useState(null);
   const [toast, setToast] = useState(null);
-  const [editing, setEditing] = useState(null); // 'profile' | 'deck'
+  const [editing, setEditing] = useState(null); // 'deck'
   const [reporting, setReporting] = useState(null);
   const [blocking, setBlocking] = useState(null);
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -2294,15 +2281,18 @@ export default function App() {
   const openChat = (p) => { setChatWith(p); setTab('chat'); setMatchFx(null); setUnread(0); };
   const inChat = tab === 'chat' && chatWith;
 
-  // Al guardar la edición, la foto nueva se sube a la cuenta y la anterior se borra
-  const saveProfile = async (v) => {
-    setEditing(null);
-    let next = v;
-    if (uid && v.avatar.startsWith('data:')) {
-      try { next = { ...v, avatar: await uploadAvatar(uid, v.avatar) }; } catch (err) { console.error('ManaMatch: foto', err); next = { ...v, avatar: me.avatar }; flash(`${t('No se ha podido subir la foto')}${err?.message ? `: ${err.message}` : ''}`, I.alert); }
-    } else if (uid && !v.avatar && isAvatarPath(me.avatar)) removeAvatars(uid).catch(() => {});
-    setMe(next);
-    flash(t('Perfil actualizado'), I.check);
+  // Foto de perfil: la nueva se sube a la cuenta y la anterior se borra ('' = quitar la foto)
+  const savePhoto = async (dataUrl) => {
+    let avatar = dataUrl;
+    if (uid && dataUrl) {
+      try { avatar = await uploadAvatar(uid, dataUrl); } catch (err) {
+        console.error('ManaMatch: foto', err);
+        flash(`${t('No se ha podido subir la foto')}${err?.message ? `: ${err.message}` : ''}`, I.alert);
+        return;
+      }
+    } else if (uid && !dataUrl && isAvatarPath(me.avatar)) removeAvatars(uid).catch(() => {});
+    setMe((x) => ({ ...x, avatar }));
+    flash(dataUrl ? t('Foto actualizada') : t('Foto quitada'), I.check);
   };
   const createProfile = async (draft) => {
     if (hasLocalCardImages(draft)) draft = replaceUploads(draft, await uploadCardImages(uid, draft));
@@ -2368,7 +2358,7 @@ export default function App() {
         {tab === 'me' && (
           <MyProfile
             me={me} setMe={setMe} matchCount={visibleMatches.length} flash={flash}
-            onEdit={() => setEditing('profile')} onAddDeck={() => setEditing('deck')}
+            onPhoto={savePhoto} onAddDeck={() => setEditing('deck')}
           />
         )}
       </section>
@@ -2393,7 +2383,6 @@ export default function App() {
         />
       )}
 
-      {editing === 'profile' && <EditProfileSheet me={me} onClose={() => setEditing(null)} onSave={saveProfile} />}
       {editing === 'deck' && <DeckSheet games={me.interests} onClose={() => setEditing(null)} onSave={(d) => { addDeck(d); setEditing(null); flash(t('Mazo «{name}» añadido', { name: d.name }), I.plus); }} />}
 
       {matchFx && (

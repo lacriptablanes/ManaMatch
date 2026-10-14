@@ -473,4 +473,9 @@ export default {
   "Próximamente": "Proximamente",
   "Quitar foto": "Quitar foto",
   "Si no subes foto, se verá un icono genérico. La foto es opcional.": "Se non subes foto, verase unha icona xenérica. A foto é opcional.",
+  "Sobre ti": "Sobre ti",
+  "máx. 160": "máx. 160",
+  "Cambiar foto": "Cambiar foto",
+  "Foto actualizada": "Foto actualizada",
+  "Foto quitada": "Foto quitada",
 };

@@ -471,4 +471,9 @@ export default {
   "Próximamente": "Coming soon",
   "Quitar foto": "Remove photo",
   "Si no subes foto, se verá un icono genérico. La foto es opcional.": "If you don't upload a photo, a generic icon is shown. The photo is optional.",
+  "Sobre ti": "About you",
+  "máx. 160": "max. 160",
+  "Cambiar foto": "Change photo",
+  "Foto actualizada": "Photo updated",
+  "Foto quitada": "Photo removed",
 };
