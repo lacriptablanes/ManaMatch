@@ -2532,3 +2532,11 @@ body { background: var(--body-bg); }
   mask-image: linear-gradient(#000 55%, transparent);
 }
 .me-card { padding-top: 34px; }
+
+/* Tienda que te ha verificado: check sobre su icono */
+.row-icon { position: relative; }
+.store-check {
+  position: absolute; right: -5px; bottom: -5px; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+  color: #fff; background: var(--brand); box-shadow: 0 0 0 2px var(--card);
+}
+.store-check svg { width: 11px; height: 11px; stroke-width: 3; }

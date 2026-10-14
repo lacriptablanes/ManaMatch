@@ -80,6 +80,7 @@ export async function loadMe(uid) {
     days: p.days, slots: p.slots, stores: p.store_ids,
     interests: p.interests?.length ? p.interests : [p.active_game],
     level: p.level, formats: p.formats ?? [], title: p.title ?? '',
+    verifiedStore: p.verified_store_id ?? null, // solo lectura: lo pone el servidor
     favCard: { ...(p.fav_card ?? {}), game: p.fav_card?.game ?? p.active_game },
     decks: decks.data.map((d) => ({ id: d.id, game: d.game, name: d.name, format: d.format, card: d.card })),
     birthDate: priv.data.birth_date,

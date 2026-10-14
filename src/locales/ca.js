@@ -593,4 +593,6 @@ export default {
   "Imagen de banner (opcional)": "Imatge de bàner (opcional)",
   "Te recomendamos una carta de alguno de tus juegos, tu ejército, tu mesa… Las imágenes denunciadas se ocultan.": "Et recomanem una carta d'algun dels teus jocs, el teu exèrcit, la teva taula… Les imatges denunciades s'amaguen.",
   "Sube una imagen de banner": "Puja una imatge de bàner",
+  "Esta tienda te ha verificado en persona": "Aquesta botiga t'ha verificat en persona",
+  "Ha verificado a {name} en persona": "Ha verificat {name} en persona",
 };

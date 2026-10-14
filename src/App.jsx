@@ -88,6 +88,7 @@ const DEFAULT_ME = {
   ],
   bio: 'Jugador de cartas de toda la vida. Busco mesa fija entre semana y algún torneo de tienda.',
   stores: ['s1'], days: ['X', 'V'], slots: ['Tarde'],
+  verifiedStore: 's1', // demo: Dragón Rojo Games te ha verificado
   radius: 5, onlyVerified: false,
   showDistance: true, visible: true,
   notif: { matches: true, messages: true, events: false },
@@ -133,6 +134,7 @@ function normalizeMe(me) {
     ...me,
     level: LEVELS.includes(me.level) ? me.level : 'Casual',
     title: TITLES.some((x) => x.id === me.title) ? me.title : '',
+    verifiedStore: typeof me.verifiedStore === 'string' ? me.verifiedStore : null,
     // Solo formatos de tus juegos (si quitas un juego, sus formatos desaparecen)
     formats: Array.isArray(me.formats) ? me.formats.filter((f) => formatOptions(me.interests).includes(f)).slice(0, 20) : [],
     favCard,
@@ -315,6 +317,14 @@ function useCardSuggest(game, q) {
 
 /* ---------- Utilidades por juego ---------- */
 const storeName = (id) => STORES.find((s) => s.id === id)?.name;
+// Tienda que ha verificado en persona a un jugador (la marca el personal de la tienda, nunca el jugador)
+const verifiedStoreOf = (p) => p.verifiedStore ?? (p.verified ? p.stores?.[0] : null) ?? null;
+/* Icono de tienda; si esa tienda te ha verificado, lleva un check */
+const StoreIcon = ({ verified, title }) => (
+  <span className={`row-icon${verified ? ' store-verified' : ''}`} title={verified ? title : undefined}>
+    {I.store}{verified && <span className="store-check" aria-label={title}>{I.check}</span>}
+  </span>
+);
 // Imágenes denunciadas por ti o por varias personas: se sustituyen por la imagen por defecto del juego
 const hiddenImgs = new Set();
 const isHidden = (card) => !!card?.upload && hiddenImgs.has(card.upload);
@@ -677,7 +687,7 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock
             </div>
           </div>
           <div className="info-pills">
-            {p.verified && <span className="info-pill ok">{I.shield}{storeName(p.stores[0]) ? t('Verificado en {store}', { store: storeName(p.stores[0]) }) : t('Verificado')}</span>}
+            {p.verified && <span className="info-pill ok">{I.shield}{storeName(verifiedStoreOf(p)) ? t('Verificado en {store}', { store: storeName(verifiedStoreOf(p)) }) : t('Verificado')}</span>}
             <RelBadge p={p} />
             <span className="info-pill">{I.pin}{fuzzyDist(p.dist)}</span>
             {p.availability && <span className="info-pill">{I.clock}{t(p.availability)}</span>}
@@ -719,7 +729,7 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock
             {stores.map((s) => {
               return (
                 <div key={s.id} className="row">
-                  <span className="row-icon">{I.store}</span>
+                  <StoreIcon verified={verifiedStoreOf(p) === s.id} title={t('Ha verificado a {name} en persona', { name: p.name })} />
                   <div className="grow"><div className="title">{s.name}</div><div className="sub">{t(s.events)}</div></div>
                   <span className="dist">{s.dist} km</span>
                 </div>
@@ -2098,7 +2108,7 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
       <div className="list">
         {me.stores.map((id) => STORES.find((st) => st.id === id)).filter(Boolean).map((st) => (
           <div key={st.id} className="row store-row" role="button" tabIndex={0} onClick={() => onStore(st.id)} onKeyDown={(e) => { if (e.key === 'Enter') onStore(st.id); }}>
-            <span className="row-icon">{I.store}</span>
+            <StoreIcon verified={me.verifiedStore === st.id} title={t('Esta tienda te ha verificado en persona')} />
             <div className="grow"><div className="title">{st.name}</div><div className="sub">{st.dist} km · {t(st.events)}</div></div>
             <button type="button" className="icon-btn small-icon" aria-label={t('Quitar {name}', { name: st.name })} onClick={(e) => { e.stopPropagation(); set((x) => ({ stores: x.stores.filter((y) => y !== st.id) })); }}>{I.close}</button>
           </div>

@@ -591,4 +591,6 @@ export default {
   "Imagen de banner (opcional)": "Banner image (optional)",
   "Te recomendamos una carta de alguno de tus juegos, tu ejército, tu mesa… Las imágenes denunciadas se ocultan.": "We recommend a card from one of your games, your army, your table… Reported images get hidden.",
   "Sube una imagen de banner": "Upload a banner image",
+  "Esta tienda te ha verificado en persona": "This store verified you in person",
+  "Ha verificado a {name} en persona": "Verified {name} in person",
 };

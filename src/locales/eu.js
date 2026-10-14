@@ -593,4 +593,6 @@ export default {
   "Imagen de banner (opcional)": "Banner-irudia (aukerakoa)",
   "Te recomendamos una carta de alguno de tus juegos, tu ejército, tu mesa… Las imágenes denunciadas se ocultan.": "Zure jokoren bateko karta bat, zure armada, zure mahaia… gomendatzen dizugu. Salatutako irudiak ezkutatu egiten dira.",
   "Sube una imagen de banner": "Igo banner-irudi bat",
+  "Esta tienda te ha verificado en persona": "Denda honek aurrez aurre egiaztatu zaitu",
+  "Ha verificado a {name} en persona": "{name} aurrez aurre egiaztatu du",
 };
