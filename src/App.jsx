@@ -55,6 +55,7 @@ const I = {
   search: svg(<><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></>),
   lock: svg(<><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>),
   bookmark: svg(<path d="M6 3h12v18l-6-4-6 4z" />),
+  map: svg(<><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z" /><path d="M9 4v14M15 6v14" /></>),
   globe: svg(<><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z" /></>),
   reset: svg(<><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></>),
   palette: svg(<><path d="M12 3a9 9 0 0 0 0 18c1.5 0 2-1 2-2s-1-1.5-1-2.5 1-1.5 2-1.5h2a4 4 0 0 0 4-4c0-4.5-4-8-9-8z" /><circle cx="7.5" cy="11" r="1.2" fill="currentColor" /><circle cx="10" cy="7" r="1.2" fill="currentColor" /><circle cx="15" cy="7.5" r="1.2" fill="currentColor" /></>),
@@ -1366,7 +1367,7 @@ const storePos = (km, i, n, radius) => {
 };
 const RADIUS_STEPS = [1, 2, 5, 10, 25, 50];
 
-function Nearby({ players, me, onRadius, onToggleStore, onInfo }) {
+function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore }) {
   const R = me.radius;
   const stores = STORES.filter((st) => st.dist <= R);
   return (
@@ -1395,7 +1396,7 @@ function Nearby({ players, me, onRadius, onToggleStore, onInfo }) {
             <span className={`dot-game g-${p.favCard.game}`}>{gameIcon(p.favCard.game)}</span>
           </button>
         ))}
-        {stores.map((st, i) => <span key={st.id} className="shop" title={st.name} style={storePos(st.dist, i, stores.length, R)}>{I.store}</span>)}
+        {stores.map((st, i) => <button type="button" key={st.id} className="shop" title={st.name} aria-label={st.name} style={storePos(st.dist, i, stores.length, R)} onClick={() => onStore(st.id)}>{I.store}</button>)}
       </div>
       <div className="legend"><span><i className="lg-player" />{t('Jugadores (zona aproximada)')}</span><span><i className="lg-store" />{t('Tiendas')}</span></div>
       <p className="privacy-note">{I.shield}{t('Por tu seguridad, nunca mostramos dónde está un jugador: solo su rango de distancia.')}</p>
@@ -1406,7 +1407,8 @@ function Nearby({ players, me, onRadius, onToggleStore, onInfo }) {
         {stores.map((st) => {
           const regulars = players.filter((p) => p.stores.includes(st.id));
           return (
-            <div key={st.id} className="row">
+            <div key={st.id} className="row store-row" role="button" tabIndex={0} onClick={() => onStore(st.id)}
+              onKeyDown={(e) => { if (e.key === 'Enter') onStore(st.id); }}>
               <span className="row-icon">{I.store}</span>
               <div className="grow">
                 <div className="title">{st.name}</div>
@@ -1419,12 +1421,83 @@ function Nearby({ players, me, onRadius, onToggleStore, onInfo }) {
               <div className="store-side">
                 <span className="dist">{st.dist} km</span>
                 <button type="button" className={`save-store${me.stores.includes(st.id) ? ' on' : ''}`} aria-pressed={me.stores.includes(st.id)}
-                  onClick={() => onToggleStore(st.id)}>{me.stores.includes(st.id) ? <>{I.check}{t('Guardada')}</> : <>{I.bookmark}{t('Guardar')}</>}</button>
+                  onClick={(e) => { e.stopPropagation(); onToggleStore(st.id); }}>{me.stores.includes(st.id) ? <>{I.check}{t('Guardada')}</> : <>{I.bookmark}{t('Guardar')}</>}</button>
               </div>
             </div>
           );
         })}
       </div>
+    </>
+  );
+}
+
+/* ================= Ficha de una tienda ================= */
+function StoreSheet({ store: st, me, players, saved, onToggle, onInfo, onClose }) {
+  const dayName = (k) => t(DAYS.find(([d]) => d === k)?.[1] ?? k);
+  const regulars = players.filter((p) => p.stores.includes(st.id));
+  const order = DAYS.map(([d]) => d);
+  const schedule = [...(st.schedule ?? [])].sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
+  const myGames = (st.games ?? []).filter((g) => me.interests.includes(g));
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${st.name} ${st.address ?? ''}`)}`;
+  return (
+    <>
+      <div className="sheet-bg" onClick={onClose} />
+      <section className="sheet store-sheet" aria-label={st.name}>
+        <button className="icon-btn glass close" onClick={onClose} aria-label={t('Cerrar')}>{I.close}</button>
+        <div className="sheet-scroll">
+          <div className="store-hero">
+            <span className="store-hero-ico">{I.store}</span>
+            <span className="sheet-handle" />
+          </div>
+          <div className="body">
+            <h2 className="sheet-name">{st.name}</h2>
+            <div className="info-pills">
+              <span className="info-pill">{I.pin}{st.dist} km</span>
+              {st.hours && <span className="info-pill">{I.clock}{st.hours}</span>}
+            </div>
+            {st.address && <p className="store-address">{I.map}{st.address}</p>}
+            <div className="btn-row store-actions">
+              <button type="button" className={`ghost small save-store${saved ? ' on' : ''}`} aria-pressed={saved} onClick={onToggle}>
+                {saved ? <>{I.check}{t('Guardada')}</> : <>{I.bookmark}{t('Guardar')}</>}
+              </button>
+              <a className="ghost small" href={mapsUrl} target="_blank" rel="noopener noreferrer">{I.map}{t('Cómo llegar')}</a>
+            </div>
+
+            {schedule.length > 0 && <>
+              <h3 className="section-title">{t('Eventos de la semana')}</h3>
+              <div className="list">
+                {schedule.map(([day, hour, name, game]) => (
+                  <div key={day + hour + name} className={`row event-row${me.interests.includes(game) ? ' mine' : ''}`}>
+                    <span className="event-day"><b>{dayName(day).slice(0, 3)}</b><small>{hour}</small></span>
+                    <div className="grow"><div className="title">{t(name)}</div><div className="sub">{gameIcon(game)}{GAMES[game]?.name ?? gameName(game)}</div></div>
+                    {me.interests.includes(game) && <span className="event-mine">{t('Tu juego')}</span>}
+                  </div>
+                ))}
+              </div>
+            </>}
+
+            {st.games?.length > 0 && <>
+              <h3 className="section-title">{t('Se juega a')}{myGames.length > 0 && <small className="title-note">{t('{n} de tus juegos', { n: myGames.length })}</small>}</h3>
+              <div className="tags">
+                {st.games.map((g) => <span key={g} className={`tag interest${me.interests.includes(g) ? ' on' : ''}`}>{me.interests.includes(g) && I.check}{gameName(g)}</span>)}
+              </div>
+            </>}
+
+            <h3 className="section-title">{t('Jugadores habituales')}</h3>
+            {regulars.length ? (
+              <div className="new-matches">
+                {regulars.map((p) => (
+                  <button key={p.id} className="nm" onClick={() => onInfo(p)}>
+                    <Hex src={avatarOf(p)} alt={p.name} size={60} colors={FRAME.list} ring={false} />
+                    <span>{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            ) : <p className="section-hint">{t('Aún no hay jugadores con tus juegos que la tengan como habitual.')}</p>}
+            <p className="field-hint">{I.shield}{t('Las partidas se proponen solo en tiendas: siempre en un sitio público.')}</p>
+          </div>
+        </div>
+      </section>
     </>
   );
 }
@@ -1894,7 +1967,7 @@ function DeckSheet({ games, onSave, onClose }) {
 /* ================= My profile ================= */
 const THEMES = [['light', 'Día', I.sun], ['dark', 'Noche', I.moon], ['system', 'Auto', I.auto]];
 
-function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindStores, flash }) {
+function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindStores, onStore, flash }) {
   const fav = me.favCard;
   const set = (patch) => setMe((x) => normalizeMe({ ...x, ...(typeof patch === 'function' ? patch(x) : patch) }));
   const [gamesOpen, setGamesOpen] = useState(false);
@@ -2012,10 +2085,10 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
       {!me.stores.length && <p className="section-hint">{t('Guarda las tiendas donde juegas desde «Cerca de ti».')}</p>}
       <div className="list">
         {me.stores.map((id) => STORES.find((st) => st.id === id)).filter(Boolean).map((st) => (
-          <div key={st.id} className="row">
+          <div key={st.id} className="row store-row" role="button" tabIndex={0} onClick={() => onStore(st.id)} onKeyDown={(e) => { if (e.key === 'Enter') onStore(st.id); }}>
             <span className="row-icon">{I.store}</span>
             <div className="grow"><div className="title">{st.name}</div><div className="sub">{st.dist} km · {t(st.events)}</div></div>
-            <button type="button" className="icon-btn small-icon" aria-label={t('Quitar {name}', { name: st.name })} onClick={() => set((x) => ({ stores: x.stores.filter((y) => y !== st.id) }))}>{I.close}</button>
+            <button type="button" className="icon-btn small-icon" aria-label={t('Quitar {name}', { name: st.name })} onClick={(e) => { e.stopPropagation(); set((x) => ({ stores: x.stores.filter((y) => y !== st.id) })); }}>{I.close}</button>
           </div>
         ))}
         <button type="button" id="find-stores" className="row add-row" onClick={onFindStores}>
@@ -2436,6 +2509,13 @@ export default function App() {
   // que es el único que puede sumar saldo (tras un pago confirmado por Stripe).
   const [credits, setCredits] = useStoredState('manamatch-super-credits', 1, (v) => (Number.isInteger(v) && v >= 0 ? v : 0));
   const [shopOpen, setShopOpen] = useState(false);
+  const [storeOpen, setStoreOpen] = useState(null); // id de la tienda cuya ficha está abierta
+  useBack(!!storeOpen, () => setStoreOpen(null));
+  const toggleStore = (id) => {
+    const saved = me.stores.includes(id);
+    setMe((x) => ({ ...x, stores: saved ? x.stores.filter((y) => y !== id) : [...x.stores, id].slice(0, 10) }));
+    flash(saved ? t('Tienda quitada de tu perfil') : t('Tienda guardada en tu perfil'), I.store);
+  };
   useEffect(() => {
     if (!supabase || !uid) return;
     supabase.from('super_credits').select('balance').eq('user_id', uid).maybeSingle()
@@ -2570,11 +2650,7 @@ export default function App() {
         )}
         {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} credits={credits} onNeedCredits={() => setShopOpen(true)} />}
         {tab === 'nearby' && <Nearby players={PLAYERS.filter((p) => notBlocked(p) && sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))} me={me} onRadius={(km) => setMe((x) => ({ ...x, radius: km }))} onInfo={setProfile}
-          onToggleStore={(id) => {
-            const saved = me.stores.includes(id);
-            setMe((x) => ({ ...x, stores: saved ? x.stores.filter((y) => y !== id) : [...x.stores, id].slice(0, 10) }));
-            flash(saved ? t('Tienda quitada de tu perfil') : t('Tienda guardada en tu perfil'), I.store);
-          }} />}
+          onToggleStore={toggleStore} onStore={setStoreOpen} />}
         {tab === 'chat' && (chatWith
           ? <Chat p={chatWith} me={me} attended={attendance[chatWith.id]} onAttend={(v) => setAttendance((a) => ({ ...a, [chatWith.id]: v }))} msgs={chats[chatWith.id] || []} onSend={(m) => send(chatWith, m)} onBack={() => setChatWith(null)} onInfo={setProfile} onReport={() => setReporting(chatWith)} />
           : <Matches matches={visibleMatches} chats={chats} openChat={openChat} />)}
@@ -2582,7 +2658,7 @@ export default function App() {
           <MyProfile
             me={me} setMe={setMe} matchCount={visibleMatches.length} flash={flash}
             stats={myStats}
-            onPhoto={savePhoto} onAddDeck={() => setEditing('deck')} onFindStores={() => setTab('nearby')}
+            onPhoto={savePhoto} onAddDeck={() => setEditing('deck')} onFindStores={() => setTab('nearby')} onStore={setStoreOpen}
           />
         )}
       </section>
@@ -2598,6 +2674,11 @@ export default function App() {
         />
       )}
 
+      {storeOpen && STORES.some((st) => st.id === storeOpen) && (
+        <StoreSheet store={STORES.find((st) => st.id === storeOpen)} me={me} saved={me.stores.includes(storeOpen)}
+          players={PLAYERS.filter((p) => notBlocked(p) && sharedGames(me, p).length > 0)}
+          onToggle={() => toggleStore(storeOpen)} onInfo={setProfile} onClose={() => setStoreOpen(null)} />
+      )}
       {profile && (
         <ProfileSheet
           p={profile} me={me} onClose={() => setProfile(null)}

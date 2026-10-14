@@ -2482,3 +2482,36 @@ body { background: var(--body-bg); }
 .small-icon { width: 34px; height: 34px; }
 .small-icon svg { width: 16px; height: 16px; }
 .add-row { border-style: dashed; }
+
+/* =====================================================================
+   FICHA DE TIENDA
+   ===================================================================== */
+.store-hero {
+  position: relative; height: 150px; display: grid; place-items: center;
+  background: #2C2840; color: #C4F56A;
+}
+.store-hero-ico { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 20px; background: #171522; }
+.store-hero-ico svg { width: 38px; height: 38px; }
+.store-sheet .sheet-name { margin-top: 4px; }
+.store-address { display: flex; gap: 6px; align-items: center; margin: 4px 0 0; font-size: 0.86rem; color: var(--text-2); }
+.store-address svg { width: 15px; height: 15px; flex: none; color: var(--brand-soft); }
+.store-actions { margin-top: 12px; display: flex; gap: 8px; }
+.store-actions > * { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+.store-actions svg { width: 15px; height: 15px; }
+.event-row { align-items: center; }
+.event-day {
+  flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 52px; height: 48px; border-radius: 12px;
+  background: var(--bg3); color: var(--text);
+}
+.event-day b { font-size: 0.82rem; font-weight: 800; text-transform: capitalize; }
+.event-day small { font-size: 0.7rem; color: var(--muted); }
+.event-row .sub { display: flex; align-items: center; gap: 4px; }
+.event-row .sub svg { width: 13px; height: 13px; }
+.event-row.mine .event-day { background: #171522; color: #F8F7FC; }
+.event-row.mine .event-day small { color: #C4F56A; }
+.event-mine { flex: none; padding: 3px 8px; border-radius: 999px; font-size: 0.68rem; font-weight: 800; color: #171522; background: #C4F56A; }
+.store-row { cursor: pointer; }
+.radar .shop { cursor: pointer; border: 0; font: inherit; }
+/* La ficha de tienda no tiene retrato que monte sobre la cabecera: el contenido empieza debajo */
+.store-sheet .body { margin-top: 0; padding-top: 16px; position: relative; }
+.store-sheet .sheet-name { margin: 0; }
