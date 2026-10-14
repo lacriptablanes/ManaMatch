@@ -560,4 +560,5 @@ export default {
   "+{n} súper duelos (demo, sin cobro)": "+{n} superduels (demo, sense cobrament)",
   "Los pagos aún no están activados.": "Els pagaments encara no estan activats.",
   "No se ha podido iniciar el pago.": "No s'ha pogut iniciar el pagament.",
+  "¡Súper duelo aceptado! Propón una partida": "Superduel acceptat! Proposa una partida",
 };

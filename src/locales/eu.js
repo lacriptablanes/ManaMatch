@@ -560,4 +560,5 @@ export default {
   "+{n} súper duelos (demo, sin cobro)": "+{n} superduelu (demoa, kobratu gabe)",
   "Los pagos aún no están activados.": "Ordainketak ez daude oraindik aktibatuta.",
   "No se ha podido iniciar el pago.": "Ezin izan da ordainketa hasi.",
+  "¡Súper duelo aceptado! Propón una partida": "Superduelua onartuta! Proposatu partida bat",
 };

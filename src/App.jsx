@@ -1425,7 +1425,7 @@ function Matches({ matches, chats, openChat }) {
               <div className="grow">
                 <div className="title">{p.name} <span className={`mini-game g-${p.favCard.game}`}>{gameIcon(p.favCard.game)}</span>
 </div>
-                <div className={`sub ${last ? '' : 'new'}`}>{last ? (last.type === 'meetup' ? `📅 ${t('Partida propuesta')}` : last.text) : t('¡Duelo aceptado! Propón una partida')}</div>
+                <div className={`sub ${last ? '' : 'new'}`}>{last ? (last.type === 'meetup' ? `📅 ${t('Partida propuesta')}` : last.text) : p.superDuel ? t('¡Súper duelo aceptado! Propón una partida') : t('¡Duelo aceptado! Propón una partida')}</div>
               </div>
               <span className="chev">{I.chevron}</span>
             </button>
