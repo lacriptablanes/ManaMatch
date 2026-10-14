@@ -1,7 +1,7 @@
 import { useState, useRef, useId, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { PLAYERS, STORES, pokeImg, opImg } from './data';
-import { GAMES, placeholderArt } from './games';
+import { GAMES, placeholderArt, defaultAvatar } from './games';
 import { CATALOG, GAME_CATEGORIES, MAX_GAMES, gameName, isGameId } from './catalog';
 import { compat, byCompat, reliability } from './compat';
 import { t, useLang, setLang, getLang, LANGS, locale } from './i18n';
@@ -321,8 +321,9 @@ const cardOk = (game, c) => !!(c?.name?.trim() || c?.upload) || !!GAMES[game]?.g
 const imgCls = (game, card) => (isFullCard(game, card) ? ` full-card fc-${game}` : '');
 // La foto puede ser una subida a la cuenta (ruta en Storage), una recién elegida (data URL) o, si no hay, la carta favorita
 const photoSrc = (me) => (isAvatarPath(me.avatar) ? avatarUrl(me.avatar) : me.avatar);
-const myAvatar = (me) => photoSrc(me) || artOf(me.favCard.game, me.favCard);
-const avatarIsCard = (me) => (!me.avatar && isFullCard(me.favCard.game, me.favCard) ? me.favCard.game : false);
+// Sin foto subida: el icono genérico con tu color (como el huevo de Twitter)
+const myAvatar = (me) => photoSrc(me) || defaultAvatar(me.name || 'yo');
+const avatarOf = (p) => p.avatar || defaultAvatar(p.id ?? p.name);
 // Marco del retrato: el morado de la app para todos (los colores por juego ya no existen en el perfil)
 const FRAME = { list: ['#8B5CF6'], grad: '#8B5CF6', glow: '#8B5CF6' };
 const toggleIn = (arr, v) => arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
@@ -536,7 +537,7 @@ function TableCard({ p, me, leaving, onInfo }) {
       </div>
       <div className="hero-body" role="button" tabIndex={0} aria-label={t('Ver la ficha de {name}', { name: p.name })}
         onClick={onInfo} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onInfo(); } }}>
-        <Hex src={p.avatar} alt={p.name} size={100} badge={p.formats[0] && t(p.formats[0])} colors={list} />
+        <Hex src={avatarOf(p)} alt={p.name} size={100} badge={p.formats[0] && t(p.formats[0])} colors={list} />
         <h2 className="hero-name">{p.name}{p.verified && <span className="verified" title={t('Verificado')}>{I.check}</span>}</h2>
         {deck && <div className="hero-deck">{I.deck}<b>{deck.name}</b><i className="dot-sep" />{t(deck.format)}</div>}
         {p.favCard.name && <div className="hero-tags"><span className="hero-fav">{gameIcon(p.favCard.game)}{p.favCard.name}</span></div>}
@@ -586,7 +587,7 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock
         </div>
         <div className="body">
           <div className="sheet-id">
-            <Hex src={p.avatar} alt={p.name} size={84} colors={list} ring={false} />
+            <Hex src={avatarOf(p)} alt={p.name} size={84} colors={list} ring={false} />
             <div>
               <h2 className="sheet-name">{p.name}{p.verified && <span className="verified" title={t('Verificado')}>{I.check}</span>}</h2>
               <div className="sheet-sub">{[p.level, ...p.formats.filter((f) => f !== p.level)].map((x) => t(x)).join(' · ')}</div>
@@ -1234,7 +1235,7 @@ function Nearby({ players, onInfo }) {
         <div className="me" />
         {players.map((p) => (
           <button key={p.id} className="dot" style={{ ...fuzzyPos(p), '--c': FRAME.glow }} onClick={() => onInfo(p)} title={`${p.name} · ${GAMES[p.favCard.game].name} · ${fuzzyDist(p.dist)}`}>
-            <img src={p.avatar} alt={p.name} />
+            <img src={avatarOf(p)} alt={p.name} />
             <span className={`dot-game g-${p.favCard.game}`}>{gameIcon(p.favCard.game)}</span>
           </button>
         ))}
@@ -1254,7 +1255,7 @@ function Nearby({ players, onInfo }) {
                 <div className="title">{s.name}</div>
                 <div className="sub">{t(s.events)}</div>
                 <div className="regulars">
-                  <div className="stack">{regulars.slice(0, 3).map((p) => <img loading="lazy" decoding="async" key={p.id} src={p.avatar} alt={p.name} />)}</div>
+                  <div className="stack">{regulars.slice(0, 3).map((p) => <img loading="lazy" decoding="async" key={p.id} src={avatarOf(p)} alt={p.name} />)}</div>
                   <span>{regulars.length === 1 ? t('1 habitual') : t('{n} habituales', { n: regulars.length })}</span>
                 </div>
               </div>
@@ -1276,7 +1277,7 @@ function Matches({ matches, chats, openChat }) {
       <div className="new-matches">
         {matches.map((p) => (
           <button key={p.id} className="nm" onClick={() => openChat(p)}>
-            <Hex src={p.avatar} alt={p.name} size={68} colors={FRAME.list} ring={false} />
+            <Hex src={avatarOf(p)} alt={p.name} size={68} colors={FRAME.list} ring={false} />
             <span>{p.name}</span>
           </button>
         ))}
@@ -1287,7 +1288,7 @@ function Matches({ matches, chats, openChat }) {
           const last = chats[p.id]?.at(-1);
           return (
             <button key={p.id} id={`match-${p.id}`} className="row" onClick={() => openChat(p)}>
-              <img loading="lazy" decoding="async" className="avatar" src={p.avatar} alt="" />
+              <img loading="lazy" decoding="async" className="avatar" src={avatarOf(p)} alt="" />
               <div className="grow">
                 <div className="title">{p.name} <span className={`mini-game g-${p.favCard.game}`}>{gameIcon(p.favCard.game)}</span></div>
                 <div className={`sub ${last ? '' : 'new'}`}>{last ? (last.type === 'meetup' ? `📅 ${t('Partida propuesta')}` : last.text) : t('¡Duelo aceptado! Propón una partida')}</div>
@@ -1353,7 +1354,7 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport, attended, onAtten
       <div className="chat-head">
         <button id="chat-back" className="icon-btn" onClick={onBack} aria-label={t('Volver')}>{I.back}</button>
         <button className="chat-who" onClick={() => onInfo(p)}>
-          <Hex src={p.avatar} alt="" size={46} colors={theirs.list} ring={false} />
+          <Hex src={avatarOf(p)} alt="" size={46} colors={theirs.list} ring={false} />
           <div><b>{p.name}</b><span>{gameIcon(game.id)}{p.decks[0]?.name ?? game.name}</span></div>
         </button>
         <button id="chat-report" className="icon-btn" onClick={onReport} aria-label={t('Denunciar o bloquear a {name}', { name: p.name })} title={t('Denunciar o bloquear')}>{I.flag}</button>
@@ -1696,11 +1697,11 @@ function EditProfileSheet({ me, onSave, onClose }) {
         </header>
         <div className="body form">
           <div className="photo-edit">
-            <Hex src={myAvatar(d)} alt={t('Tu imagen')} size={96} colors={['#8B5CF6']} ring={false} fullCard={avatarIsCard(d)} />
+            <Hex src={myAvatar(d)} alt={t('Tu imagen')} size={96} colors={['#8B5CF6']} ring={false} />
             <div className="photo-actions">
-              <span className="photo-hint">{t('Por defecto usamos tu carta favorita. La foto personal es opcional.')}</span>
+              <span className="photo-hint">{t('Si no subes foto, verás un icono con tu color. La foto es opcional.')}</span>
               <button type="button" id="upload-photo" className="ghost small" onClick={() => fileRef.current.click()}>{I.camera}{t('Subir foto')}</button>
-              {d.avatar && <button type="button" className="link-btn" onClick={() => set({ avatar: '' })}>{t('Volver a mi carta')}</button>}
+              {d.avatar && <button type="button" className="link-btn" onClick={() => set({ avatar: '' })}>{t('Quitar foto')}</button>}
               <input ref={fileRef} type="file" accept="image/*" hidden onChange={upload} />
               {uploadError && <span className="upload-error" role="alert">{t(uploadError)}</span>}
             </div>
@@ -1815,7 +1816,7 @@ function MyProfile({ me, setMe, matchCount, onEdit, onAddDeck, flash }) {
         <img className={`me-cover${imgCls(fav.game, fav)}`} src={artOf(fav.game, fav)} alt="" />
         <button id="edit-profile" className="icon-btn glass me-edit" aria-label={t('Editar perfil')} onClick={onEdit}>{I.edit}</button>
         <button className="me-photo" onClick={onEdit} aria-label={t('Cambiar imagen')}>
-          <Hex src={myAvatar(me)} size={108} badge={me.formats[0] && t(me.formats[0])} colors={['#8B5CF6']} fullCard={avatarIsCard(me)} />
+          <Hex src={myAvatar(me)} size={108} badge={me.formats[0] && t(me.formats[0])} colors={['#8B5CF6']} />
           <span className="cam">{I.camera}</span>
         </button>
         <h2 className="me-name">{me.name}</h2>
@@ -2024,7 +2025,7 @@ function SettingsScreen({ me, setMe, theme, setTheme, blocked, onUnblock, onRese
             <div className="setting"><span className="setting-icon">{I.ban}</span><div className="grow"><div className="setting-label">{t('Usuarios bloqueados')}</div><div className="setting-hint">{blockedPlayers.length ? t('No pueden verte ni escribirte') : t('No has bloqueado a nadie')}</div></div></div>
             {blockedPlayers.map((x) => (
               <div key={x.id} className="blocked-row">
-                <img loading="lazy" decoding="async" className="avatar" src={x.avatar} alt="" /><span className="grow">{x.name}</span>
+                <img loading="lazy" decoding="async" className="avatar" src={avatarOf(x)} alt="" /><span className="grow">{x.name}</span>
                 <button className="link-btn" onClick={() => onUnblock(x.id)}>{t('Desbloquear')}</button>
               </div>
             ))}
@@ -2117,9 +2118,9 @@ function MatchScreen({ p, me, onSend, onContinue }) {
       <p className="its">{t('¡Duelo')}</p>
       <h2 className="match-title" data-text={t('ACEPTADO!')}>{t('ACEPTADO!')}</h2>
       <div className="pair">
-        <Hex src={myAvatar(me)} alt={me.name} size={124} colors={['#8B5CF6', '#C4F56A']} fullCard={avatarIsCard(me)} />
+        <Hex src={myAvatar(me)} alt={me.name} size={124} colors={['#8B5CF6', '#C4F56A']} />
         <span className="vs" aria-label={t('contra')}>VS</span>
-        <Hex src={p.avatar} alt={p.name} size={124} colors={FRAME.list} />
+        <Hex src={avatarOf(p)} alt={p.name} size={124} colors={FRAME.list} />
       </div>
       <p className="swiped">{t('{name} también quiere jugar a {game}. Proponed formato y tienda.', { name: p.name, game: sharedGames(me, p).map(gameName).join(', ') || GAMES[p.favCard.game].name })}</p>
       <div className="quick light">{quickReplies(p, me).map((q) => <button key={q} type="button" onClick={() => { setText(q); clearWarn(); }}>{q}</button>)}</div>

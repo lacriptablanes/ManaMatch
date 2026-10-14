@@ -93,54 +93,53 @@ export const GAMES = {
 // Juegos con buscador de cartas e imágenes oficiales (perfil "destacado")
 export const GAME_IDS = Object.keys(GAMES);
 
-/* Imagen por defecto de cada juego (cuando no hay carta ni imagen subida). Es un dibujo propio, sin logos ni arte
-   oficial: un motivo según el tipo de juego, el nombre del juego y un fondo con su propio tono y patrón.
-   El motivo va en la mitad superior para no quedar debajo del nombre del jugador en su tarjeta. */
-const BG = ['#2c2840', '#241f3a', '#2a2238', '#1f2638', '#2b2333', '#262a3d', '#30253f'];
-const ACCENT = ['#C4F56A', '#B79CFB', '#D4FF8A', '#CDB8FF'];
-const MOTIF = {
+/* Imágenes por defecto, al estilo del "huevo" de Twitter: color liso y un icono genérico, sin texto.
+   Son dibujos propios (sin logos ni arte oficial). El color sale del identificador, así que cada juego
+   y cada persona tienen siempre el mismo. */
+const COLORS = [
+  ['#8B5CF6', '#F8F7FC'], ['#6D4AE0', '#F8F7FC'], ['#C4F56A', '#171522'], ['#4FB3A9', '#171522'], ['#F28C6B', '#171522'],
+  ['#5B8DEF', '#F8F7FC'], ['#E06C9F', '#F8F7FC'], ['#F2B84B', '#171522'], ['#B79CFB', '#171522'], ['#3C3552', '#F8F7FC'],
+];
+const hash = (str) => [...String(str)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
+export const colorFor = (seed) => COLORS[hash(seed) % COLORS.length];
+
+// Iconos (centrados en 0,0) que se pintan con el color de "tinta" sobre el fondo
+const ICON = {
   // tres cartas en abanico
-  cards: (a) => `<g transform="translate(200 175)" fill="none" stroke-width="6" stroke-linejoin="round">`
-    + `<rect x="-46" y="-66" width="92" height="128" rx="10" transform="rotate(-16)" stroke="${a}" opacity=".45"/>`
-    + `<rect x="-46" y="-66" width="92" height="128" rx="10" transform="rotate(14)" stroke="${a}" opacity=".7"/>`
-    + `<rect x="-46" y="-70" width="92" height="128" rx="10" fill="#171522" stroke="${a}"/>`
-    + `<path d="M0 -38l14 26-14 26-14-26z" fill="${a}" stroke="none"/></g>`,
+  cards: (ink, bg) => `<g fill="${bg}" stroke="${ink}" stroke-width="7" stroke-linejoin="round">`
+    + `<rect x="-46" y="-66" width="92" height="128" rx="10" transform="rotate(-16)" opacity=".55"/>`
+    + `<rect x="-46" y="-66" width="92" height="128" rx="10" transform="rotate(14)" opacity=".8"/>`
+    + `<rect x="-46" y="-70" width="92" height="128" rx="10"/><path d="M0 -38l14 26-14 26-14-26z" fill="${ink}" stroke="none"/></g>`,
   // escudo con espada (wargames)
-  army: (a) => `<g transform="translate(200 172)" fill="none" stroke="${a}" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">`
-    + `<path d="M0 -72l58 22v42c0 46-26 76-58 88-32-12-58-42-58-88v-42z" fill="#171522"/>`
-    + `<path d="M0 -40v92M-22 24h44M-8 52h16" /></g>`,
+  army: (ink, bg) => `<g fill="${bg}" stroke="${ink}" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">`
+    + `<path d="M0 -72l58 22v42c0 46-26 76-58 88-32-12-58-42-58-88v-42z"/><path d="M0 -40v92M-22 24h44M-8 52h16" fill="none"/></g>`,
   // dado de 20 caras (rol)
-  d20: (a) => `<g transform="translate(200 172)" fill="none" stroke="${a}" stroke-width="6" stroke-linejoin="round">`
-    + `<path d="M0 -76l66 38v76L0 76l-66-38v-76z" fill="#171522"/>`
-    + `<path d="M0 -76L-40 20h80zM-66 -38l26 58M66 -38l-26 58M-40 20L0 76l40-56M-66 38l26-18M66 38l-26-18"/></g>`,
-  // meeple (juegos de mesa)
-  meeple: (a) => `<g transform="translate(200 175)">`
-    + `<path d="M0 -74c20 0 32 14 32 30 0 10-4 18-10 24 26 6 52 16 60 28 6 10-4 16-18 14l-30-4 22 48c4 10-2 16-12 16h-28L0 46l-16 36h-28c-10 0-16-6-12-16l22-48-30 4c-14 2-24-4-18-14 8-12 34-22 60-28-6-6-10-14-10-24 0-16 12-30 32-30z" fill="#171522" stroke="${a}" stroke-width="6" stroke-linejoin="round"/></g>`,
+  d20: (ink, bg) => `<g fill="${bg}" stroke="${ink}" stroke-width="7" stroke-linejoin="round">`
+    + `<path d="M0 -76l66 38v76L0 76l-66-38v-76z"/><path d="M0 -76L-40 20h80zM-66 -38l26 58M66 -38l-26 58M-40 20L0 76l40-56M-66 38l26-18M66 38l-26-18" fill="none"/></g>`,
+  // meeple (juegos de mesa y foto de perfil por defecto)
+  meeple: (ink) => `<path d="M0 -74c20 0 32 14 32 30 0 10-4 18-10 24 26 6 52 16 60 28 6 10-4 16-18 14l-30-4 22 48c4 10-2 16-12 16h-28L0 46l-16 36h-28c-10 0-16-6-12-16l22-48-30 4c-14 2-24-4-18-14 8-12 34-22 60-28-6-6-10-14-10-24 0-16 12-30 32-30z" fill="${ink}"/>`,
 };
-const MOTIF_BY_CAT = { 'Cartas coleccionables': 'cards', 'Cartas LCG': 'cards', Wargames: 'army', Rol: 'd20', 'Juegos de mesa': 'meeple' };
-const hash = (str) => [...str].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
-const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const artCache = {};
+const ICON_BY_CAT = { 'Cartas coleccionables': 'cards', 'Cartas LCG': 'cards', Wargames: 'army', Rol: 'd20', 'Juegos de mesa': 'meeple' };
+const svgUrl = (svg) => `data:image/svg+xml,${encodeURIComponent(svg)}`;
+const cache = {};
+
+/* Imagen de carta por defecto de un juego: color liso y el icono de su tipo, en la mitad superior
+   (para no quedar debajo del nombre del jugador en su tarjeta) */
 export const placeholderArt = (id) => {
-  if (artCache[id]) return artCache[id];
-  const g = CATALOG.find((x) => x.id === id) ?? { name: id, cat: 'Cartas coleccionables' };
-  const h = hash(id);
-  const bg = BG[h % BG.length], a = ACCENT[(h >> 3) % ACCENT.length];
-  // Patrón de fondo distinto por juego: rombos, puntos o rayas
-  const pattern = [
-    `<pattern id="p" width="36" height="36" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="36" height="36" fill="none"/><rect x="0" y="0" width="18" height="18" fill="#fff" opacity=".035"/></pattern>`,
-    `<pattern id="p" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="14" cy="14" r="3" fill="#fff" opacity=".06"/></pattern>`,
-    `<pattern id="p" width="24" height="24" patternUnits="userSpaceOnUse" patternTransform="rotate(-30)"><rect width="10" height="24" fill="#fff" opacity=".035"/></pattern>`,
-  ][(h >> 5) % 3];
-  const name = esc(g.name.length > 26 ? `${g.name.slice(0, 25)}…` : g.name);
-  const size = g.name.length > 18 ? 24 : 30;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500">`
-    + `<defs>${pattern}<radialGradient id="g" cx="50%" cy="34%" r="55%"><stop offset="0" stop-color="${a}" stop-opacity=".22"/><stop offset="1" stop-color="${a}" stop-opacity="0"/></radialGradient></defs>`
-    + `<rect width="400" height="500" fill="${bg}"/><rect width="400" height="500" fill="url(#p)"/><rect width="400" height="500" fill="url(#g)"/>`
-    + MOTIF[MOTIF_BY_CAT[g.cat] ?? 'cards'](a)
-    + `<text x="200" y="300" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-weight="800" font-size="${size}" fill="#F8F7FC">${name}</text>`
-    + `</svg>`;
-  return (artCache[id] = `data:image/svg+xml,${encodeURIComponent(svg)}`);
+  if (cache[id]) return cache[id];
+  const g = CATALOG.find((x) => x.id === id) ?? { cat: 'Cartas coleccionables' };
+  const [bg, ink] = colorFor(id);
+  return (cache[id] = svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500">`
+    + `<rect width="400" height="500" fill="${bg}"/><g transform="translate(200 180)">${ICON[ICON_BY_CAT[g.cat] ?? 'cards'](ink, bg)}</g></svg>`));
+};
+
+/* Foto de perfil por defecto: un meeple (nuestro "huevo") sobre el color de cada persona */
+export const defaultAvatar = (seed) => {
+  const key = `avatar:${seed}`;
+  if (cache[key]) return cache[key];
+  const [bg, ink] = colorFor(`p${seed}`);
+  return (cache[key] = svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">`
+    + `<rect width="200" height="200" fill="${bg}"/><g transform="translate(100 112) scale(.95)">${ICON.meeple(ink)}</g></svg>`));
 };
 
 /* El resto del catálogo: perfil genérico, sin buscador; la imagen la sube el jugador */

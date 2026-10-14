@@ -471,4 +471,6 @@ export default {
   "¿Una partida de {game} esta semana?": "{game} partida bat aste honetan?",
   "Muy pronto el personal de {store} podrá verificarte en persona y conseguirás la insignia de jugador verificado.": "Laster {store} dendako langileek aurrez aurre egiaztatu ahal izango zaituzte eta jokalari egiaztatuaren txapa lortuko duzu.",
   "Próximamente": "Laster",
+  "Si no subes foto, verás un icono con tu color. La foto es opcional.": "Argazkirik igotzen ez baduzu, zure koloreko ikono bat ikusiko duzu. Argazkia aukerakoa da.",
+  "Quitar foto": "Kendu argazkia",
 };

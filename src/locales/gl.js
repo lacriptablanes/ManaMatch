@@ -471,4 +471,6 @@ export default {
   "¿Una partida de {game} esta semana?": "Unha partida de {game} esta semana?",
   "Muy pronto el personal de {store} podrá verificarte en persona y conseguirás la insignia de jugador verificado.": "Moi pronto o persoal de {store} poderá verificarte en persoa e conseguirás a insignia de xogador verificado.",
   "Próximamente": "Proximamente",
+  "Si no subes foto, verás un icono con tu color. La foto es opcional.": "Se non subes foto, verás unha icona coa túa cor. A foto é opcional.",
+  "Quitar foto": "Quitar foto",
 };
