@@ -496,7 +496,7 @@ function TitlesSheet({ value, unlocked, onSave, onClose }) {
                 <button type="button" key={x.id} className={`title-opt${pick === x.id ? ' on' : ''}${open ? '' : ' locked'}`}
                   disabled={!open} aria-pressed={pick === x.id} onClick={() => setPick(x.id)}>
                   <span className="title-ico">{open ? (pick === x.id ? I.check : I.star) : I.lock}</span>
-                  <span className="grow"><b>{t(x.label)}</b><small>{open ? t('Desbloqueado') : t(x.hint)}</small></span>
+                  <span className="grow"><b>{t(x.label)}</b><small>{t(x.hint)}</small></span>
                 </button>
               );
             })}
