@@ -2540,3 +2540,6 @@ body { background: var(--body-bg); }
   color: #fff; background: var(--brand); box-shadow: 0 0 0 2px var(--card);
 }
 .store-check svg { width: 11px; height: 11px; stroke-width: 3; }
+/* Checks de verificación en verde lima (junto al nombre y sobre la tienda que te verificó) */
+.store-check, .verified, :root[data-theme="light"] .verified { color: #171522; background: #C4F56A; box-shadow: 0 0 0 2px var(--card); }
+.verified svg, .store-check svg { color: #171522; }
