@@ -2262,3 +2262,26 @@ body { background: var(--body-bg); }
 .games-sheet .body { display: block; }
 
 .soon-tag { flex: none; padding: 5px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; color: var(--brand-soft); background: color-mix(in srgb, var(--brand) 14%, transparent); }
+
+/* =====================================================================
+   SOMBRAS SIN CORTES
+   Las sombras grandes se salían de su contenedor (que recorta lo que sobresale) y se veían cortadas en
+   línea recta. Con un "spread" negativo la sombra queda bajo el elemento y no llega a los bordes.
+   ===================================================================== */
+.swipe-card, .swipe-card.behind, .table-card {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), 0 22px 30px -16px rgba(0, 0, 0, 0.55), 0 8px 14px -10px rgba(0, 0, 0, 0.35);
+}
+:root[data-theme="light"] .swipe-card, :root[data-theme="light"] .table-card {
+  box-shadow: 0 0 0 1px rgba(23, 21, 34, 0.06), 0 22px 30px -16px rgba(23, 21, 34, 0.35), 0 8px 14px -10px rgba(23, 21, 34, 0.25);
+}
+.primary { box-shadow: 0 10px 18px -10px color-mix(in srgb, var(--accent) 60%, transparent); }
+.primary:not(:disabled):hover { box-shadow: 0 12px 20px -10px color-mix(in srgb, var(--accent) 70%, transparent); }
+/* Radar y tarjeta de mi perfil: halo y sombra dentro del margen de la pantalla (18px) */
+.radar, :root .radar, :root[data-theme="light"] .radar { box-shadow: 0 0 18px -2px color-mix(in srgb, var(--brand) 22%, transparent); }
+.me-card, :root[data-theme="light"] .me-card { box-shadow: 0 14px 22px -12px rgba(23, 21, 34, 0.35); }
+/* Botones fijos abajo (carruseles y hojas): sombra más corta para no tocar el borde del móvil */
+.rules-cta .primary, .sheet-cta .primary { box-shadow: 0 8px 14px -8px color-mix(in srgb, var(--accent) 60%, transparent); }
+/* Retrato pequeño de la cabecera del chat: halo corto (está pegado al borde superior) */
+.chat-who .hex-svg { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--brand) 45%, transparent)) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.25)); }
+/* Caja de texto de la pantalla de duelo: sombra dentro de los márgenes */
+.match-reply { box-shadow: 0 14px 24px -12px rgba(0, 0, 0, 0.55); }
