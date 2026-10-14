@@ -446,6 +446,30 @@ const playerStats = (p) => ({
   hasFav: !!(p.favCard?.name || p.favCard?.upload || p.favCard?.img), bio: p.bio ?? '',
 });
 
+/* Aviso de logro, al estilo de las consolas: sale arriba unos segundos al desbloquear un título */
+function Achievement({ id, onEquip, onDone }) {
+  const x = TITLES.find((y) => y.id === id);
+  const done = useRef(onDone);
+  useEffect(() => { done.current = onDone; });
+  useEffect(() => {
+    haptic([20, 40, 20]);
+    const timer = setTimeout(() => done.current(), 5500);
+    return () => clearTimeout(timer);
+  }, [id]);
+  if (!x) return null;
+  return (
+    <div className="achievement" role="status" aria-live="polite">
+      <span className="ach-ico">{I.trophy}</span>
+      <div className="grow">
+        <small>{t('¡Logro desbloqueado!')}</small>
+        <b>{t(x.label)}</b>
+        <span>{t(x.hint)}</span>
+      </div>
+      <button type="button" className="ach-btn" onClick={onEquip}>{t('Ponérmelo')}</button>
+    </div>
+  );
+}
+
 /* Hoja para elegir título, como la de los juegos: etiquetas agrupadas; las bloqueadas explican cómo conseguirlas */
 function TitlesSheet({ value, unlocked, onSave, onClose }) {
   const [pick, setPick] = useState(value);
@@ -1788,7 +1812,7 @@ function DeckSheet({ games, onSave, onClose }) {
 /* ================= My profile ================= */
 const THEMES = [['light', 'Día', I.sun], ['dark', 'Noche', I.moon], ['system', 'Auto', I.auto]];
 
-function MyProfile({ me, setMe, matchCount, played, onPhoto, onAddDeck, flash }) {
+function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, flash }) {
   const fav = me.favCard;
   const set = (patch) => setMe((x) => normalizeMe({ ...x, ...(typeof patch === 'function' ? patch(x) : patch) }));
   const [gamesOpen, setGamesOpen] = useState(false);
@@ -1801,7 +1825,6 @@ function MyProfile({ me, setMe, matchCount, played, onPhoto, onAddDeck, flash })
     try { setPhotoError(''); onPhoto(await readPhoto(file)); } catch (err) { setPhotoError(err.message); }
   };
   const dayNames = DAYS.filter(([k]) => me.days.includes(k)).map(([, n]) => t(n).slice(0, 3)).join(', ');
-  const stats = { ...playerStats(me), played, matches: matchCount, reliable: played >= 3 };
   const [titlesOpen, setTitlesOpen] = useState(false);
   const unlocked = unlockedTitles(stats);
   const title = titleFor(me.title, stats);
@@ -2308,6 +2331,22 @@ export default function App() {
   const visibleQueue = queue.filter(notBlocked);
   const visibleMatches = matches.filter(notBlocked);
 
+  // Logros: los títulos que desbloqueas se anuncian una vez. La primera vez solo se apuntan (sin avisar de todo
+  // lo que ya tenías), y con cuenta se espera a que llegue tu perfil para no anunciar los del perfil de ejemplo.
+  const played = Object.values(attendance).filter((v) => v === 'came').length;
+  const myStats = { ...playerStats(me), played, matches: visibleMatches.length, reliable: played >= 3 };
+  const unlockedKey = unlockedTitles(myStats).join(',');
+  const [seenTitles, setSeenTitles] = useStoredState('manamatch-seen-titles', null, (v) => (Array.isArray(v) ? v : null));
+  const [achievements, setAchievements] = useState([]);
+  const profileReady = cloudStatus === 'off' || cloudStatus === 'ready';
+  // Se calcula durante el render (patrón de "estado derivado"): en cuanto cambia lo desbloqueado, se apunta y se anuncia
+  if (profileReady) {
+    const now = unlockedKey.split(',').filter(Boolean);
+    const fresh = seenTitles === null ? [] : now.filter((id) => !seenTitles.includes(id));
+    if (seenTitles === null) setSeenTitles(now);
+    else if (fresh.length) { setSeenTitles([...seenTitles, ...fresh]); setAchievements((q) => [...q, ...fresh]); }
+  }
+
   const flash = (text, icon = I.sword) => { setToast({ text, icon }); setTimeout(() => setToast(null), 2200); };
 
   const decide = (p, like, isSuper = false) => {
@@ -2428,7 +2467,7 @@ export default function App() {
         {tab === 'me' && (
           <MyProfile
             me={me} setMe={setMe} matchCount={visibleMatches.length} flash={flash}
-            played={Object.values(attendance).filter((v) => v === 'came').length}
+            stats={myStats}
             onPhoto={savePhoto} onAddDeck={() => setEditing('deck')}
           />
         )}
@@ -2509,6 +2548,11 @@ export default function App() {
       {online && syncFailed && <div className="offline" role="status">{I.alert}{t('No se han podido guardar tus cambios en la cuenta. Lo reintentaremos.')}{typeof syncFailed === 'string' && <small className="sync-detail">{syncFailed}</small>}</div>}
 
       {toast && <div className="toast" role="status"><span className="toast-icon">{toast.icon}</span>{toast.text}</div>}
+      {achievements[0] && (
+        <Achievement key={achievements[0]} id={achievements[0]}
+          onDone={() => setAchievements((q) => q.slice(1))}
+          onEquip={() => { setMe((x) => ({ ...x, title: achievements[0] })); setAchievements((q) => q.slice(1)); flash(t('Título actualizado'), I.star); }} />
+      )}
     </main>
   );
 }

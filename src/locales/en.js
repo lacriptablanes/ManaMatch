@@ -542,4 +542,6 @@ export default {
   "Cuentacuentos": "Storyteller",
   "Escribe una bio de 80 letras o más": "Write a bio of 80 characters or more",
   "Desbloqueado": "Unlocked",
+  "¡Logro desbloqueado!": "Achievement unlocked!",
+  "Ponérmelo": "Wear it",
 };

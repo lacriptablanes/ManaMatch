@@ -544,4 +544,6 @@ export default {
   "Cuentacuentos": "Ipuin-kontalaria",
   "Escribe una bio de 80 letras o más": "Idatzi 80 hizki edo gehiagoko biografia",
   "Desbloqueado": "Desblokeatuta",
+  "¡Logro desbloqueado!": "Lorpena desblokeatuta!",
+  "Ponérmelo": "Jarri",
 };

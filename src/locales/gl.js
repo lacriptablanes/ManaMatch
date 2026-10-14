@@ -544,4 +544,6 @@ export default {
   "Cuentacuentos": "Contacontos",
   "Escribe una bio de 80 letras o más": "Escribe unha bio de 80 letras ou máis",
   "Desbloqueado": "Desbloqueado",
+  "¡Logro desbloqueado!": "Logro desbloqueado!",
+  "Ponérmelo": "Poñelo",
 };

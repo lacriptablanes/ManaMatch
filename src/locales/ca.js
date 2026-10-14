@@ -544,4 +544,6 @@ export default {
   "Cuentacuentos": "Rondallaire",
   "Escribe una bio de 80 letras o más": "Escriu una bio de 80 lletres o més",
   "Desbloqueado": "Desbloquejat",
+  "¡Logro desbloqueado!": "Assoliment desbloquejat!",
+  "Ponérmelo": "Posar-me'l",
 };
