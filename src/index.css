@@ -2328,3 +2328,27 @@ body { background: var(--body-bg); }
 :root[data-theme="light"] .row.pick.on .check, :root[data-theme="light"] .check-row.on .box { background: #C4F56A; }
 /* Tu lista de juegos en el perfil es información, no una selección: neutra, sin lima */
 .tag.interest.mine { background: var(--bg3); border-color: transparent; color: var(--text); }
+
+/* =====================================================================
+   TÍTULOS
+   ===================================================================== */
+.title-chip {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 3px 10px; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+  color: #F8F7FC; background: #171522;
+}
+.title-chip svg, .role-badge svg { width: 12px; height: 12px; color: #C4F56A; }
+.section-hint { margin: -6px 0 10px; font-size: 0.82rem; color: var(--muted); }
+.titles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.title-opt {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; text-align: left;
+  font: inherit; color: var(--text); background: var(--card); border: 1.5px solid var(--border); cursor: pointer;
+}
+.title-opt b { display: block; font-size: 0.85rem; }
+.title-opt small { display: block; font-size: 0.7rem; color: var(--muted); line-height: 1.3; margin-top: 2px; }
+.title-ico { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--bg3); }
+.title-ico svg { width: 15px; height: 15px; }
+.title-opt.on { border-color: var(--hot); background: color-mix(in srgb, var(--hot) 10%, var(--card)); }
+.title-opt.on .title-ico { background: #171522; color: #C4F56A; }
+.title-opt.locked { opacity: 0.55; cursor: not-allowed; }
+.title-opt.locked b { color: var(--muted); }

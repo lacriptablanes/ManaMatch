@@ -79,7 +79,7 @@ export async function loadMe(uid) {
     avatar: isAvatarPath(p.avatar_path) ? p.avatar_path : '',
     days: p.days, slots: p.slots, stores: p.store_ids,
     interests: p.interests?.length ? p.interests : [p.active_game],
-    level: p.level, formats: p.formats ?? [],
+    level: p.level, formats: p.formats ?? [], title: p.title ?? '',
     favCard: { ...(p.fav_card ?? {}), game: p.fav_card?.game ?? p.active_game },
     decks: decks.data.map((d) => ({ id: d.id, game: d.game, name: d.name, format: d.format, card: d.card })),
     birthDate: priv.data.birth_date,
@@ -96,6 +96,7 @@ export async function saveMe(uid, me) {
     active_game: me.favCard.game, avatar_path: isAvatarPath(me.avatar) ? me.avatar : null,
     days: me.days, slots: me.slots, store_ids: me.stores.slice(0, 10), show_distance: me.showDistance,
     interests: me.interests.slice(0, 10), level: me.level, formats: me.formats.slice(0, 20), fav_card: me.favCard,
+    title: me.title || null,
   };
   // Primero se actualiza; si la fila no existe se crea. (Un "upsert" intentaría reescribir el id, que no se puede editar.)
   const upd = await supabase.from('profiles').update(fields).eq('id', uid).select('id');

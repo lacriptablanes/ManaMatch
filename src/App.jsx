@@ -4,6 +4,7 @@ import { PLAYERS, STORES, pokeImg, opImg } from './data';
 import { GAMES, placeholderArt, defaultAvatar } from './games';
 import { CATALOG, GAME_CATEGORIES, MAX_GAMES, gameName, isGameId } from './catalog';
 import { compat, byCompat, reliability } from './compat';
+import { TITLES, unlockedTitles, titleFor } from './titles';
 import { t, useLang, setLang, getLang, LANGS, locale } from './i18n';
 import { supabase } from './supabase';
 import {
@@ -52,6 +53,7 @@ const I = {
   eye: svg(<><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>),
   shield: svg(<><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></>),
   search: svg(<><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></>),
+  lock: svg(<><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>),
   globe: svg(<><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z" /></>),
   reset: svg(<><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></>),
   palette: svg(<><path d="M12 3a9 9 0 0 0 0 18c1.5 0 2-1 2-2s-1-1.5-1-2.5 1-1.5 2-1.5h2a4 4 0 0 0 4-4c0-4.5-4-8-9-8z" /><circle cx="7.5" cy="11" r="1.2" fill="currentColor" /><circle cx="10" cy="7" r="1.2" fill="currentColor" /><circle cx="15" cy="7.5" r="1.2" fill="currentColor" /></>),
@@ -127,6 +129,7 @@ function normalizeMe(me) {
   return {
     ...me,
     level: LEVELS.includes(me.level) ? me.level : 'Casual',
+    title: TITLES.some((x) => x.id === me.title) ? me.title : '',
     // Solo formatos de tus juegos (si quitas un juego, sus formatos desaparecen)
     formats: Array.isArray(me.formats) ? me.formats.filter((f) => formatOptions(me.interests).includes(f)).slice(0, 20) : [],
     favCard,
@@ -435,6 +438,15 @@ function GamesSheet({ value, onSave, onClose }) {
   );
 }
 
+/* Datos con los que se desbloquean los títulos */
+const playerStats = (p) => ({
+  played: p.rel?.played ?? 0, reliable: reliability(p).level === 'reliable', verified: !!p.verified,
+  games: p.interests?.length ?? 0, decks: p.decks?.length ?? 0, stores: p.stores?.length ?? 0, level: p.level,
+});
+const playerTitle = (p) => t(titleFor(p.title, playerStats(p)).label);
+/* "Casual competitivo · Commander, cEDH": nivel y, detrás, los formatos */
+const levelLine = (p, max = 2) => [t(p.level), p.formats.slice(0, max).map((f) => t(f)).join(', ')].filter(Boolean).join(' · ');
+
 /* Juegos de otro jugador, con los que compartís resaltados primero */
 const GameList = ({ me, p }) => {
   const shared = sharedGames(me, p);
@@ -491,7 +503,7 @@ function Hex({ src, alt = '', size = 150, badge, colors = ['#fff'], ring = true,
           : <image href={src} x="11" y="12" width="78" height="88" preserveAspectRatio="xMidYMid slice" clipPath={`url(#${id}c)`} />}
         <path className="hex-border" d={HEX_PHOTO} stroke={`url(#${id}g)`} />
       </svg>
-      {badge && <span className="role-badge">{I.sword}{badge}</span>}
+      {badge && <span className="role-badge">{I.star}{badge}</span>}
     </div>
   );
 }
@@ -537,11 +549,11 @@ function TableCard({ p, me, leaving, onInfo }) {
       </div>
       <div className="hero-body" role="button" tabIndex={0} aria-label={t('Ver la ficha de {name}', { name: p.name })}
         onClick={onInfo} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onInfo(); } }}>
-        <Hex src={avatarOf(p)} alt={p.name} size={100} badge={p.formats[0] && t(p.formats[0])} colors={list} />
+        <Hex src={avatarOf(p)} alt={p.name} size={100} badge={playerTitle(p)} colors={list} />
         <h2 className="hero-name">{p.name}{p.verified && <span className="verified" title={t('Verificado')}>{I.check}</span>}</h2>
         {deck && <div className="hero-deck">{I.deck}<b>{deck.name}</b><i className="dot-sep" />{t(deck.format)}</div>}
         {p.favCard.name && <div className="hero-tags"><span className="hero-fav">{gameIcon(p.favCard.game)}{p.favCard.name}</span></div>}
-        <div className="hero-sub">{storeName(p.stores[0]) && <>{I.store}{storeName(p.stores[0])}<i className="dot-sep" /></>}{t(p.level)}</div>
+        <div className="hero-sub">{levelLine(p)}</div>
         <div className="hero-chips">
           <div className="hero-shared" title={t('Compatibilidad contigo')}>
             <b>{c.score}%</b>{shared > 0 ? (shared === 1 ? t('1 juego en común') : t('{n} juegos en común', { n: shared })) : t('compatible')}
@@ -590,7 +602,8 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock
             <Hex src={avatarOf(p)} alt={p.name} size={84} colors={list} ring={false} />
             <div>
               <h2 className="sheet-name">{p.name}{p.verified && <span className="verified" title={t('Verificado')}>{I.check}</span>}</h2>
-              <div className="sheet-sub">{[p.level, ...p.formats.filter((f) => f !== p.level)].map((x) => t(x)).join(' · ')}</div>
+              <div className="sheet-sub">{levelLine(p, 4)}</div>
+              <span className="title-chip">{I.star}{playerTitle(p)}</span>
             </div>
           </div>
           <div className="info-pills">
@@ -1732,7 +1745,7 @@ function DeckSheet({ games, onSave, onClose }) {
 /* ================= My profile ================= */
 const THEMES = [['light', 'Día', I.sun], ['dark', 'Noche', I.moon], ['system', 'Auto', I.auto]];
 
-function MyProfile({ me, setMe, matchCount, onPhoto, onAddDeck, flash }) {
+function MyProfile({ me, setMe, matchCount, played, onPhoto, onAddDeck, flash }) {
   const fav = me.favCard;
   const set = (patch) => setMe((x) => normalizeMe({ ...x, ...(typeof patch === 'function' ? patch(x) : patch) }));
   const [gamesOpen, setGamesOpen] = useState(false);
@@ -1745,18 +1758,21 @@ function MyProfile({ me, setMe, matchCount, onPhoto, onAddDeck, flash }) {
     try { setPhotoError(''); onPhoto(await readPhoto(file)); } catch (err) { setPhotoError(err.message); }
   };
   const dayNames = DAYS.filter(([k]) => me.days.includes(k)).map(([, n]) => t(n).slice(0, 3)).join(', ');
+  const stats = { ...playerStats(me), played, reliable: played >= 3 };
+  const unlocked = unlockedTitles(stats);
+  const title = titleFor(me.title, stats);
   return (
     <>
       {/* Así te ven los demás */}
       <div className={`me-card g-${fav.game}`}>
         <img className={`me-cover${imgCls(fav.game, fav)}`} src={artOf(fav.game, fav)} alt="" />
         <button id="edit-photo" className="me-photo" onClick={() => fileRef.current.click()} aria-label={t('Cambiar foto')}>
-          <Hex src={myAvatar(me)} size={108} badge={me.formats[0] && t(me.formats[0])} colors={['#8B5CF6']} />
+          <Hex src={myAvatar(me)} size={108} badge={t(title.label)} colors={['#8B5CF6']} />
           <span className="cam">{I.camera}</span>
         </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickPhoto} />
         <h2 className="me-name">{me.name}</h2>
-        <div className="me-sub">{t(me.level)}</div>
+        <div className="me-sub">{levelLine(me, 3)}</div>
         {fav.name && <div className="me-fav">{gameIcon(fav.game)}{fav.name}</div>}
         {me.bio && <p className="me-bio">{me.bio}</p>}
         <div className="me-avail">{I.clock}{dayNames || t('Sin días')}{me.slots.length > 0 && ` · ${me.slots.map((x) => t(x)).join(', ')}`}</div>
@@ -1786,6 +1802,21 @@ function MyProfile({ me, setMe, matchCount, onPhoto, onAddDeck, flash }) {
             onCommit={(v) => set({ birthDate: v })} />
         </label>
         <p className="field-hint">{I.eye}{t('Tu edad no se muestra nunca.')}</p>
+      </div>
+
+      <h3 className="section-title">{t('Título')}<small className="title-note">{unlocked.length}/{TITLES.length}</small></h3>
+      <p className="section-hint">{t('Se muestra bajo tu foto. Desbloquea más jugando.')}</p>
+      <div className="titles">
+        {TITLES.map((x) => {
+          const open = unlocked.includes(x.id);
+          return (
+            <button type="button" key={x.id} className={`title-opt${title.id === x.id ? ' on' : ''}${open ? '' : ' locked'}`} disabled={!open}
+              aria-pressed={title.id === x.id} title={open ? '' : t(x.hint)} onClick={() => set({ title: x.id })}>
+              <span className="title-ico">{open ? I.star : I.lock}</span>
+              <span className="grow"><b>{t(x.label)}</b>{!open && <small>{t(x.hint)}</small>}</span>
+            </button>
+          );
+        })}
       </div>
 
       <h3 className="section-title">{t('Mis juegos')}<small className="title-note">{me.interests.length}/{MAX_GAMES}</small></h3>
@@ -2358,6 +2389,7 @@ export default function App() {
         {tab === 'me' && (
           <MyProfile
             me={me} setMe={setMe} matchCount={visibleMatches.length} flash={flash}
+            played={Object.values(attendance).filter((v) => v === 'came').length}
             onPhoto={savePhoto} onAddDeck={() => setEditing('deck')}
           />
         )}
