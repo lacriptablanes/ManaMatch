@@ -97,8 +97,9 @@ export const GAME_IDS = Object.keys(GAMES);
    Son dibujos propios (sin logos ni arte oficial). El color sale del identificador, así que cada juego
    y cada persona tienen siempre el mismo. */
 const COLORS = [
-  ['#8B5CF6', '#F8F7FC'], ['#6D4AE0', '#F8F7FC'], ['#C4F56A', '#171522'], ['#4FB3A9', '#171522'], ['#F28C6B', '#171522'],
-  ['#5B8DEF', '#F8F7FC'], ['#E06C9F', '#F8F7FC'], ['#F2B84B', '#171522'], ['#B79CFB', '#171522'], ['#3C3552', '#F8F7FC'],
+  // Solo tonos de la paleta (morados y carbón) para no saturar; el icono en lima o blanco
+  ['#8B5CF6', '#F8F7FC'], ['#7C4FE6', '#C4F56A'], ['#6D4AE0', '#F8F7FC'], ['#9F7AFA', '#171522'], ['#5B4A8C', '#C4F56A'],
+  ['#3C3552', '#C4F56A'], ['#4A3F6B', '#F8F7FC'], ['#2C2840', '#C4F56A'], ['#B79CFB', '#171522'], ['#241F3A', '#B79CFB'],
 ];
 const hash = (str) => [...String(str)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
 export const colorFor = (seed) => COLORS[hash(seed) % COLORS.length];

@@ -2322,3 +2322,9 @@ body { background: var(--body-bg); }
 .me-form .field-hint { display: flex; gap: 6px; align-items: center; margin: 0; }
 .me-form .field-hint svg { width: 14px; height: 14px; }
 .photo-remove { display: block; margin: 8px auto 0; }
+/* Disponibilidad: aire entre los días y las franjas, y lima suave (no saturar) */
+.days + .tags { margin-top: 12px; }
+:root[data-theme="light"] .day.on { background: var(--lime-soft); color: #171522; border-color: #A9DB4E; }
+:root[data-theme="light"] .row.pick.on .check, :root[data-theme="light"] .check-row.on .box { background: #C4F56A; }
+/* Tu lista de juegos en el perfil es información, no una selección: neutra, sin lima */
+.tag.interest.mine { background: var(--bg3); border-color: transparent; color: var(--text); }

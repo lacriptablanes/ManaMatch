@@ -1790,7 +1790,7 @@ function MyProfile({ me, setMe, matchCount, onPhoto, onAddDeck, flash }) {
 
       <h3 className="section-title">{t('Mis juegos')}<small className="title-note">{me.interests.length}/{MAX_GAMES}</small></h3>
       <div className="tags">
-        {me.interests.map((g) => <span key={g} className="tag interest on">{gameName(g)}</span>)}
+        {me.interests.map((g) => <span key={g} className="tag interest mine">{gameName(g)}</span>)}
         <button type="button" id="add-games" className="tag interest add" onClick={() => setGamesOpen(true)}>{me.interests.length < MAX_GAMES ? <>{I.plus}{t('Añadir')}</> : <>{I.edit}{t('Cambiar')}</>}</button>
       </div>
       {gamesOpen && (
