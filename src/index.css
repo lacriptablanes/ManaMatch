@@ -2445,3 +2445,7 @@ body { background: var(--body-bg); }
 .shop-tag { position: absolute; top: -9px; padding: 2px 8px; border-radius: 999px; font-size: 0.62rem; font-weight: 800; color: #171522; background: #C4F56A; white-space: nowrap; }
 .shop-sheet .field-hint { display: flex; gap: 6px; align-items: center; }
 .shop-sheet .field-hint svg { width: 14px; height: 14px; }
+
+/* Súper duelo: el borde del retrato pasa de lila a verde lima (sin etiquetas extra) */
+.super-ring .hex-svg { filter: drop-shadow(0 0 5px rgba(196, 245, 106, 0.55)) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.2)); }
+.avatar.super { box-shadow: 0 0 0 2.5px #C4F56A; }

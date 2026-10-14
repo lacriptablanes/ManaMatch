@@ -1409,9 +1409,8 @@ function Matches({ matches, chats, openChat }) {
       <h3 className="section-title">{t('Nuevos rivales')}</h3>
       <div className="new-matches">
         {matches.map((p) => (
-          <button key={p.id} className={`nm${p.superDuel ? ' super' : ''}`} onClick={() => openChat(p)}>
+          <button key={p.id} className={`nm${p.superDuel ? ' super-ring' : ''}`} onClick={() => openChat(p)} title={p.superDuel ? t('Súper duelo') : undefined}>
             <Hex src={avatarOf(p)} alt={p.name} size={68} colors={p.superDuel ? ['#C4F56A'] : FRAME.list} ring={false} />
-            {p.superDuel && <span className="nm-star" aria-label={t('Súper duelo')}>{I.star}</span>}
             <span>{p.name}</span>
           </button>
         ))}
@@ -1422,10 +1421,10 @@ function Matches({ matches, chats, openChat }) {
           const last = chats[p.id]?.at(-1);
           return (
             <button key={p.id} id={`match-${p.id}`} className="row" onClick={() => openChat(p)}>
-              <img loading="lazy" decoding="async" className="avatar" src={avatarOf(p)} alt="" />
+              <img loading="lazy" decoding="async" className={`avatar${p.superDuel ? ' super' : ''}`} src={avatarOf(p)} alt={p.superDuel ? t('Súper duelo') : ''} />
               <div className="grow">
                 <div className="title">{p.name} <span className={`mini-game g-${p.favCard.game}`}>{gameIcon(p.favCard.game)}</span>
-                  {p.superDuel && <span className="super-tag">{I.star}{p.superDuel === 'sent' ? t('Le enviaste un Súper duelo') : t('Te retó con un Súper duelo')}</span>}</div>
+</div>
                 <div className={`sub ${last ? '' : 'new'}`}>{last ? (last.type === 'meetup' ? `📅 ${t('Partida propuesta')}` : last.text) : t('¡Duelo aceptado! Propón una partida')}</div>
               </div>
               <span className="chev">{I.chevron}</span>
@@ -1488,9 +1487,9 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport, attended, onAtten
     <div className={`chat g-${p.favCard.game}`} style={{ '--them': theirs.glow, '--them-grad': theirs.grad }}>
       <div className="chat-head">
         <button id="chat-back" className="icon-btn" onClick={onBack} aria-label={t('Volver')}>{I.back}</button>
-        <button className="chat-who" onClick={() => onInfo(p)}>
-          <Hex src={avatarOf(p)} alt="" size={46} colors={theirs.list} ring={false} />
-          <div><b>{p.name}{p.superDuel && <span className="super-tag mini">{I.star}{t('Súper duelo')}</span>}</b><span>{gameIcon(game.id)}{p.decks[0]?.name ?? game.name}</span></div>
+        <button className={`chat-who${p.superDuel ? ' super-ring' : ''}`} onClick={() => onInfo(p)} title={p.superDuel ? t('Súper duelo') : undefined}>
+          <Hex src={avatarOf(p)} alt="" size={46} colors={p.superDuel ? ['#C4F56A'] : theirs.list} ring={false} />
+          <div><b>{p.name}</b><span>{gameIcon(game.id)}{p.decks[0]?.name ?? game.name}</span></div>
         </button>
         <button id="chat-report" className="icon-btn" onClick={onReport} aria-label={t('Denunciar o bloquear a {name}', { name: p.name })} title={t('Denunciar o bloquear')}>{I.flag}</button>
       </div>
