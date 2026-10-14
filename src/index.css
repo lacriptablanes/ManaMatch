@@ -2285,3 +2285,34 @@ body { background: var(--body-bg); }
 .chat-who .hex-svg { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--brand) 45%, transparent)) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.25)); }
 /* Caja de texto de la pantalla de duelo: sombra dentro de los márgenes */
 .match-reply { box-shadow: 0 14px 24px -12px rgba(0, 0, 0, 0.55); }
+
+/* =====================================================================
+   LIMA EN MODO DÍA (regla 60-30-10)
+   60 % fondo claro · 30 % morado (botones principales, navegación) · 10 % lima para lo "activo/seleccionado".
+   Sobre fondo claro el lima nunca lleva texto lima: siempre es relleno con texto carbón para que se lea.
+   ===================================================================== */
+:root[data-theme="light"] {
+  --lime-ink: #171522;
+  --lime-soft: color-mix(in srgb, #C4F56A 55%, #ffffff);
+}
+/* Interruptores, días y casillas activas */
+:root[data-theme="light"] .switch.on { background: #C4F56A; border-color: transparent; box-shadow: inset 0 0 0 1px rgba(23, 21, 34, 0.08); }
+:root[data-theme="light"] .switch.on span { background: #171522; }
+:root[data-theme="light"] .day.on,
+:root[data-theme="light"] .row.pick.on .check,
+:root[data-theme="light"] .check-row.on .box { background: #C4F56A; color: #171522; box-shadow: none; }
+:root[data-theme="light"] .row.pick.on { border-color: #A9DB4E; background: color-mix(in srgb, #C4F56A 14%, #ffffff); }
+:root[data-theme="light"] .check-row.on { border-color: #A9DB4E; }
+/* Etiquetas seleccionadas (tus juegos, formatos, franjas) */
+:root[data-theme="light"] .tag.on, :root[data-theme="light"] .tag.interest.on {
+  background: var(--lime-soft); border-color: #A9DB4E; color: #171522;
+}
+:root[data-theme="light"] .tag.interest.on svg { color: #171522; }
+/* Contadores y avisos pequeños */
+:root[data-theme="light"] .title-note { color: #171522; background: #C4F56A; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; }
+:root[data-theme="light"] .topnav .badge { background: #C4F56A; color: #171522; }
+:root[data-theme="light"] .rel-badge.new { background: var(--lime-soft); color: #171522; }
+/* Puntos de los carruseles y anillo de compatibilidad */
+:root[data-theme="light"] .rules-dots > .on { background: #A9DB4E; }
+:root[data-theme="light"] .compat-ring { background: conic-gradient(#A9DB4E calc(var(--v) * 1%), var(--bg3) 0); }
+/* Distancia y estado de la tarjeta (como en tu captura) se mantienen en lima */
