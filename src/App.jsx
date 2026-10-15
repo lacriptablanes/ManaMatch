@@ -1426,18 +1426,24 @@ function openAdLink(ad) {
 function SponsoredRow({ ad, store, onOpen }) {
   const [hidden, setHidden] = useState(false);
   useEffect(() => { logStoreAd(ad.id, 'view'); }, [ad.id]);
+  // Con enlace, todo el anuncio (imagen y texto) lleva a la web del anunciante; sin enlace, a la ficha de la tienda
+  const openRow = () => {
+    if (ad.link) { openAdLink(ad); return; }
+    logStoreAd(ad.id, 'click');
+    onOpen(store.id);
+  };
   if (hidden) return null;
   return (
     <div className="row store-row sponsored" role="button" tabIndex={0}
-      onClick={() => { logStoreAd(ad.id, 'click'); onOpen(store.id); }}
-      onKeyDown={(e) => { if (e.key === 'Enter') { logStoreAd(ad.id, 'click'); onOpen(store.id); } }}>
+      onClick={openRow}
+      onKeyDown={(e) => { if (e.key === 'Enter') openRow(); }}>
       <span className="row-icon">{I.store}</span>
       <div className="grow">
         <span className="sponsored-tag">{t('Patrocinado')}</span>
         {ad.imageUrl && <img className="sponsored-img" src={ad.imageUrl} alt="" loading="lazy" decoding="async" />}
         <div className="title">{ad.title}</div>
         <div className="sub sponsored-store">{store.name}{ad.body ? ` · ${ad.body}` : ''}</div>
-        {ad.link && <button type="button" className="sponsored-link" onClick={(e) => { e.stopPropagation(); openAdLink(ad); }}>{t('Visitar web')}</button>}
+        {ad.link && <span className="sponsored-link">{t('Visitar web')}</span>}
       </div>
       <button type="button" className="sponsored-hide" aria-label={t('Ocultar anuncio')} onClick={(e) => { e.stopPropagation(); setHidden(true); }}>{I.close ?? '×'}</button>
     </div>
