@@ -2736,10 +2736,6 @@ body { background: var(--body-bg); }
   background: var(--card-hi); color: var(--muted); border: 1px solid var(--border);
 }
 .sponsored-store { font-weight: 700; color: var(--text-2); }
-.sponsored-hide {
-  align-self: flex-start; width: 28px; height: 28px; border-radius: 50%; border: 0; cursor: pointer;
-  background: transparent; color: var(--muted); font-size: 1.1rem; line-height: 1;
-}
 
 /* Imagen del anuncio: banner 16:9 dentro de la fila «Patrocinado» */
 .sponsored-img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; margin: 6px 0 8px; }

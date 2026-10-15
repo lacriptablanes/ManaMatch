@@ -1424,7 +1424,6 @@ function openAdLink(ad) {
 }
 
 function SponsoredRow({ ad, store, onOpen }) {
-  const [hidden, setHidden] = useState(false);
   useEffect(() => { logStoreAd(ad.id, 'view'); }, [ad.id]);
   // Con enlace, todo el anuncio (imagen y texto) lleva a la web del anunciante; sin enlace, a la ficha de la tienda
   const openRow = () => {
@@ -1432,7 +1431,6 @@ function SponsoredRow({ ad, store, onOpen }) {
     logStoreAd(ad.id, 'click');
     onOpen(store.id);
   };
-  if (hidden) return null;
   return (
     <div className="row store-row sponsored" role="button" tabIndex={0}
       onClick={openRow}
@@ -1445,7 +1443,6 @@ function SponsoredRow({ ad, store, onOpen }) {
         <div className="sub sponsored-store">{store.name}{ad.body ? ` · ${ad.body}` : ''}</div>
         {ad.link && <span className="sponsored-link">{t('Visitar web')}</span>}
       </div>
-      <button type="button" className="sponsored-hide" aria-label={t('Ocultar anuncio')} onClick={(e) => { e.stopPropagation(); setHidden(true); }}>{I.close ?? '×'}</button>
     </div>
   );
 }
