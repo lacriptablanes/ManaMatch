@@ -597,9 +597,10 @@ export default {
   "Ha verificado a {name} en persona": "Verificou a {name} en persoa",
   "Conseguir Súper duelos": "Conseguir Súper duelos",
   "Récord": "Récord",
-  "Minijuego: toca para saltar las cartas": "Minixogo: toca para saltar as cartas",
-  "Toca para empezar. Salta las cartas y recoge maná.": "Toca para comezar. Salta as cartas e recolle maná.",
-  "Toca para saltar": "Toca para saltar",
   "¡Fin de la partida! Toca para jugar otra": "Fin da partida! Toca para xogar outra",
   "Jugar a un minijuego mientras esperas": "Xoga a un minixogo mentres agardas",
+  "{n} vidas": "{n} vidas",
+  "Minijuego: mueve tu carta para recoger maná": "Minixogo: move a túa carta para recoller maná",
+  "Toca para empezar. Arrastra tu carta: recoge el maná y esquiva los «Paso».": "Toca para comezar. Arrastra a túa carta: recolle o maná e esquiva os «Paso».",
+  "Cada 8 seguidos sube el multiplicador": "Cada 8 seguidos sobe o multiplicador",
 };

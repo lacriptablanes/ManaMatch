@@ -597,9 +597,10 @@ export default {
   "Ha verificado a {name} en persona": "{name} aurrez aurre egiaztatu du",
   "Conseguir Súper duelos": "Lortu Super dueluak",
   "Récord": "Errekorra",
-  "Minijuego: toca para saltar las cartas": "Minijokoa: ukitu kartak jauzteko",
-  "Toca para empezar. Salta las cartas y recoge maná.": "Ukitu hasteko. Jauzi kartak eta bildu mana.",
-  "Toca para saltar": "Ukitu jauzteko",
   "¡Fin de la partida! Toca para jugar otra": "Partida amaitu da! Ukitu berriro jokatzeko",
   "Jugar a un minijuego mientras esperas": "Jokatu minijoko bat itxaroten duzun bitartean",
+  "{n} vidas": "{n} bizitza",
+  "Minijuego: mueve tu carta para recoger maná": "Minijokoa: mugitu zure karta mana biltzeko",
+  "Toca para empezar. Arrastra tu carta: recoge el maná y esquiva los «Paso».": "Ukitu hasteko. Arrastatu zure karta: bildu mana eta saihestu «Pasatu»-ak.",
+  "Cada 8 seguidos sube el multiplicador": "8 jarraian bakoitzeko biderkatzailea igotzen da",
 };

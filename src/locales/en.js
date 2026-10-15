@@ -595,9 +595,10 @@ export default {
   "Ha verificado a {name} en persona": "Verified {name} in person",
   "Conseguir Súper duelos": "Get Super duels",
   "Récord": "Best",
-  "Minijuego: toca para saltar las cartas": "Mini-game: tap to jump over the cards",
-  "Toca para empezar. Salta las cartas y recoge maná.": "Tap to start. Jump the cards and collect mana.",
-  "Toca para saltar": "Tap to jump",
   "¡Fin de la partida! Toca para jugar otra": "Game over! Tap to play again",
   "Jugar a un minijuego mientras esperas": "Play a mini-game while you wait",
+  "{n} vidas": "{n} lives",
+  "Minijuego: mueve tu carta para recoger maná": "Mini-game: move your card to collect mana",
+  "Toca para empezar. Arrastra tu carta: recoge el maná y esquiva los «Paso».": "Tap to start. Drag your card: collect mana and dodge the “Pass” tokens.",
+  "Cada 8 seguidos sube el multiplicador": "Every 8 in a row raises the multiplier",
 };

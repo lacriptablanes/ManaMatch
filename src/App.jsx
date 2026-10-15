@@ -7,7 +7,7 @@ import { compat, byCompat, reliability } from './compat';
 import { TITLES, unlockedTitles, titleFor } from './titles';
 import { t, useLang, setLang, getLang, LANGS, locale } from './i18n';
 import { supabase } from './supabase';
-import ManaRun from './ManaRun';
+import ManaCatch from './ManaCatch';
 import {
   loadMe, saveMe, uploadAvatar, removeAvatars, isAvatarPath, avatarUrl, ageFrom, isCardUpload,
   hasLocalCardImages, uploadCardImages, replaceUploads, cleanCardImages, flagImage, hiddenImages,
@@ -1331,7 +1331,7 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, o
     <>
       <div className="deck" ref={tableRef}>
         {!top && (playing
-          ? <ManaRun onClose={closeGame} />
+          ? <ManaCatch onClose={closeGame} />
           : <Empty icon={I.crystal} title={t('No hay más jugadores')} text={t('Añade más juegos a tu lista, amplía tu radio de búsqueda o vuelve más tarde.')}
               onIcon={() => setPlaying(true)} iconLabel={t('Jugar a un minijuego mientras esperas')} />)}
         {next && (

@@ -2547,10 +2547,17 @@ body { background: var(--body-bg); }
 .empty-play { font: inherit; cursor: pointer; padding: 0; }
 .empty-play:active { transform: scale(0.94); }
 .empty-play:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
-.mana-run { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 0 18px; }
-.mr-head { display: flex; justify-content: flex-end; gap: 14px; font-variant-numeric: tabular-nums; font-weight: 800; font-size: 0.82rem; letter-spacing: 1.5px; }
-.mr-score { color: var(--text); }
-.mr-best { color: var(--muted); }
-.mr-canvas { width: 100%; display: block; touch-action: manipulation; cursor: pointer; user-select: none; -webkit-user-select: none; }
-.mr-hint { margin: 0; text-align: center; font-size: 0.82rem; color: var(--muted); min-height: 1.3em; }
-.mr-close { align-self: center; }
+.mana-catch { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px; padding: 24px 18px 150px; }
+.mc-head { display: flex; align-items: center; gap: 10px; font-variant-numeric: tabular-nums; font-weight: 800; }
+.mc-lives { display: flex; gap: 5px; margin-right: auto; }
+.mc-lives i { width: 12px; height: 13px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--line); }
+.mc-lives i.on { background: var(--brand); }
+.mc-combo { padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; color: #171522; background: #C4F56A; }
+.mc-score { font-size: 1.3rem; color: var(--text); }
+.mc-best { font-size: 0.74rem; letter-spacing: 1px; color: var(--muted); }
+.mc-canvas {
+  flex: 1; min-height: 0; width: 100%; display: block; border-radius: 18px; touch-action: none; cursor: pointer; user-select: none; -webkit-user-select: none;
+  background: color-mix(in srgb, var(--brand) 5%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 14%, transparent);
+}
+.mc-hint { margin: 0; text-align: center; font-size: 0.8rem; line-height: 1.35; color: var(--muted); min-height: 2.7em; }
+.mc-close { align-self: center; }
