@@ -2759,3 +2759,7 @@ body { background: var(--body-bg); }
   content: ''; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
   border: 7px solid transparent; border-top-color: #E9E6F3; border-bottom: 0;
 }
+
+/* Anuncio en Descubrir: sin degradado de abajo y con el título por encima de la franja de la imagen */
+.ad-card .art-frame::after { display: none; }
+.ad-card .hero-body { top: 56px; bottom: auto; background: rgba(10, 9, 14, 0.6); border-radius: 16px; padding: 10px 14px; }
