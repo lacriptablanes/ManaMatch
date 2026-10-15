@@ -607,4 +607,9 @@ export default {
   "Mantén pulsada para mover tu carta hacia la {dir}": "Eutsi sakatuta zure karta {dir} mugitzeko",
   "izquierda": "ezkerrera",
   "derecha": "eskuinera",
+  "−1 vida": "−1 bizitza",
+  "¡Sin vidas!": "Bizitzarik gabe!",
+  "puntos": "puntu",
+  "¡Nuevo récord!": "Errekor berria!",
+  "Pulsa «Paso» o «¡Duelo!» para volver a empezar": "Sakatu «Pasatu» edo «Duelua!» berriro hasteko",
 };

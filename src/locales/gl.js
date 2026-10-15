@@ -607,4 +607,9 @@ export default {
   "Mantén pulsada para mover tu carta hacia la {dir}": "Mantén premida para mover a túa carta cara á {dir}",
   "izquierda": "esquerda",
   "derecha": "dereita",
+  "−1 vida": "−1 vida",
+  "¡Sin vidas!": "Sen vidas!",
+  "puntos": "puntos",
+  "¡Nuevo récord!": "Novo récord!",
+  "Pulsa «Paso» o «¡Duelo!» para volver a empezar": "Preme «Paso» ou «Duelo!» para volver comezar",
 };

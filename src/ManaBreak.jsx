@@ -33,6 +33,8 @@ export default function ManaBreak({ steer, onClose }) {
   const [hud, setHud] = useState({ score: 0, lives: LIVES, level: 1 });
   const [best, setBest] = useState(readBest);
   const [state, setState] = useState('ready'); // ready | play | over
+  const [lost, setLost] = useState(0); // contador para relanzar la animación de vida perdida
+  const [result, setResult] = useState(null); // { score, record } al terminar
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -85,11 +87,15 @@ export default function ManaBreak({ steer, onClose }) {
     resize();
 
     const start = () => {
-      Object.assign(g, { run: true, over: false, score: 0, lives: LIVES, level: 1, parts: [] });
+      Object.assign(g, { run: true, over: false, overAt: 0, pause: 0, score: 0, lives: LIVES, level: 1, parts: [] });
+      setResult(null);
       buildBricks(); placeBall();
       setHud({ score: 0, lives: LIVES, level: 1 }); setState('play');
     };
-    g.action = () => { if (!g.run) start(); else launch(); };
+    // tras perder, se vuelve a empezar con las cartas (o espacio); se espera un momento para no reiniciar sin querer
+    const canRestart = () => !g.overAt || performance.now() - g.overAt > 900;
+    g.action = () => { if (!g.run) { if (canRestart()) start(); } else if (!g.pause) launch(); };
+    g.tapBoard = () => { if (!g.run && !g.over) start(); else if (g.run && !g.pause) launch(); };
     g.drag = (x) => { g.target = x; };
 
     const burst = (x, y, c) => { for (let i = 0; i < 7; i++) g.parts.push({ x, y, vx: Math.cos(i * 0.9) * 2, vy: Math.sin(i * 0.9) * 2, life: 20, c }); };
@@ -98,7 +104,7 @@ export default function ManaBreak({ steer, onClose }) {
     const frame = () => {
       // pulsar una carta de la mano también empieza (o reinicia) la partida
       const sd = steer?.current || 0;
-      if (!g.run && sd && !g.lastDir) start();
+      if (!g.run && sd && !g.lastDir && canRestart()) start();
       g.lastDir = sd;
       if (g.run) {
         // carta: botones de la mano o flechas; arrastrar la lleva al dedo
@@ -106,9 +112,11 @@ export default function ManaBreak({ steer, onClose }) {
         if (dir) { g.target = null; g.px += dir * 6.5; }
         else if (g.target != null) g.px += (g.target - g.px) * 0.35;
         g.px = Math.max(PW / 2, Math.min(W - PW / 2, g.px));
-        if (dir && g.held) launch(); // al mover con las cartas, la bola sale sola
+        if (g.pause > 0 && --g.pause === 0) placeBall();
+        if (dir && g.held && !g.pause) launch(); // al mover con las cartas, la bola sale sola
 
-        if (g.held) { g.bx = g.px; g.by = H - 26 - PH / 2 - R; }
+        if (g.pause) { /* pausa tras perder una vida */ }
+        else if (g.held) { g.bx = g.px; g.by = H - 26 - PH / 2 - R; }
         else {
           // dos subpasos para que la bola no atraviese bloques a velocidad alta
           for (let s = 0; s < 2; s++) {
@@ -148,12 +156,16 @@ export default function ManaBreak({ steer, onClose }) {
           // se cae la bola
           if (g.by > H + R) {
             g.lives--;
+            setLost((n) => n + 1);
+            navigator.vibrate?.(60);
             if (g.lives <= 0) {
-              g.run = false; g.over = true;
-              const s = g.score;
-              setBest((b) => { if (s > b) { saveBest(s); return s; } return b; });
+              g.run = false; g.over = true; g.overAt = performance.now();
+              const s = g.score, prev = readBest();
+              if (s > prev) saveBest(s);
+              setBest(Math.max(s, prev));
+              setResult({ score: s, record: s > prev && s > 0 });
               setState('over');
-            } else placeBall();
+            } else { g.pause = 55; g.held = true; }
             setHud({ score: g.score, lives: Math.max(0, g.lives), level: g.level });
           }
         }
@@ -178,7 +190,7 @@ export default function ManaBreak({ steer, onClose }) {
       ctx.fillStyle = C.card; ctx.fill(); ctx.strokeStyle = C.brand; ctx.lineWidth = 2; ctx.stroke();
       hexPath(ctx, g.px, py, 4.5); ctx.strokeStyle = C.brand; ctx.lineWidth = 1.4; ctx.stroke();
       // bola de maná
-      if (!g.over) {
+      if (!g.over && !g.pause) {
         hexPath(ctx, g.bx, g.by, R + 1.5); ctx.fillStyle = C.lime; ctx.fill();
         ctx.strokeStyle = C.limeEdge; ctx.lineWidth = 1.8; ctx.lineJoin = 'round'; ctx.stroke();
       }
@@ -203,7 +215,7 @@ export default function ManaBreak({ steer, onClose }) {
     <div className="mana-break">
       <div className="mb-head">
         <span className="mb-lives" aria-label={t('{n} vidas', { n: hud.lives })}>
-          {Array.from({ length: LIVES }, (_, i) => <i key={i} className={i < hud.lives ? 'on' : ''} />)}
+          {Array.from({ length: LIVES }, (_, i) => <i key={i === hud.lives ? `l${lost}` : i} className={i < hud.lives ? 'on' : i === hud.lives && lost ? 'lost' : ''} />)}
         </span>
         <span className="mb-level">{t('Nivel {n}', { n: hud.level })}</span>
         <span className="mb-score">{hud.score}</span>
@@ -212,13 +224,31 @@ export default function ManaBreak({ steer, onClose }) {
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
         </button>
       </div>
-      <canvas ref={canvasRef} className="mb-canvas" role="img" aria-label={t('Minijuego: rompe los bloques con la bola de maná')}
-        onPointerDown={(e) => { e.currentTarget.setPointerCapture?.(e.pointerId); game.current?.drag(xOf(e)); game.current?.action(); }}
-        onPointerMove={(e) => { if (e.buttons) game.current?.drag(xOf(e)); }} />
+      <div className="mb-board">
+        <canvas ref={canvasRef} className="mb-canvas" role="img" aria-label={t('Minijuego: rompe los bloques con la bola de maná')}
+          onPointerDown={(e) => { e.currentTarget.setPointerCapture?.(e.pointerId); game.current?.drag(xOf(e)); game.current?.tapBoard(); }}
+          onPointerMove={(e) => { if (e.buttons) game.current?.drag(xOf(e)); }} />
+        {/* Vida perdida: el rombo aparece en el tablero y se parte */}
+        {lost > 0 && state === 'play' && (
+          <div key={lost} className="mb-lost" role="status">
+            <span className="mb-gem"><i /><i /></span>
+            <b>{t('−1 vida')}</b>
+          </div>
+        )}
+        {state === 'over' && result && (
+          <div className="mb-over" role="status">
+            <span className="mb-over-gems">{Array.from({ length: LIVES }, (_, i) => <span key={i} className="mb-gem" style={{ '--d': `${i * 0.12}s` }}><i /><i /></span>)}</span>
+            <h3>{t('¡Sin vidas!')}</h3>
+            <p className="mb-over-score">{result.score} <small>{t('puntos')}</small></p>
+            {result.record && <span className="mb-record">{t('¡Nuevo récord!')}</span>}
+            <p className="mb-over-hint">{t('Pulsa «Paso» o «¡Duelo!» para volver a empezar')}</p>
+          </div>
+        )}
+      </div>
       <p className="mb-hint">
         {state === 'ready' && t('Toca para empezar. Mantén pulsadas «Paso» y «¡Duelo!» para mover tu carta.')}
         {state === 'play' && t('Paso ← · → ¡Duelo!')}
-        {state === 'over' && t('¡Fin de la partida! Toca para jugar otra')}
+        {state === 'over' && t('Paso ← · → ¡Duelo!')}
       </p>
     </div>
   );
