@@ -2774,3 +2774,9 @@ body { background: var(--body-bg); }
 .ad-card .hero-body { top: 12px; left: 12px; right: 12px; margin: 0; padding: 0; background: none; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7); }
 .ad-card .hero-top { top: auto; bottom: 12px; }
 .ad-card .hero-name, .ad-card .hero-deck, .ad-card .hero-sub { text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7); }
+
+/* Anuncio: etiqueta «Patrocinado» arriba, bloque de texto más grande y un poco más abajo */
+.ad-card .hero-top { top: 12px; bottom: auto; }
+.ad-card .hero-body { top: 52px; }
+.ad-card .hero-name { font-size: 1.5rem; }
+.ad-card .hero-deck, .ad-card .hero-sub { font-size: 0.9rem; }
