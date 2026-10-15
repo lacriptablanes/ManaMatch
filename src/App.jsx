@@ -908,7 +908,12 @@ function LoginScreen() {
     const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: redirectTo } });
     setState(error ? 'error' : 'sent');
   };
-  const busy = state === 'google' || state === 'sending';
+  const discord = async () => {
+    setState('discord');
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'discord', options: { redirectTo } });
+    if (error) setState('error');
+  };
+  const busy = state === 'google' || state === 'discord' || state === 'sending';
   return (
     <div className="login" role="dialog" aria-label={t('Iniciar sesión')}>
       <div className="login-rain" aria-hidden="true">
@@ -925,6 +930,7 @@ function LoginScreen() {
       <p className="swiped">{t('Encuentra rivales de Magic, Pokémon, One Piece y muchos más juegos cerca de ti.')}<br />{t('Solo para mayores de 18.')}</p>
 
       <button id="login-google" type="button" className="login-google" disabled={busy} onClick={google}>{GOOGLE_G}{state === 'google' ? t('Abriendo Google…') : t('Continuar con Google')}</button>
+      <button id="login-discord" type="button" className="login-google login-discord" disabled={busy} onClick={discord}>{I.chat}{state === 'discord' ? t('Abriendo Discord…') : t('Continuar con Discord')}</button>
 
       <div className="login-or"><span>{t('o con tu correo')}</span></div>
 
@@ -2254,7 +2260,9 @@ function SettingsScreen({ me, setMe, theme, setTheme, perf, setPerf, blocked, on
   const [accountDialog, setAccountDialog] = useState(null); // 'email' | 'delete'
   useBack(!!accountDialog, () => setAccountDialog(null));
   // Cómo entró: con Google o con el enlace al correo (sin contraseña en ningún caso)
-  const viaGoogle = user?.app_metadata?.provider === 'google';
+  const provider = user?.app_metadata?.provider;
+  const viaGoogle = provider === 'google';
+  const viaDiscord = provider === 'discord';
   const setNotif = (k, v) => setMe((x) => ({ ...x, notif: { ...x.notif, [k]: v } }));
   const blockedPlayers = PLAYERS.filter((x) => blocked.includes(x.id));
   return (
@@ -2352,8 +2360,8 @@ function SettingsScreen({ me, setMe, theme, setTheme, perf, setPerf, blocked, on
             <h3 className="section-title">{t('Cuenta')}</h3>
             <div className="list">
               <div className="row account-row">
-                <span className="row-icon account-icon">{viaGoogle ? GOOGLE_G : I.mail}</span>
-                <div className="grow"><div className="title">{viaGoogle ? t('Conectado con Google') : t('Conectado con enlace al correo')}</div><div className="sub">{user.email}</div></div>
+                <span className="row-icon account-icon">{viaGoogle ? GOOGLE_G : viaDiscord ? I.chat : I.mail}</span>
+                <div className="grow"><div className="title">{viaGoogle ? t('Conectado con Google') : viaDiscord ? t('Conectado con Discord') : t('Conectado con enlace al correo')}</div><div className="sub">{user.email}</div></div>
               </div>
               <p className="field-hint account-hint">{I.shield}{viaGoogle
                 ? t('ManaMatch no guarda contraseñas: tu correo y tu contraseña se cambian en tu cuenta de Google.')

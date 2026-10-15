@@ -27,7 +27,7 @@ Este documento recoge qué está hecho y qué falta antes de abrir la app al pú
 
 ### Pendiente al montar el servidor (imprescindible)
 
-- [x] **Autenticación** con Supabase Auth: inicio con Google o enlace por email, sin contraseñas propias.
+- [x] **Autenticación** con Supabase Auth: inicio con Google, Discord o enlace por email, sin contraseñas propias.
   Cambio de correo con doble confirmación y borrado de cuenta (`supabase/migrations/002_delete_account.sql`).
 - [x] **Permisos por usuario en la base de datos** (`supabase/schema.sql` y `migrations/`): cada usuario solo lee perfiles
   públicos, edita el suyo y lee los chats en los que participa. Comprobado: no puede verificarse a sí mismo,

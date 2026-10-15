@@ -2713,3 +2713,10 @@ body { background: var(--body-bg); }
 
 /* Margen superior para que la inclinación 3D de la carta no se corte al borde de la pantalla */
 .deck { margin-top: 18px; }
+
+/* Botón de Discord en el login: mismo tamaño que el de Google, con el color de la marca */
+.login .login-discord, :root[data-theme="light"] .login .login-discord {
+  margin-top: 10px; background: #5865F2; color: #fff; border-color: transparent;
+}
+.login .login-discord svg { color: #fff; }
+.login .login-discord:not(:disabled):hover { box-shadow: 0 14px 32px rgba(88, 101, 242, 0.35); }
