@@ -621,7 +621,7 @@ function TableCard({ p, me, leaving, onInfo }) {
     el.style.setProperty('--my', `${my * 100}%`);
     if (reducedMotion()) return;
     el.style.setProperty('--ry', `${(mx - 0.5) * 12}deg`);
-    el.style.setProperty('--rx', `${(0.5 - my) * 10}deg`);
+    el.style.setProperty('--rx', `${(0.5 - my) * 6}deg`);
   };
   const untilt = () => { ['--rx', '--ry'].forEach((v) => ref.current?.style.setProperty(v, '0deg')); };
   const { grad, glow, list } = FRAME;
