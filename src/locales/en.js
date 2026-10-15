@@ -596,7 +596,6 @@ export default {
   "Conseguir Súper duelos": "Get Super duels",
   "Récord": "Best",
   "¡Fin de la partida! Toca para jugar otra": "Game over! Tap to play again",
-  "Jugar a un minijuego mientras esperas": "Play a mini-game while you wait",
   "{n} vidas": "{n} lives",
   "Nivel {n}": "Level {n}",
   "Minijuego: rompe los bloques con la bola de maná": "Mini-game: break the blocks with the mana ball",
@@ -610,4 +609,5 @@ export default {
   "puntos": "points",
   "¡Nuevo récord!": "New record!",
   "Pulsa «Paso» o «¡Duelo!» para volver a empezar": "Press “Pass” or “Duel!” to start again",
+  "Toca la pantalla y juega mientras aparecen nuevos jugadores": "Tap the screen and play while new players show up",
 };

@@ -598,7 +598,6 @@ export default {
   "Conseguir Súper duelos": "Lortu Super dueluak",
   "Récord": "Errekorra",
   "¡Fin de la partida! Toca para jugar otra": "Partida amaitu da! Ukitu berriro jokatzeko",
-  "Jugar a un minijuego mientras esperas": "Jokatu minijoko bat itxaroten duzun bitartean",
   "{n} vidas": "{n} bizitza",
   "Nivel {n}": "{n}. maila",
   "Minijuego: rompe los bloques con la bola de maná": "Minijokoa: apurtu blokeak mana-bolarekin",
@@ -612,4 +611,5 @@ export default {
   "puntos": "puntu",
   "¡Nuevo récord!": "Errekor berria!",
   "Pulsa «Paso» o «¡Duelo!» para volver a empezar": "Sakatu «Pasatu» edo «Duelua!» berriro hasteko",
+  "Toca la pantalla y juega mientras aparecen nuevos jugadores": "Ukitu pantaila eta jokatu jokalari berriak agertu bitartean",
 };

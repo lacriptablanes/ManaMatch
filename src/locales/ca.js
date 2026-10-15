@@ -598,7 +598,6 @@ export default {
   "Conseguir Súper duelos": "Aconsegueix Súper duels",
   "Récord": "Rècord",
   "¡Fin de la partida! Toca para jugar otra": "Fi de la partida! Toca per jugar-ne una altra",
-  "Jugar a un minijuego mientras esperas": "Juga a un minijoc mentre esperes",
   "{n} vidas": "{n} vides",
   "Nivel {n}": "Nivell {n}",
   "Minijuego: rompe los bloques con la bola de maná": "Minijoc: trenca els blocs amb la bola de manà",
@@ -612,4 +611,5 @@ export default {
   "puntos": "punts",
   "¡Nuevo récord!": "Nou rècord!",
   "Pulsa «Paso» o «¡Duelo!» para volver a empezar": "Prem «Passo» o «Duel!» per tornar a començar",
+  "Toca la pantalla y juega mientras aparecen nuevos jugadores": "Toca la pantalla i juga mentre apareixen jugadors nous",
 };

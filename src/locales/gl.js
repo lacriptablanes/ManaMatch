@@ -598,7 +598,6 @@ export default {
   "Conseguir Súper duelos": "Conseguir Súper duelos",
   "Récord": "Récord",
   "¡Fin de la partida! Toca para jugar otra": "Fin da partida! Toca para xogar outra",
-  "Jugar a un minijuego mientras esperas": "Xoga a un minixogo mentres agardas",
   "{n} vidas": "{n} vidas",
   "Nivel {n}": "Nivel {n}",
   "Minijuego: rompe los bloques con la bola de maná": "Minixogo: rompe os bloques coa bóla de maná",
@@ -612,4 +611,5 @@ export default {
   "puntos": "puntos",
   "¡Nuevo récord!": "Novo récord!",
   "Pulsa «Paso» o «¡Duelo!» para volver a empezar": "Preme «Paso» ou «Duelo!» para volver comezar",
+  "Toca la pantalla y juega mientras aparecen nuevos jugadores": "Toca a pantalla e xoga mentres aparecen novos xogadores",
 };

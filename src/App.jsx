@@ -345,15 +345,20 @@ const FRAME = { list: ['#8B5CF6'], grad: '#8B5CF6', glow: '#8B5CF6' };
 // Marco verde: quien te ha retado con un Súper duelo (y las conversaciones que salieron de uno)
 const SUPER_FRAME = ['#C4F56A'];
 const toggleIn = (arr, v) => arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
-const Empty = ({ icon, title, text, onIcon, iconLabel }) => (
-  <div className="empty">
-    {onIcon
-      ? <button type="button" className="empty-icon empty-play" onClick={onIcon} aria-label={iconLabel} title={iconLabel}>{icon}</button>
-      : <div className="empty-icon">{icon}</div>}
-    <h3>{title}</h3>
-    <p>{text}</p>
-  </div>
-);
+// Con onPlay, toda la pantalla vacía es un botón que abre el minijuego (y lo dice con un aviso)
+const Empty = ({ icon, title, text, onPlay, playHint }) => {
+  const body = (
+    <>
+      <div className="empty-icon">{icon}</div>
+      <h3>{title}</h3>
+      <p>{text}</p>
+      {onPlay && <span className="empty-hint">{I.sword}{playHint}</span>}
+    </>
+  );
+  return onPlay
+    ? <button type="button" className="empty empty-tap" onClick={onPlay}>{body}</button>
+    : <div className="empty">{body}</div>;
+};
 const Switch = ({ id, on, onChange, label, hint, icon }) => (
   <div className="setting">
     {icon && <span className="setting-icon">{icon}</span>}
@@ -1344,7 +1349,7 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, o
         {!top && (playing
           ? <ManaBreak steer={steerRef} onClose={closeGame} />
           : <Empty icon={I.crystal} title={t('No hay más jugadores')} text={t('Añade más juegos a tu lista, amplía tu radio de búsqueda o vuelve más tarde.')}
-              onIcon={() => setPlaying(true)} iconLabel={t('Jugar a un minijuego mientras esperas')} />)}
+              onPlay={() => setPlaying(true)} playHint={t('Toca la pantalla y juega mientras aparecen nuevos jugadores')} />)}
         {next && (
           <article className="swipe-card behind">
             <div className="art-frame"><img className={`hero-art${imgCls(next.favCard.game, next.favCard)}`} src={artOf(next.favCard.game, next.favCard)} alt="" /></div>
