@@ -2720,3 +2720,23 @@ body { background: var(--body-bg); }
 }
 .login .login-discord svg { color: #fff; }
 .login .login-discord:not(:disabled):hover { box-shadow: 0 14px 32px rgba(88, 101, 242, 0.35); }
+
+/* Tienda, días y horario bajo la afinidad de la carta */
+.table-card .hero-where {
+  display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 4px;
+  font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.85); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+}
+.table-card .hero-where svg { width: 13px; height: 13px; color: #C4F56A; flex-shrink: 0; }
+
+/* Anuncio de tienda («Patrocinado») en Cerca de ti: se distingue de una tienda normal sin ser agresivo */
+.store-row.sponsored { border-color: color-mix(in srgb, var(--gold) 45%, transparent); }
+.sponsored-tag {
+  display: inline-block; margin-bottom: 4px; padding: 2px 8px; border-radius: 999px;
+  font-size: 0.65rem; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;
+  background: var(--card-hi); color: var(--muted); border: 1px solid var(--border);
+}
+.sponsored-store { font-weight: 700; color: var(--text-2); }
+.sponsored-hide {
+  align-self: flex-start; width: 28px; height: 28px; border-radius: 50%; border: 0; cursor: pointer;
+  background: transparent; color: var(--muted); font-size: 1.1rem; line-height: 1;
+}

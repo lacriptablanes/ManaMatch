@@ -7,6 +7,7 @@ import { compat, byCompat, reliability } from './compat';
 import { TITLES, unlockedTitles, titleFor } from './titles';
 import { t, useLang, setLang, getLang, LANGS, locale } from './i18n';
 import { supabase } from './supabase';
+import { loadStoreAds, logStoreAd } from './storeAds';
 import ManaBreak from './ManaBreak';
 import {
   loadMe, saveMe, uploadAvatar, removeAvatars, isAvatarPath, avatarUrl, ageFrom, isCardUpload,
@@ -538,6 +539,12 @@ function TitlesSheet({ value, unlocked, onSave, onClose }) {
 }
 const playerTitle = (p) => t(titleFor(p.title, playerStats(p)).label);
 /* "Casual competitivo · Commander, cEDH": nivel y, detrás, los formatos */
+// Tienda habitual, días y horario de la carta: «Dragón Rojo Games · Mié, Vie · Tarde»
+const where = (p) => [
+  STORES.find((s) => s.id === p.stores?.[0])?.name,
+  (p.days ?? []).map((k) => t(DAYS.find(([d]) => d === k)?.[1] ?? k).slice(0, 3)).join(', '),
+  (p.slots ?? []).map((s) => t(s)).join(', '),
+].filter(Boolean).join(' · ');
 const levelLine = (p, max = 2) => [t(p.level), p.formats.slice(0, max).map((f) => t(f)).join(', ')].filter(Boolean).join(' · ');
 
 /* Juegos de otro jugador, con los que compartís resaltados primero */
@@ -643,10 +650,11 @@ function TableCard({ p, me, leaving, onInfo }) {
       </div>
       <div className="hero-body" role="button" tabIndex={0} aria-label={t('Ver la ficha de {name}', { name: p.name })}
         onClick={onInfo} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onInfo(); } }}>
-        <Hex src={avatarOf(p)} alt={p.name} size={100} badge={playerTitle(p)} colors={p.superLikedYou ? SUPER_FRAME : list} />
+        <Hex src={avatarOf(p)} alt={p.name} size={72} badge={playerTitle(p)} colors={p.superLikedYou ? SUPER_FRAME : list} />
         <h2 className="hero-name">{p.name}{p.verified && <span className="verified" title={t('Verificado')}>{I.check}</span>}</h2>
         {deck && <div className="hero-deck">{I.deck}<b>{deck.name}</b><i className="dot-sep" />{t(deck.format)}</div>}
         <div className="hero-sub">{levelLine(p)}</div>
+        {where(p) && <div className="hero-where">{I.store}{where(p)}</div>}
         <div className="hero-chips">
           <div className="hero-shared" title={t('Compatibilidad contigo')}>
             <b>{c.score}%</b>{shared > 0 ? (shared === 1 ? t('1 juego en común') : t('{n} juegos en común', { n: shared })) : t('compatible')}
@@ -927,7 +935,7 @@ function LoginScreen() {
       <div className="duel-icon" aria-hidden="true">{SWORD}{SWORD}</div>
       <p className="its">{t('Bienvenido a')}</p>
       <h1 className="match-title" data-text="MANAMATCH">MANAMATCH</h1>
-      <p className="swiped">{t('Encuentra rivales de Magic, Pokémon, One Piece y muchos más juegos cerca de ti.')}<br />{t('Solo para mayores de 18.')}</p>
+      <p className="swiped">{t('Encuentra gente con la que jugar Magic, Pokémon, One Piece y más juegos cerca de ti.')}<br />{t('Solo para mayores de 18.')}</p>
 
       <button id="login-google" type="button" className="login-google" disabled={busy} onClick={google}>{GOOGLE_G}{state === 'google' ? t('Abriendo Google…') : t('Continuar con Google')}</button>
       <button id="login-discord" type="button" className="login-google login-discord" disabled={busy} onClick={discord}>{I.chat}{state === 'discord' ? t('Abriendo Discord…') : t('Continuar con Discord')}</button>
@@ -1010,7 +1018,7 @@ function RulesScreen({ firstTime, onAccept, onClose }) {
           <div className="rule-hero">{I.sword}</div>
           <span className="eyebrow">{firstTime ? t('Bienvenido a ManaMatch') : 'ManaMatch'}</span>
           <h1 className="rules-title">{t('Código de conducta')}</h1>
-          <p className="rules-lead">{t('Encuentra rivales de Magic, Pokémon, One Piece y muchos más juegos cerca de ti.')} <b>{t('No es una app de citas:')}</b> {t('aquí se viene a jugar.')}</p>
+          <p className="rules-lead">{t('Encuentra gente con la que jugar Magic, Pokémon, One Piece y más juegos cerca de ti.')} <b>{t('No es una app de citas:')}</b> {t('aquí se viene a jugar.')}</p>
           <p className="slide-hint">{t('Desliza para ver las {n} normas', { n: RULES.length })}</p>
         </section>
         {RULES.map(([icon, title, text, anim], i) => (
@@ -1405,9 +1413,31 @@ const storePos = (km, i, n, radius) => {
 };
 const RADIUS_STEPS = [1, 2, 5, 10, 25, 50];
 
-function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore }) {
+// Anuncio de una tienda: se marca siempre como «Patrocinado» y cuenta visualizaciones y clics (sin datos personales)
+function SponsoredRow({ ad, store, onOpen }) {
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => { logStoreAd(ad.id, 'view'); }, [ad.id]);
+  if (hidden) return null;
+  return (
+    <div className="row store-row sponsored" role="button" tabIndex={0}
+      onClick={() => { logStoreAd(ad.id, 'click'); onOpen(store.id); }}
+      onKeyDown={(e) => { if (e.key === 'Enter') { logStoreAd(ad.id, 'click'); onOpen(store.id); } }}>
+      <span className="row-icon">{I.store}</span>
+      <div className="grow">
+        <span className="sponsored-tag">{t('Patrocinado')}</span>
+        <div className="title">{ad.title}</div>
+        <div className="sub sponsored-store">{store.name}{ad.body ? ` · ${ad.body}` : ''}</div>
+      </div>
+      <button type="button" className="sponsored-hide" aria-label={t('Ocultar anuncio')} onClick={(e) => { e.stopPropagation(); setHidden(true); }}>{I.close ?? '×'}</button>
+    </div>
+  );
+}
+
+function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore, ads = [] }) {
   const R = me.radius;
   const stores = STORES.filter((st) => st.dist <= R);
+  // El primer anuncio de una tienda que está en tu radio; el patrocinio nunca sustituye a la tienda real
+  const sponsored = ads.map((ad) => ({ ad, store: stores.find((s) => s.id === ad.store_id) })).find((x) => x.store);
   return (
     <>
       <div className="radius-ctl panel">
@@ -1442,6 +1472,7 @@ function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore }) {
       <h3 className="section-title">{t('Tiendas cercanas')}</h3>
       {!stores.length && <p className="section-hint">{t('No hay tiendas en esa distancia. Amplíala para ver más.')}</p>}
       <div className="list">
+        {sponsored && <SponsoredRow key={sponsored.ad.id} ad={sponsored.ad} store={sponsored.store} onOpen={onStore} />}
         {stores.map((st) => {
           const regulars = players.filter((p) => p.stores.includes(st.id));
           return (
@@ -2033,7 +2064,7 @@ function DeckSheet({ games, onSave, onClose }) {
 /* ================= My profile ================= */
 const THEMES = [['light', 'Día', I.sun], ['dark', 'Noche', I.moon], ['system', 'Auto', I.auto]];
 
-function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindStores, onStore, flash }) {
+function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindStores, onStore, flash, fallbackPhoto }) {
   const fav = me.favCard;
   const set = (patch) => setMe((x) => normalizeMe({ ...x, ...(typeof patch === 'function' ? patch(x) : patch) }));
   const [gamesOpen, setGamesOpen] = useState(false);
@@ -2055,7 +2086,7 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
       <div className={`me-card g-${fav.game}`}>
         <img className={`me-cover${imgCls(fav.game, fav)}`} src={artOf(fav.game, fav)} alt="" />
         <button id="edit-photo" className="me-photo" onClick={() => fileRef.current.click()} aria-label={t('Cambiar foto')}>
-          <Hex src={myAvatar(me)} size={108} badge={t(title.label)} colors={['#8B5CF6']} />
+          <Hex src={photoSrc(me) || fallbackPhoto || defaultAvatar()} size={108} badge={t(title.label)} colors={['#8B5CF6']} />
           <span className="cam">{I.camera}</span>
         </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickPhoto} />
@@ -2071,6 +2102,39 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
       </div>
       {photoError && <p className="upload-error" role="alert">{t(photoError)}</p>}
       {me.avatar && <button type="button" className="link-btn photo-remove" onClick={() => onPhoto('')}>{t('Quitar foto')}</button>}
+
+      <h3 className="section-title">{t('Mis mazos')}</h3>
+      <div className="decks">
+        {me.decks.map((d) => (
+          <div key={d.id ?? d.name} className="deck-card">
+            <img loading="lazy" decoding="async" className={imgCls(d.game, d.card).trim()} src={artOf(d.game, d.card)} alt="" />
+            <span className="deck-format">{t(d.format)}</span>
+            <button className="deck-del" aria-label={t('Borrar {name}', { name: d.name })} onClick={() => set((x) => ({ decks: x.decks.filter((y) => y !== d) }))}>{I.trash}</button>
+            <div><b>{d.name}</b><small>{GAMES[d.game].name}</small></div>
+          </div>
+        ))}
+        <button id="add-deck" className="deck-card add" onClick={onAddDeck}><span className="add-icon">{I.plus}</span>{t('Añadir mazo')}<small>{t('De cualquiera de tus juegos')}</small></button>
+      </div>
+
+      <h3 className="section-title">{t('Formatos')}</h3>
+      <ChipPicker options={formatOptions(me.interests)} value={me.formats} onChange={(v) => set({ formats: v })} toggle={(o) => set((x) => ({ formats: toggleIn(x.formats, o) }))} />
+
+      <h3 className="section-title">{t('Tiendas habituales')}</h3>
+      {!me.stores.length && <p className="section-hint">{t('Guarda las tiendas donde juegas desde «Cerca de ti».')}</p>}
+      <div className="list">
+        {me.stores.map((id) => STORES.find((st) => st.id === id)).filter(Boolean).map((st) => (
+          <div key={st.id} className="row store-row" role="button" tabIndex={0} onClick={() => onStore(st.id)} onKeyDown={(e) => { if (e.key === 'Enter') onStore(st.id); }}>
+            <StoreIcon verified={me.verifiedStore === st.id} title={t('Esta tienda te ha verificado en persona')} />
+            <div className="grow"><div className="title">{st.name}</div><div className="sub">{st.dist} km · {t(st.events)}</div></div>
+            <button type="button" className="icon-btn small-icon" aria-label={t('Quitar {name}', { name: st.name })} onClick={(e) => { e.stopPropagation(); set((x) => ({ stores: x.stores.filter((y) => y !== st.id) })); }}>{I.close}</button>
+          </div>
+        ))}
+        <button type="button" id="find-stores" className="row add-row" onClick={onFindStores}>
+          <span className="row-icon">{I.radar}</span>
+          <div className="grow"><div className="title">{t('Buscar tiendas cerca')}</div><div className="sub">{t('Guárdalas desde «Cerca de ti»')}</div></div>
+          <span className="chev">{I.chevron}</span>
+        </button>
+      </div>
 
       <h3 className="section-title">{t('Sobre ti')}</h3>
       <div className="panel form me-form">
@@ -2114,26 +2178,12 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
       <h3 className="section-title">{t('Nivel de juego')}</h3>
       <Segmented name={t('Nivel')} value={me.level} onChange={(v) => set({ level: v })} options={LEVELS.map((l) => [l, t(l)])} />
 
-      <h3 className="section-title">{t('Formatos')}</h3>
-      <ChipPicker options={formatOptions(me.interests)} value={me.formats} onChange={(v) => set({ formats: v })} toggle={(o) => set((x) => ({ formats: toggleIn(x.formats, o) }))} />
 
       <h3 className="section-title">{t('Imagen de banner')}</h3>
       <div className="panel form me-form">
         <BannerField value={fav} game={fav.game} onChange={(c) => set({ favCard: c })} />
       </div>
 
-      <h3 className="section-title">{t('Mis mazos')}</h3>
-      <div className="decks">
-        {me.decks.map((d) => (
-          <div key={d.id ?? d.name} className="deck-card">
-            <img loading="lazy" decoding="async" className={imgCls(d.game, d.card).trim()} src={artOf(d.game, d.card)} alt="" />
-            <span className="deck-format">{t(d.format)}</span>
-            <button className="deck-del" aria-label={t('Borrar {name}', { name: d.name })} onClick={() => set((x) => ({ decks: x.decks.filter((y) => y !== d) }))}>{I.trash}</button>
-            <div><b>{d.name}</b><small>{GAMES[d.game].name}</small></div>
-          </div>
-        ))}
-        <button id="add-deck" className="deck-card add" onClick={onAddDeck}><span className="add-icon">{I.plus}</span>{t('Añadir mazo')}<small>{t('De cualquiera de tus juegos')}</small></button>
-      </div>
 
       <h3 className="section-title">{t('Disponibilidad')}</h3>
       <div className="days">
@@ -2141,22 +2191,6 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
       </div>
       <ChipPicker options={SLOTS} value={me.slots} onChange={(v) => set({ slots: v })} toggle={(o) => set((x) => ({ slots: toggleIn(x.slots, o) }))} />
 
-      <h3 className="section-title">{t('Tiendas habituales')}</h3>
-      {!me.stores.length && <p className="section-hint">{t('Guarda las tiendas donde juegas desde «Cerca de ti».')}</p>}
-      <div className="list">
-        {me.stores.map((id) => STORES.find((st) => st.id === id)).filter(Boolean).map((st) => (
-          <div key={st.id} className="row store-row" role="button" tabIndex={0} onClick={() => onStore(st.id)} onKeyDown={(e) => { if (e.key === 'Enter') onStore(st.id); }}>
-            <StoreIcon verified={me.verifiedStore === st.id} title={t('Esta tienda te ha verificado en persona')} />
-            <div className="grow"><div className="title">{st.name}</div><div className="sub">{st.dist} km · {t(st.events)}</div></div>
-            <button type="button" className="icon-btn small-icon" aria-label={t('Quitar {name}', { name: st.name })} onClick={(e) => { e.stopPropagation(); set((x) => ({ stores: x.stores.filter((y) => y !== st.id) })); }}>{I.close}</button>
-          </div>
-        ))}
-        <button type="button" id="find-stores" className="row add-row" onClick={onFindStores}>
-          <span className="row-icon">{I.radar}</span>
-          <div className="grow"><div className="title">{t('Buscar tiendas cerca')}</div><div className="sub">{t('Guárdalas desde «Cerca de ti»')}</div></div>
-          <span className="chev">{I.chevron}</span>
-        </button>
-      </div>
 
       <h3 className="section-title">{t('Verificación')}</h3>
       <div className="panel verify">
@@ -2480,6 +2514,8 @@ export default function App() {
   const [reporting, setReporting] = useState(null);
   const [blocking, setBlocking] = useState(null);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [ads, setAds] = useState([]); // anuncios de tiendas activos (premium no los ve)
+  useEffect(() => { loadStoreAds().then(setAds); }, []);
   const [normsOpen, setNormsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [wiping, setWiping] = useState(false);
@@ -2720,13 +2756,14 @@ export default function App() {
         )}
         {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} credits={credits} onNeedCredits={() => setShopOpen(true)} />}
         {tab === 'nearby' && <Nearby players={PLAYERS.filter((p) => notBlocked(p) && sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))} me={me} onRadius={(km) => setMe((x) => ({ ...x, radius: km }))} onInfo={setProfile}
-          onToggleStore={toggleStore} onStore={setStoreOpen} />}
+          onToggleStore={toggleStore} onStore={setStoreOpen} ads={isPremium(me) ? [] : ads} />}
         {tab === 'chat' && (chatWith
           ? <Chat p={chatWith} me={me} attended={attendance[chatWith.id]} onAttend={(v) => setAttendance((a) => ({ ...a, [chatWith.id]: v }))} msgs={chats[chatWith.id] || []} onSend={(m) => send(chatWith, m)} onBack={() => setChatWith(null)} onInfo={setProfile} onReport={() => setReporting(chatWith)} />
           : <Matches matches={visibleMatches} chats={chats} openChat={openChat} />)}
         {tab === 'me' && (
           <MyProfile
             me={me} setMe={setMe} matchCount={visibleMatches.length} flash={flash}
+            fallbackPhoto={session?.user?.app_metadata?.provider === 'discord' && String(session.user.user_metadata?.avatar_url ?? '').startsWith('https://cdn.discordapp.com/') ? session.user.user_metadata.avatar_url : ''}
             stats={myStats}
             onPhoto={savePhoto} onAddDeck={() => setEditing('deck')} onFindStores={() => setTab('nearby')} onStore={setStoreOpen}
           />

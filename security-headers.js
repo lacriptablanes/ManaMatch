@@ -8,6 +8,7 @@ const IMAGES = [
   'https://images.pokemontcg.io', 'https://images.scrydex.com', // Pokémon
   'https://optcgapi.com', // One Piece
   'https://randomuser.me', // avatares de los jugadores de ejemplo
+  'https://cdn.discordapp.com', // avatares de Discord (quien entra con Discord)
 ];
 const APIS = ['https://api.scryfall.com', 'https://api.pokemontcg.io', 'https://*.supabase.co'];
 
