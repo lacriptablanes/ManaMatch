@@ -610,4 +610,7 @@ export default {
   "¡Nuevo récord!": "New record!",
   "Pulsa «Paso» o «¡Duelo!» para volver a empezar": "Press “Pass” or “Duel!” to start again",
   "Toca la pantalla y juega mientras aparecen nuevos jugadores": "Tap the screen and play while new players show up",
+  "Los verdes dan más puntos": "Green ones give more points",
+  "Los morados aguantan dos golpes": "Purple ones take two hits",
+  "¡Explosivos! Revientan los bloques de al lado": "Explosives! They blow up the blocks next to them",
 };

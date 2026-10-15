@@ -612,4 +612,7 @@ export default {
   "¡Nuevo récord!": "Errekor berria!",
   "Pulsa «Paso» o «¡Duelo!» para volver a empezar": "Sakatu «Pasatu» edo «Duelua!» berriro hasteko",
   "Toca la pantalla y juega mientras aparecen nuevos jugadores": "Ukitu pantaila eta jokatu jokalari berriak agertu bitartean",
+  "Los verdes dan más puntos": "Berdeek puntu gehiago ematen dute",
+  "Los morados aguantan dos golpes": "Moreek bi kolpe jasaten dituzte",
+  "¡Explosivos! Revientan los bloques de al lado": "Lehergailuak! Ondoko blokeak lehertzen dituzte",
 };

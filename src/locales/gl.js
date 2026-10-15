@@ -612,4 +612,7 @@ export default {
   "¡Nuevo récord!": "Novo récord!",
   "Pulsa «Paso» o «¡Duelo!» para volver a empezar": "Preme «Paso» ou «Duelo!» para volver comezar",
   "Toca la pantalla y juega mientras aparecen nuevos jugadores": "Toca a pantalla e xoga mentres aparecen novos xogadores",
+  "Los verdes dan más puntos": "Os verdes dan máis puntos",
+  "Los morados aguantan dos golpes": "Os morados aguantan dous golpes",
+  "¡Explosivos! Revientan los bloques de al lado": "Explosivos! Rebentan os bloques do lado",
 };
