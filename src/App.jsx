@@ -7,7 +7,7 @@ import { compat, byCompat, reliability } from './compat';
 import { TITLES, unlockedTitles, titleFor } from './titles';
 import { t, useLang, setLang, getLang, LANGS, locale } from './i18n';
 import { supabase } from './supabase';
-import ManaCatch from './ManaCatch';
+import ManaBreak from './ManaBreak';
 import {
   loadMe, saveMe, uploadAvatar, removeAvatars, isAvatarPath, avatarUrl, ageFrom, isCardUpload,
   hasLocalCardImages, uploadCardImages, replaceUploads, cleanCardImages, flagImage, hiddenImages,
@@ -1174,8 +1174,10 @@ const HAND = [
   { id: 'like', label: '¡Duelo!', hint: 'retar a una partida', icon: I.check },
   { id: 'super', label: 'Súper duelo', hint: 'reto destacado', icon: I.star },
 ];
+// Minijuego: cartas de la mano que hacen de mando
+const STEER = { nope: -1, like: 1 };
 
-function ThrowCard({ card, index, total, disabled, targetRef, onPlay, onTap, count }) {
+function ThrowCard({ card, index, total, disabled, targetRef, onPlay, onTap, count, onHold }) {
   const ref = useRef(null);
   const drag = useRef(null);
   const fan = index - (total - 1) / 2; // posición en el abanico: -1.5 … 1.5
@@ -1200,13 +1202,18 @@ function ThrowCard({ card, index, total, disabled, targetRef, onPlay, onTap, cou
     }, 380);
   };
 
+  // Modo mando (minijuego): mantener pulsada en lugar de lanzar
+  const [held, setHeld] = useState(false);
+  const hold = (on) => { setHeld(on); onHold(on); };
   const down = (e) => {
+    if (onHold && !disabled) { try { ref.current.setPointerCapture(e.pointerId); } catch { /* sin captura */ } hold(true); return; }
     if (disabled || phase !== 'idle') return;
     try { ref.current.setPointerCapture(e.pointerId); } catch { /* sin captura, el gesto sigue funcionando */ }
     drag.current = { x0: e.clientX, y0: e.clientY, moved: false, samples: [[e.clientY, e.timeStamp]] };
     setPhase('drag');
   };
   const move = (e) => {
+    if (onHold) return;
     const d = drag.current;
     if (!d) return;
     const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
@@ -1215,6 +1222,7 @@ function ThrowCard({ card, index, total, disabled, targetRef, onPlay, onTap, cou
     setPos({ x: dx, y: rest.y + dy, r: rest.r * 0.3 + dx / 14, s: 1.12 });
   };
   const up = () => {
+    if (onHold) { if (held) hold(false); return; }
     const d = drag.current;
     drag.current = null;
     if (!d) return;
@@ -1232,12 +1240,12 @@ function ThrowCard({ card, index, total, disabled, targetRef, onPlay, onTap, cou
   return (
     <button
       ref={ref} type="button" id={`card-${card.id}`} disabled={disabled}
-      className={`hand-card ${card.id} ${phase}`}
-      aria-label={t('Carta {label}: {hint}. Lánzala hacia arriba para jugarla.', { label: t(card.label), hint: t(card.hint) })} title={t(card.label)}
+      className={`hand-card ${card.id} ${phase}${held && onHold ? ' held' : ''}${onHold ? ' steer' : ''}`}
+      aria-label={onHold ? t('Mantén pulsada para mover tu carta hacia la {dir}', { dir: STEER[card.id] < 0 ? t('izquierda') : t('derecha') }) : t('Carta {label}: {hint}. Lánzala hacia arriba para jugarla.', { label: t(card.label), hint: t(card.hint) })} title={t(card.label)}
       style={{ transform: `translate(${pos.x}px, ${pos.y}px) rotate(${pos.r}deg) scale(${pos.s})`, zIndex: phase === 'drag' || phase === 'fly' ? 20 : index + 1 }}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
       // Teclado (detail === 0): Intro o Espacio lanzan la carta directamente
-      onClick={(e) => { if (e.detail === 0 && !disabled && phase === 'idle') throwTo(); }}
+      onClick={(e) => { if (e.detail === 0 && !disabled && !onHold && phase === 'idle') throwTo(); }}
     >
       <span className="hc-frame">
         <span className="hc-gem"><svg className="hc-hex" viewBox="0 0 100 112" aria-hidden="true"><path d={HEX_PHOTO} /></svg>{card.icon}</span>
@@ -1305,7 +1313,9 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, o
   const [tapHint, setTapHint] = useState(false);
   // Minijuego del estado vacío (se cierra al volver o si aparecen jugadores)
   const [playing, setPlaying] = useState(false);
-  const closeGame = useCallback(() => setPlaying(false), []);
+  // En el minijuego, «Paso» y «¡Duelo!» se mantienen pulsadas para mover la carta (izquierda / derecha)
+  const steerRef = useRef(0);
+  const closeGame = useCallback(() => { steerRef.current = 0; setPlaying(false); }, []);
   const tableRef = useRef(null);
   const impactKey = useRef(0);
   // Quien te ha retado con un Súper duelo sale siempre el primero (es lo que se paga); después, por compatibilidad
@@ -1313,6 +1323,7 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, o
     sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))
     .sort((a, b) => (b.superLikedYou ? 1 : 0) - (a.superLikedYou ? 1 : 0) || byCompat(me)(a, b));
   const [top, next] = list;
+  const gameOn = playing && !top;
 
   // Jugar una carta: impacto sobre el jugador y, después, su salida de la mesa
   const play = (id) => {
@@ -1331,7 +1342,7 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, o
     <>
       <div className="deck" ref={tableRef}>
         {!top && (playing
-          ? <ManaCatch onClose={closeGame} />
+          ? <ManaBreak steer={steerRef} onClose={closeGame} />
           : <Empty icon={I.crystal} title={t('No hay más jugadores')} text={t('Añade más juegos a tu lista, amplía tu radio de búsqueda o vuelve más tarde.')}
               onIcon={() => setPlaying(true)} iconLabel={t('Jugar a un minijuego mientras esperas')} />)}
         {next && (
@@ -1351,7 +1362,8 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, o
             <ThrowCard
               key={c.id} card={c} index={i} total={HAND.length} targetRef={tableRef} onPlay={play}
               onTap={c.id === 'super' && credits <= 0 ? onNeedCredits : showTapHint} count={c.id === 'super' ? credits : undefined}
-              disabled={!!leaving || (c.id === 'rewind' ? !canRewind : !top)}
+              disabled={gameOn ? !STEER[c.id] : !!leaving || (c.id === 'rewind' ? !canRewind : !top)}
+              onHold={gameOn && STEER[c.id] ? (on) => { steerRef.current = on ? STEER[c.id] : 0; } : undefined}
             />
           ))}
         </div>
