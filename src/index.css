@@ -2694,7 +2694,8 @@ body { background: var(--body-bg); }
 .table-card.premium:hover .foil { opacity: 0.5; }
 
 /* Fase 3: reverso en pila, entrada del avatar y pulso del Súper duelo (solo opacidad, barato en móvil) */
-.swipe-card.behind { transform: scale(0.94) translateY(14px) rotate(-2.5deg); }
+/* Sin desplazamiento ni giro: la carta de atrás asoma solo por los lados y no se ve por debajo */
+.swipe-card.behind { transform: scale(0.94); box-shadow: none; }
 @keyframes cardHexIn { from { opacity: 0; transform: scale(0.6) rotate(-60deg); } to { opacity: 1; transform: none; } }
 .table-card .hex { animation: cardHexIn 0.6s var(--ease-spring) both; }
 @keyframes superPulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
@@ -2708,4 +2709,4 @@ body { background: var(--body-bg); }
 :root[data-perf="light"] .table-card .foil { display: none; }
 :root[data-perf="light"] .table-card .hex { animation: none; }
 :root[data-perf="light"] .table-card.super::after { animation: none; opacity: 1; }
-:root[data-perf="light"] .swipe-card.behind { transform: scale(0.94) translateY(14px); }
+:root[data-perf="light"] .swipe-card.behind { transform: scale(0.94); box-shadow: none; }
