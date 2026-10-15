@@ -1272,7 +1272,8 @@ function ThrowCard({ card, index, total, disabled, targetRef, onPlay, onTap, cou
     >
       <span className="hc-frame">
         <span className="hc-gem"><svg className="hc-hex" viewBox="0 0 100 112" aria-hidden="true"><path d={HEX_PHOTO} /></svg>{card.icon}</span>
-        <span className="hc-name">{t(card.label)}</span>
+        {/* Solo «Paso» y «¡Duelo!» llevan texto; Deshacer y Súper duelo son iconos (su aria-label sigue describiéndolos) */}
+        {(card.id === 'nope' || card.id === 'like') && <span className="hc-name">{t(card.label)}</span>}
         {count !== undefined && <span className={`hc-count${count ? '' : ' zero'}`} aria-label={count ? undefined : t('Conseguir Súper duelos')}>{count || '+'}</span>}
       </span>
     </button>
@@ -1328,7 +1329,28 @@ function SuperShop({ credits, onBuy, onClose }) {
 }
 
 /* ================= Discover ================= */
-function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, onNeedCredits }) {
+// Anuncio de tienda como carta de Descubrir: «Paso» lo salta; «¡Duelo!» abre su enlace (o la tienda si no hay enlace)
+function AdCard({ ad, leaving }) {
+  useEffect(() => { logStoreAd(ad.id, 'view'); }, [ad.id]);
+  return (
+    <article className={`swipe-card table-card ad-card${leaving ? ' leaving' : ''}`} style={{ transform: LEAVE[leaving] ?? undefined }}>
+      <div className="art-frame">
+        {ad.imageUrl ? <img className="hero-art" src={ad.imageUrl} alt="" draggable="false" /> : <div className="ad-art-ph" />}
+        <div className="hero-top"><span className="glass-chip">{t('Patrocinado')}</span></div>
+      </div>
+      <div className="hero-body">
+        <h2 className="hero-name">{ad.title}</h2>
+        <div className="hero-sub">{ad.storeName}</div>
+        {ad.body && <div className="hero-deck">{ad.body}</div>}
+        <div className="hero-sub ad-hint">{ad.link ? t('¡Duelo! te lleva a su web') : t('¡Duelo! abre la tienda')}</div>
+      </div>
+      <div className={`stamp like${leaving === 'like' ? ' show' : ''}`}>{t('¡Duelo!')}</div>
+      <div className={`stamp nope${leaving === 'nope' ? ' show' : ''}`}>{t('Paso')}</div>
+    </article>
+  );
+}
+
+function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, onNeedCredits, ads = [], onStore }) {
   // Solo jugadores con algún juego en común contigo, ordenados por compatibilidad
   const [leaving, setLeaving] = useState(null);
   const [impact, setImpact] = useState(null);
@@ -1345,11 +1367,30 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, o
   const list = queue.filter((p) =>
     sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))
     .sort((a, b) => (b.superLikedYou ? 1 : 0) - (a.superLikedYou ? 1 : 0) || byCompat(me)(a, b));
-  const [top, next] = list;
+  // Anuncio de tienda como una carta más, en la tercera posición (una vez por visita a Descubrir, sin premium)
+  const [adDone, setAdDone] = useState(false);
+  const [decided, setDecided] = useState(0); // jugadores decididos en esta visita a Descubrir
+  const ad = !adDone && ads[0] && !isPremium(me) ? { ...ads[0], __ad: true } : null;
+  // Se coloca en la 3.ª posición y sube a la 1.ª tras dos jugadores decididos en esta visita
+  const adAt = Math.max(0, 2 - decided);
+  const deck = ad ? [...list.slice(0, adAt), ad, ...list.slice(adAt)] : list;
+  const [top, next] = deck;
   const gameOn = playing && !top;
 
   // Jugar una carta: impacto sobre el jugador y, después, su salida de la mesa
   const play = (id) => {
+    if (top?.__ad) {
+      if (id !== 'nope' && id !== 'like') return;
+      impactKey.current += 1;
+      setImpact({ id, key: impactKey.current });
+      setLeaving(id);
+      if (id === 'like') {
+        if (top.link) openAdLink(top);
+        else { logStoreAd(top.id, 'click'); if (STORES.some((s) => s.id === top.store_id)) onStore(top.store_id); }
+      }
+      setTimeout(() => { setLeaving(null); setAdDone(true); }, 430);
+      return;
+    }
     if (id === 'super' && credits <= 0) { onNeedCredits(); return; }
     setTipSeen(true);
     impactKey.current += 1;
@@ -1357,7 +1398,7 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, o
     if (id === 'rewind') { onRewind(); return; }
     const target = top;
     setLeaving(id);
-    setTimeout(() => { setLeaving(null); onDecide(target, id !== 'nope', id === 'super'); }, 430);
+    setTimeout(() => { setLeaving(null); setDecided((d) => d + 1); onDecide(target, id !== 'nope', id === 'super'); }, 430);
   };
   const showTapHint = () => { setTapHint(true); setTimeout(() => setTapHint(false), 2200); };
 
@@ -1370,10 +1411,12 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, o
               onPlay={() => setPlaying(true)} playHint={t('Toca la pantalla y juega mientras aparecen nuevos jugadores')} />)}
         {next && (
           <article className="swipe-card behind">
-            <div className="art-frame"><img className={`hero-art${imgCls(next.favCard.game, next.favCard)}`} src={artOf(next.favCard.game, next.favCard)} alt="" /></div>
+            <div className="art-frame">{next.__ad
+              ? (next.imageUrl && <img className="hero-art" src={next.imageUrl} alt="" />)
+              : <img className={`hero-art${imgCls(next.favCard.game, next.favCard)}`} src={artOf(next.favCard.game, next.favCard)} alt="" />}</div>
           </article>
         )}
-        {top && <TableCard key={top.id} p={top} me={me} leaving={leaving} onInfo={() => onInfo(top)} />}
+        {top?.__ad ? <AdCard ad={top} leaving={leaving} /> : top && <TableCard key={top.id} p={top} me={me} leaving={leaving} onInfo={() => onInfo(top)} />}
         {impact && (
           <div key={impact.key} className={`impact ${impact.id}`} aria-hidden="true" onAnimationEnd={(e) => { if (e.target === e.currentTarget) setImpact(null); }}>
             <span className="impact-ring" /><span className="impact-icon">{HAND.find((c) => c.id === impact.id).icon}</span>
@@ -2768,7 +2811,7 @@ export default function App() {
             {tab === 'me' && <button id="open-settings" className="icon-btn head-action" onClick={() => setSettingsOpen(true)} aria-label={t('Ajustes')} title={t('Ajustes')}>{I.gear}</button>}
           </header>
         )}
-        {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} credits={credits} onNeedCredits={() => setShopOpen(true)} />}
+        {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} credits={credits} onNeedCredits={() => setShopOpen(true)} ads={ads} onStore={setStoreOpen} />}
         {tab === 'nearby' && <Nearby players={PLAYERS.filter((p) => notBlocked(p) && sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))} me={me} onRadius={(km) => setMe((x) => ({ ...x, radius: km }))} onInfo={setProfile}
           onToggleStore={toggleStore} onStore={setStoreOpen} ads={isPremium(me) ? [] : ads} />}
         {tab === 'chat' && (chatWith

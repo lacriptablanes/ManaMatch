@@ -2745,4 +2745,17 @@ body { background: var(--body-bg); }
   margin-top: 6px; padding: 0; border: 0; background: none; cursor: pointer;
   font-size: 0.75rem; font-weight: 700; color: var(--hot-2); text-decoration: underline; text-underline-offset: 3px;
 }
-.sponsored-wrap { margin: 0 0 18px; }
+.sponsored-wrap { margin: 16px 0 22px; }
+
+/* Anuncio como carta de Descubrir */
+.ad-art-ph { position: absolute; inset: 0; background: linear-gradient(160deg, #3b2f5c, #171522 70%); }
+.ad-card .ad-hint { color: rgba(255, 255, 255, 0.8); font-size: 0.75rem; }
+
+/* Título del jugador en la carta: bocadillo encima de la foto, con una flecha hacia abajo */
+.table-card .hero-body .role-badge {
+  bottom: auto; top: -44px; padding: 5px 11px; border-radius: 12px; margin-top: 0;
+}
+.table-card .hero-body .role-badge::after {
+  content: ''; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+  border: 7px solid transparent; border-top-color: #E9E6F3; border-bottom: 0;
+}
