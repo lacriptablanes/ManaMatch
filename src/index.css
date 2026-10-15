@@ -2547,7 +2547,7 @@ body { background: var(--body-bg); }
 .empty-play { font: inherit; cursor: pointer; padding: 0; }
 .empty-play:active { transform: scale(0.94); }
 .empty-play:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
-.mana-break { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px; padding: 24px 18px 150px; }
+.mana-break { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 8px; padding: 6px 2px 66px; }
 .mb-head { display: flex; align-items: center; gap: 10px; font-variant-numeric: tabular-nums; font-weight: 800; }
 .mb-lives { display: flex; gap: 5px; }
 .mb-lives i { width: 12px; height: 13px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--line); }
@@ -2559,8 +2559,12 @@ body { background: var(--body-bg); }
   flex: 1; min-height: 0; width: 100%; display: block; border-radius: 18px; touch-action: none; cursor: pointer; user-select: none; -webkit-user-select: none;
   background: color-mix(in srgb, var(--brand) 5%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 14%, transparent);
 }
-.mb-hint { margin: 0; text-align: center; font-size: 0.8rem; line-height: 1.35; color: var(--muted); min-height: 2.7em; }
-.mb-close { align-self: center; }
+.mb-hint { margin: 0; text-align: center; font-size: 0.76rem; line-height: 1.3; color: var(--muted); min-height: 2.6em; }
+.mb-close {
+  display: grid; place-items: center; width: 30px; height: 30px; margin-left: 2px; border-radius: 50%; cursor: pointer;
+  color: var(--muted); background: var(--bg3); border: 0; padding: 0;
+}
+.mb-close svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
 /* Cartas de la mano como mando del minijuego */
 .hand-card.steer { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .hand-card.steer.held { filter: brightness(1.15); box-shadow: 0 0 24px color-mix(in srgb, var(--c) 55%, transparent); }

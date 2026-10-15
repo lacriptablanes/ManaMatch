@@ -5,7 +5,7 @@ import { t } from './i18n.js';
    la mueves con las cartas de la mano (Paso = izquierda, ¡Duelo! = derecha), arrastrando o con las flechas. */
 const BEST_KEY = 'manamatch-manabreak-best';
 const LIVES = 3;
-const COLS = 7, ROWS = 5;
+const COLS = 7, ROWS = 6;
 const readBest = () => { try { return Number(localStorage.getItem(BEST_KEY)) || 0; } catch { return 0; } };
 const saveBest = (n) => { try { localStorage.setItem(BEST_KEY, String(n)); } catch { /* sin almacenamiento */ } };
 
@@ -46,7 +46,7 @@ export default function ManaBreak({ steer, onClose }) {
     game.current = g;
 
     const layout = () => {
-      const gap = 6, top = 16, bw = (W - 16 - gap * (COLS - 1)) / COLS, bh = 14;
+      const gap = 6, top = 18, bw = (W - 16 - gap * (COLS - 1)) / COLS, bh = Math.round(Math.max(14, Math.min(20, H * 0.042)));
       return { gap, top, bw, bh };
     };
     const buildBricks = () => {
@@ -207,6 +207,9 @@ export default function ManaBreak({ steer, onClose }) {
         <span className="mb-level">{t('Nivel {n}', { n: hud.level })}</span>
         <span className="mb-score">{hud.score}</span>
         <span className="mb-best">{t('Récord')} {best}</span>
+        <button type="button" className="mb-close" onClick={onClose} aria-label={t('Volver')} title={t('Volver')}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
       </div>
       <canvas ref={canvasRef} className="mb-canvas" role="img" aria-label={t('Minijuego: rompe los bloques con la bola de maná')}
         onPointerDown={(e) => { e.currentTarget.setPointerCapture?.(e.pointerId); game.current?.drag(xOf(e)); game.current?.action(); }}
@@ -216,7 +219,6 @@ export default function ManaBreak({ steer, onClose }) {
         {state === 'play' && t('Paso ← · → ¡Duelo!')}
         {state === 'over' && t('¡Fin de la partida! Toca para jugar otra')}
       </p>
-      <button type="button" className="link-btn mb-close" onClick={onClose}>{t('Volver')}</button>
     </div>
   );
 }
