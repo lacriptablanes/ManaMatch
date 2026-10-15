@@ -341,6 +341,8 @@ const myAvatar = (me) => photoSrc(me) || defaultAvatar();
 const avatarOf = (p) => p.avatar || defaultAvatar();
 // Marco del retrato: el morado de la app para todos (los colores por juego ya no existen en el perfil)
 const FRAME = { list: ['#8B5CF6'], grad: '#8B5CF6', glow: '#8B5CF6' };
+// Marco verde: quien te ha retado con un Súper duelo (y las conversaciones que salieron de uno)
+const SUPER_FRAME = ['#C4F56A'];
 const toggleIn = (arr, v) => arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
 const Empty = ({ icon, title, text }) => (
   <div className="empty">
@@ -629,7 +631,7 @@ function TableCard({ p, me, leaving, onInfo }) {
       </div>
       <div className="hero-body" role="button" tabIndex={0} aria-label={t('Ver la ficha de {name}', { name: p.name })}
         onClick={onInfo} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onInfo(); } }}>
-        <Hex src={avatarOf(p)} alt={p.name} size={100} badge={playerTitle(p)} colors={list} />
+        <Hex src={avatarOf(p)} alt={p.name} size={100} badge={playerTitle(p)} colors={p.superLikedYou ? SUPER_FRAME : list} />
         <h2 className="hero-name">{p.name}{p.verified && <span className="verified" title={t('Verificado')}>{I.check}</span>}</h2>
         {deck && <div className="hero-deck">{I.deck}<b>{deck.name}</b><i className="dot-sep" />{t(deck.format)}</div>}
         <div className="hero-sub">{levelLine(p)}</div>
@@ -679,7 +681,7 @@ function ProfileSheet({ p, me, onClose, onLike, onReport, onReportImage, onBlock
         </div>
         <div className="body">
           <div className="sheet-id">
-            <Hex src={avatarOf(p)} alt={p.name} size={84} colors={list} ring={false} />
+            <Hex src={avatarOf(p)} alt={p.name} size={84} colors={p.superLikedYou ? SUPER_FRAME : list} ring={false} />
             <div>
               <h2 className="sheet-name">{p.name}{p.verified && <span className="verified" title={t('Verificado')}>{I.check}</span>}</h2>
               <div className="sheet-sub">{levelLine(p, 4)}</div>
@@ -1511,7 +1513,7 @@ function Matches({ matches, chats, openChat }) {
       <div className="new-matches">
         {matches.map((p) => (
           <button key={p.id} className={`nm${p.superDuel ? ' super-ring' : ''}`} onClick={() => openChat(p)} title={p.superDuel ? t('Súper duelo') : undefined}>
-            <Hex src={avatarOf(p)} alt={p.name} size={68} colors={p.superDuel ? ['#C4F56A'] : FRAME.list} ring={false} />
+            <Hex src={avatarOf(p)} alt={p.name} size={68} colors={p.superDuel ? SUPER_FRAME : FRAME.list} ring={false} />
             <span>{p.name}</span>
           </button>
         ))}
@@ -1589,7 +1591,7 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport, attended, onAtten
       <div className="chat-head">
         <button id="chat-back" className="icon-btn" onClick={onBack} aria-label={t('Volver')}>{I.back}</button>
         <button className={`chat-who${p.superDuel ? ' super-ring' : ''}`} onClick={() => onInfo(p)} title={p.superDuel ? t('Súper duelo') : undefined}>
-          <Hex src={avatarOf(p)} alt="" size={46} colors={p.superDuel ? ['#C4F56A'] : theirs.list} ring={false} />
+          <Hex src={avatarOf(p)} alt="" size={46} colors={p.superDuel ? SUPER_FRAME : theirs.list} ring={false} />
           <div><b>{p.name}</b><span>{gameIcon(game.id)}{p.decks[0]?.name ?? game.name}</span></div>
         </button>
         <button id="chat-report" className="icon-btn" onClick={onReport} aria-label={t('Denunciar o bloquear a {name}', { name: p.name })} title={t('Denunciar o bloquear')}>{I.flag}</button>
@@ -2380,7 +2382,7 @@ function MatchScreen({ p, me, onSend, onContinue }) {
       <div className="pair">
         <Hex src={myAvatar(me)} alt={me.name} size={124} colors={['#8B5CF6', '#C4F56A']} />
         <span className="vs" aria-label={t('contra')}>VS</span>
-        <Hex src={avatarOf(p)} alt={p.name} size={124} colors={FRAME.list} />
+        <Hex src={avatarOf(p)} alt={p.name} size={124} colors={p.superDuel || p.superLikedYou ? SUPER_FRAME : FRAME.list} />
       </div>
       <p className="swiped">{t('{name} también quiere jugar a {game}. Proponed formato y tienda.', { name: p.name, game: sharedGames(me, p).map(gameName).join(', ') || GAMES[p.favCard.game].name })}</p>
       <div className="quick light">{quickReplies(p, me).map((q) => <button key={q} type="button" onClick={() => { setText(q); clearWarn(); }}>{q}</button>)}</div>
