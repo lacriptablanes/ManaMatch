@@ -39,7 +39,7 @@ export default function ManaBreak({ steer, onClose }) {
     const ctx = canvas.getContext('2d');
     const css = getComputedStyle(canvas);
     const col = (v, f) => css.getPropertyValue(v).trim() || f;
-    const C = { brand: col('--brand', '#8B5CF6'), lime: '#C4F56A', card: col('--card', '#fff'), line: col('--line', 'rgba(127,127,127,0.25)'), text: col('--text', '#171522') };
+    const C = { brand: col('--brand', '#8B5CF6'), lime: '#C4F56A', limeEdge: '#6FA22B', card: col('--card', '#fff'), line: col('--line', 'rgba(127,127,127,0.25)'), text: col('--text', '#171522') };
     let W = 0, H = 0;
     const PW = 66, PH = 16, R = 6;
     const g = { run: false, held: true, over: false, px: 0, target: null, bx: 0, by: 0, vx: 0, vy: 0, bricks: [], parts: [], score: 0, lives: LIVES, level: 1, keys: 0 };
@@ -166,7 +166,7 @@ export default function ManaBreak({ steer, onClose }) {
       for (const b of g.bricks) {
         if (b.hp <= 0) continue;
         roundRect(ctx, b.x, b.y, b.w, b.h, 4);
-        if (b.mana) { ctx.fillStyle = C.lime; ctx.fill(); }
+        if (b.mana) { ctx.fillStyle = C.lime; ctx.fill(); ctx.strokeStyle = C.limeEdge; ctx.lineWidth = 1.6; ctx.stroke(); }
         else if (b.hp > 1) { ctx.fillStyle = C.brand; ctx.fill(); }
         else { ctx.fillStyle = C.card; ctx.fill(); ctx.strokeStyle = C.brand; ctx.lineWidth = 1.6; ctx.stroke(); }
       }
@@ -179,7 +179,8 @@ export default function ManaBreak({ steer, onClose }) {
       hexPath(ctx, g.px, py, 4.5); ctx.strokeStyle = C.brand; ctx.lineWidth = 1.4; ctx.stroke();
       // bola de maná
       if (!g.over) {
-        hexPath(ctx, g.bx, g.by, R + 1); ctx.fillStyle = C.lime; ctx.fill();
+        hexPath(ctx, g.bx, g.by, R + 1.5); ctx.fillStyle = C.lime; ctx.fill();
+        ctx.strokeStyle = C.limeEdge; ctx.lineWidth = 1.8; ctx.lineJoin = 'round'; ctx.stroke();
       }
       raf = requestAnimationFrame(frame);
     };
