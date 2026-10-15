@@ -1,4 +1,4 @@
-import { useState, useRef, useId, useEffect } from 'react';
+import { useState, useRef, useId, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { PLAYERS, STORES, pokeImg, opImg } from './data';
 import { GAMES, placeholderArt, defaultAvatar } from './games';
@@ -7,6 +7,7 @@ import { compat, byCompat, reliability } from './compat';
 import { TITLES, unlockedTitles, titleFor } from './titles';
 import { t, useLang, setLang, getLang, LANGS, locale } from './i18n';
 import { supabase } from './supabase';
+import ManaRun from './ManaRun';
 import {
   loadMe, saveMe, uploadAvatar, removeAvatars, isAvatarPath, avatarUrl, ageFrom, isCardUpload,
   hasLocalCardImages, uploadCardImages, replaceUploads, cleanCardImages, flagImage, hiddenImages,
@@ -344,9 +345,11 @@ const FRAME = { list: ['#8B5CF6'], grad: '#8B5CF6', glow: '#8B5CF6' };
 // Marco verde: quien te ha retado con un Súper duelo (y las conversaciones que salieron de uno)
 const SUPER_FRAME = ['#C4F56A'];
 const toggleIn = (arr, v) => arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
-const Empty = ({ icon, title, text }) => (
+const Empty = ({ icon, title, text, onIcon, iconLabel }) => (
   <div className="empty">
-    <div className="empty-icon">{icon}</div>
+    {onIcon
+      ? <button type="button" className="empty-icon empty-play" onClick={onIcon} aria-label={iconLabel} title={iconLabel}>{icon}</button>
+      : <div className="empty-icon">{icon}</div>}
     <h3>{title}</h3>
     <p>{text}</p>
   </div>
@@ -1300,6 +1303,9 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, o
   const [impact, setImpact] = useState(null);
   const [tipSeen, setTipSeen] = useStoredState('manamatch-hand-tip', false);
   const [tapHint, setTapHint] = useState(false);
+  // Minijuego del estado vacío (se cierra al volver o si aparecen jugadores)
+  const [playing, setPlaying] = useState(false);
+  const closeGame = useCallback(() => setPlaying(false), []);
   const tableRef = useRef(null);
   const impactKey = useRef(0);
   // Quien te ha retado con un Súper duelo sale siempre el primero (es lo que se paga); después, por compatibilidad
@@ -1324,7 +1330,10 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, o
   return (
     <>
       <div className="deck" ref={tableRef}>
-        {!top && <Empty icon={I.crystal} title={t('No hay más jugadores')} text={t('Añade más juegos a tu lista, amplía tu radio de búsqueda o vuelve más tarde.')} />}
+        {!top && (playing
+          ? <ManaRun onClose={closeGame} />
+          : <Empty icon={I.crystal} title={t('No hay más jugadores')} text={t('Añade más juegos a tu lista, amplía tu radio de búsqueda o vuelve más tarde.')}
+              onIcon={() => setPlaying(true)} iconLabel={t('Jugar a un minijuego mientras esperas')} />)}
         {next && (
           <article className="swipe-card behind">
             <div className="art-frame"><img className={`hero-art${imgCls(next.favCard.game, next.favCard)}`} src={artOf(next.favCard.game, next.favCard)} alt="" /></div>

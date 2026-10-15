@@ -596,4 +596,10 @@ export default {
   "Esta tienda te ha verificado en persona": "Esta tenda verificoute en persoa",
   "Ha verificado a {name} en persona": "Verificou a {name} en persoa",
   "Conseguir Súper duelos": "Conseguir Súper duelos",
+  "Récord": "Récord",
+  "Minijuego: toca para saltar las cartas": "Minixogo: toca para saltar as cartas",
+  "Toca para empezar. Salta las cartas y recoge maná.": "Toca para comezar. Salta as cartas e recolle maná.",
+  "Toca para saltar": "Toca para saltar",
+  "¡Fin de la partida! Toca para jugar otra": "Fin da partida! Toca para xogar outra",
+  "Jugar a un minijuego mientras esperas": "Xoga a un minixogo mentres agardas",
 };

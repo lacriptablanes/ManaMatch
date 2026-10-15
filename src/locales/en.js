@@ -594,4 +594,10 @@ export default {
   "Esta tienda te ha verificado en persona": "This store verified you in person",
   "Ha verificado a {name} en persona": "Verified {name} in person",
   "Conseguir Súper duelos": "Get Super duels",
+  "Récord": "Best",
+  "Minijuego: toca para saltar las cartas": "Mini-game: tap to jump over the cards",
+  "Toca para empezar. Salta las cartas y recoge maná.": "Tap to start. Jump the cards and collect mana.",
+  "Toca para saltar": "Tap to jump",
+  "¡Fin de la partida! Toca para jugar otra": "Game over! Tap to play again",
+  "Jugar a un minijuego mientras esperas": "Play a mini-game while you wait",
 };

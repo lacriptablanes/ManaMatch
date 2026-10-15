@@ -596,4 +596,10 @@ export default {
   "Esta tienda te ha verificado en persona": "Denda honek aurrez aurre egiaztatu zaitu",
   "Ha verificado a {name} en persona": "{name} aurrez aurre egiaztatu du",
   "Conseguir Súper duelos": "Lortu Super dueluak",
+  "Récord": "Errekorra",
+  "Minijuego: toca para saltar las cartas": "Minijokoa: ukitu kartak jauzteko",
+  "Toca para empezar. Salta las cartas y recoge maná.": "Ukitu hasteko. Jauzi kartak eta bildu mana.",
+  "Toca para saltar": "Ukitu jauzteko",
+  "¡Fin de la partida! Toca para jugar otra": "Partida amaitu da! Ukitu berriro jokatzeko",
+  "Jugar a un minijuego mientras esperas": "Jokatu minijoko bat itxaroten duzun bitartean",
 };
