@@ -70,7 +70,7 @@ export default function ManaBreak({ steer, onClose }) {
     const ctx = canvas.getContext('2d');
     const css = getComputedStyle(canvas);
     const col = (v, f) => css.getPropertyValue(v).trim() || f;
-    const C = { brandSoft: 'rgba(139, 92, 246, 0.28)', brand: col('--brand', '#8B5CF6'), lime: '#C4F56A', limeEdge: '#6FA22B', bomb: '#FF5A5F', bombEdge: '#C81E2B', card: col('--card', '#fff'), line: col('--line', 'rgba(127,127,127,0.25)'), text: col('--text', '#171522') };
+    const C = { brand: col('--brand', '#8B5CF6'), lime: '#C4F56A', limeEdge: '#6FA22B', bomb: '#FF5A5F', bombEdge: '#C81E2B', card: col('--card', '#fff'), line: col('--line', 'rgba(127,127,127,0.25)'), text: col('--text', '#171522') };
     let W = 0, H = 0;
     const PW = 66, PH = 16, R = 6;
     const g = { run: false, held: true, over: false, px: 0, target: null, bx: 0, by: 0, vx: 0, vy: 0, bricks: [], parts: [], booms: [], fuses: [], score: 0, lives: LIVES, level: 1, keys: 0, t: 0, shake: 0 };
@@ -144,7 +144,7 @@ export default function ManaBreak({ steer, onClose }) {
       g.bricks.forEach((o) => { if (o.hp > 0 && Math.abs(o.c - b.c) <= 1 && Math.abs(o.r - b.r) <= 1) destroy(o); });
     };
     const hit = (b) => {
-      if (b.type === 'p' && b.hp > 1) { b.hp--; g.score += 5; burst(b.x + b.w / 2, b.y + b.h / 2, C.brand, 4, 1.4); }
+      if (b.type === 'p' && b.hp > 1) { b.hp--; b.flash = 10; g.score += 5; burst(b.x + b.w / 2, b.y + b.h / 2, C.brand, 4, 1.4); }
       else destroy(b);
     };
     // Aviso de nivel (en el 3 se presentan los explosivos)
@@ -248,17 +248,14 @@ export default function ManaBreak({ steer, onClose }) {
           roundRect(ctx, x, y, w, h, 5); ctx.fillStyle = C.bomb; ctx.fill();
           ctx.restore();
           roundRect(ctx, x, y, w, h, 5); ctx.strokeStyle = C.bombEdge; ctx.lineWidth = 1.6; ctx.stroke();
-          ctx.beginPath(); ctx.arc(b.x + b.w / 2, b.y + b.h / 2, Math.min(4, b.h / 4), 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
           continue;
         }
         roundRect(ctx, b.x, b.y, b.w, b.h, 4);
         if (b.type === 'g') { ctx.fillStyle = C.lime; ctx.fill(); ctx.strokeStyle = C.limeEdge; ctx.lineWidth = 1.6; ctx.stroke(); }
-        else if (b.type === 'p' && b.hp > 1) { ctx.fillStyle = C.brand; ctx.fill(); }
         else if (b.type === 'p') {
-          // morado tocado: más claro y agrietado
-          ctx.fillStyle = C.brandSoft; ctx.fill(); ctx.strokeStyle = C.brand; ctx.lineWidth = 1.6; ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(b.x + b.w * 0.42, b.y + 2); ctx.lineTo(b.x + b.w * 0.52, b.y + b.h * 0.5); ctx.lineTo(b.x + b.w * 0.46, b.y + b.h - 2);
-          ctx.lineWidth = 1.2; ctx.stroke();
+          // morado: mismo aspecto hasta romperse; el primer golpe solo da un destello
+          ctx.fillStyle = C.brand; ctx.fill();
+          if (b.flash > 0) { ctx.globalAlpha = b.flash / 10; ctx.fillStyle = '#fff'; ctx.fill(); ctx.globalAlpha = 1; b.flash--; }
         }
         else { ctx.fillStyle = C.card; ctx.fill(); ctx.strokeStyle = C.brand; ctx.lineWidth = 1.6; ctx.stroke(); }
       }
