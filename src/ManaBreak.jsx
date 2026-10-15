@@ -144,7 +144,7 @@ export default function ManaBreak({ steer, onClose }) {
       g.bricks.forEach((o) => { if (o.hp > 0 && Math.abs(o.c - b.c) <= 1 && Math.abs(o.r - b.r) <= 1) destroy(o); });
     };
     const hit = (b) => {
-      if (b.type === 'p' && b.hp > 1) { b.hp--; b.flash = 10; g.score += 5; burst(b.x + b.w / 2, b.y + b.h / 2, C.brand, 4, 1.4); }
+      if (b.type === 'p') { b.type = 'n'; b.hp = 1; g.score += 10; burst(b.x + b.w / 2, b.y + b.h / 2, C.brand, 4, 1.4); }
       else destroy(b);
     };
     // Aviso de nivel (en el 3 se presentan los explosivos)
@@ -252,11 +252,7 @@ export default function ManaBreak({ steer, onClose }) {
         }
         roundRect(ctx, b.x, b.y, b.w, b.h, 4);
         if (b.type === 'g') { ctx.fillStyle = C.lime; ctx.fill(); ctx.strokeStyle = C.limeEdge; ctx.lineWidth = 1.6; ctx.stroke(); }
-        else if (b.type === 'p') {
-          // morado: mismo aspecto hasta romperse; el primer golpe solo da un destello
-          ctx.fillStyle = C.brand; ctx.fill();
-          if (b.flash > 0) { ctx.globalAlpha = b.flash / 10; ctx.fillStyle = '#fff'; ctx.fill(); ctx.globalAlpha = 1; b.flash--; }
-        }
+        else if (b.type === 'p') { ctx.fillStyle = C.brand; ctx.fill(); }
         else { ctx.fillStyle = C.card; ctx.fill(); ctx.strokeStyle = C.brand; ctx.lineWidth = 1.6; ctx.stroke(); }
       }
       // fogonazo y onda de las explosiones
