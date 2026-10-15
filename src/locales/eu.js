@@ -595,4 +595,5 @@ export default {
   "Sube una imagen de banner": "Igo banner-irudi bat",
   "Esta tienda te ha verificado en persona": "Denda honek aurrez aurre egiaztatu zaitu",
   "Ha verificado a {name} en persona": "{name} aurrez aurre egiaztatu du",
+  "Conseguir Súper duelos": "Lortu Super dueluak",
 };

@@ -593,4 +593,5 @@ export default {
   "Sube una imagen de banner": "Upload a banner image",
   "Esta tienda te ha verificado en persona": "This store verified you in person",
   "Ha verificado a {name} en persona": "Verified {name} in person",
+  "Conseguir Súper duelos": "Get Super duels",
 };

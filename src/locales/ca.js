@@ -595,4 +595,5 @@ export default {
   "Sube una imagen de banner": "Puja una imatge de bàner",
   "Esta tienda te ha verificado en persona": "Aquesta botiga t'ha verificat en persona",
   "Ha verificado a {name} en persona": "Ha verificat {name} en persona",
+  "Conseguir Súper duelos": "Aconsegueix Súper duels",
 };

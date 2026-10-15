@@ -1237,7 +1237,7 @@ function ThrowCard({ card, index, total, disabled, targetRef, onPlay, onTap, cou
       <span className="hc-frame">
         <span className="hc-gem"><svg className="hc-hex" viewBox="0 0 100 112" aria-hidden="true"><path d={HEX_PHOTO} /></svg>{card.icon}</span>
         <span className="hc-name">{t(card.label)}</span>
-        {count !== undefined && <span className={`hc-count${count ? '' : ' empty'}`}>{count}</span>}
+        {count !== undefined && <span className={`hc-count${count ? '' : ' zero'}`} aria-label={count ? undefined : t('Conseguir Súper duelos')}>{count || '+'}</span>}
       </span>
     </button>
   );
