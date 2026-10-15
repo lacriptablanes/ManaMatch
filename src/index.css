@@ -2740,3 +2740,12 @@ body { background: var(--body-bg); }
   align-self: flex-start; width: 28px; height: 28px; border-radius: 50%; border: 0; cursor: pointer;
   background: transparent; color: var(--muted); font-size: 1.1rem; line-height: 1;
 }
+
+/* Imagen del anuncio: banner 16:9 dentro de la fila «Patrocinado» */
+.sponsored-img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; margin: 6px 0 8px; }
+
+/* Enlace opcional del anunciante: texto discreto, sin competir con el título */
+.sponsored-link {
+  margin-top: 6px; padding: 0; border: 0; background: none; cursor: pointer;
+  font-size: 0.75rem; font-weight: 700; color: var(--hot-2); text-decoration: underline; text-underline-offset: 3px;
+}

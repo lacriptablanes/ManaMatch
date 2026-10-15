@@ -1414,6 +1414,15 @@ const storePos = (km, i, n, radius) => {
 const RADIUS_STEPS = [1, 2, 5, 10, 25, 50];
 
 // Anuncio de una tienda: se marca siempre como «Patrocinado» y cuenta visualizaciones y clics (sin datos personales)
+// Enlace del anunciante: avisa de a qué web se sale antes de abrirla. Solo HTTPS y sin datos del usuario.
+function openAdLink(ad) {
+  let host;
+  try { const u = new URL(ad.link); if (u.protocol !== 'https:') return; host = u.hostname; } catch { return; }
+  if (!window.confirm(t('Vas a salir de ManaMatch hacia {site}. ¿Continuar?', { site: host }))) return;
+  logStoreAd(ad.id, 'click');
+  window.open(ad.link, '_blank', 'noopener,noreferrer');
+}
+
 function SponsoredRow({ ad, store, onOpen }) {
   const [hidden, setHidden] = useState(false);
   useEffect(() => { logStoreAd(ad.id, 'view'); }, [ad.id]);
@@ -1425,8 +1434,10 @@ function SponsoredRow({ ad, store, onOpen }) {
       <span className="row-icon">{I.store}</span>
       <div className="grow">
         <span className="sponsored-tag">{t('Patrocinado')}</span>
+        {ad.imageUrl && <img className="sponsored-img" src={ad.imageUrl} alt="" loading="lazy" decoding="async" />}
         <div className="title">{ad.title}</div>
         <div className="sub sponsored-store">{store.name}{ad.body ? ` · ${ad.body}` : ''}</div>
+        {ad.link && <button type="button" className="sponsored-link" onClick={(e) => { e.stopPropagation(); openAdLink(ad); }}>{t('Visitar web')}</button>}
       </div>
       <button type="button" className="sponsored-hide" aria-label={t('Ocultar anuncio')} onClick={(e) => { e.stopPropagation(); setHidden(true); }}>{I.close ?? '×'}</button>
     </div>
