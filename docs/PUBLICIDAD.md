@@ -29,3 +29,19 @@
 - Precio, número de tiendas piloto y contrato mínimo (con asesoramiento legal).
 - Carga real de tiendas desde la tabla `stores` (hoy `STORES` es de demostración), porque los anuncios solo aparecen para tiendas que están en la lista.
 - Revisar la política de privacidad (RGPD) para decir que se cuentan visualizaciones y clics sin identificar al usuario.
+
+## Reparto de anuncios (migración 014)
+
+Cada visita a Descubrir o Cerca de ti pide **un** anuncio a la base de datos (`pick_store_ad`). Solo entran los activos, que no hayan llegado a su tope diario (`daily_cap`).
+
+- **Modo `fair` (rotación justa, por defecto):** sale el anuncio con menos visualizaciones hoy.
+- **Modo `paid` (por pago):** sale al azar, pero con más probabilidad el de mayor `weight` (1 a 10).
+
+Cambiar de modo, cuando quieras, en el SQL Editor:
+
+```sql
+update public.app_settings set value = 'paid' where key = 'store_ad_mode';   -- por pago
+update public.app_settings set value = 'fair' where key = 'store_ad_mode';   -- rotación justa
+```
+
+Para dar más peso a una tienda, cambia su `weight` en `store_ads` (por ejemplo, 5 frente a 1).

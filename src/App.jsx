@@ -1386,7 +1386,7 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, o
       setLeaving(id);
       if (id === 'like') {
         if (top.link) openAdLink(top);
-        else { logStoreAd(top.id, 'click'); if (STORES.some((s) => s.id === top.store_id)) onStore(top.store_id); }
+        else { logStoreAd(top.id, 'click'); if (STORES.some((s) => s.id === top.storeId)) onStore(top.storeId); }
       }
       setTimeout(() => { setLeaving(null); setAdDone(true); }, 430);
       return;
@@ -1472,7 +1472,7 @@ function SponsoredRow({ ad, onOpen }) {
   const openRow = () => {
     if (ad.link) { openAdLink(ad); return; }
     logStoreAd(ad.id, 'click');
-    if (STORES.some((s) => s.id === ad.store_id)) onOpen(ad.store_id);
+    if (STORES.some((s) => s.id === ad.storeId)) onOpen(ad.storeId);
   };
   return (
     <div className="row store-row sponsored" role="button" tabIndex={0}
@@ -2572,11 +2572,17 @@ export default function App() {
   const [blocking, setBlocking] = useState(null);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [ads, setAds] = useState([]); // anuncios de tiendas activos (premium no los ve)
-  useEffect(() => { loadStoreAds().then(setAds); }, []);
   const [normsOpen, setNormsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [wiping, setWiping] = useState(false);
   const [me, setMe] = useStoredState('manamatch-me', DEFAULT_ME, migrateMe);
+  // Un anuncio por visita a Descubrir o Cerca de ti; premium no ve anuncios
+  useEffect(() => {
+    if (me.premium === true || (tab !== 'discover' && tab !== 'nearby')) return;
+    loadStoreAds().then(setAds);
+  }, [tab, me.premium]);
+  // Premium no ve anuncios, y solo aparecen en Descubrir y Cerca de ti
+  const adsNow = me.premium === true || (tab !== 'discover' && tab !== 'nearby') ? [] : ads;
   // Imágenes que has denunciado (y, con cuenta, las ocultas para todos): se sincronizan con el conjunto global
   const [hidden, setHidden] = useStoredState('manamatch-hidden-imgs', [], (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(-200) : []));
   hidden.forEach((x) => hiddenImgs.add(x));
@@ -2811,9 +2817,9 @@ export default function App() {
             {tab === 'me' && <button id="open-settings" className="icon-btn head-action" onClick={() => setSettingsOpen(true)} aria-label={t('Ajustes')} title={t('Ajustes')}>{I.gear}</button>}
           </header>
         )}
-        {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} credits={credits} onNeedCredits={() => setShopOpen(true)} ads={ads} onStore={setStoreOpen} />}
+        {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} credits={credits} onNeedCredits={() => setShopOpen(true)} ads={adsNow} onStore={setStoreOpen} />}
         {tab === 'nearby' && <Nearby players={PLAYERS.filter((p) => notBlocked(p) && sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))} me={me} onRadius={(km) => setMe((x) => ({ ...x, radius: km }))} onInfo={setProfile}
-          onToggleStore={toggleStore} onStore={setStoreOpen} ads={isPremium(me) ? [] : ads} />}
+          onToggleStore={toggleStore} onStore={setStoreOpen} ads={adsNow} />}
         {tab === 'chat' && (chatWith
           ? <Chat p={chatWith} me={me} attended={attendance[chatWith.id]} onAttend={(v) => setAttendance((a) => ({ ...a, [chatWith.id]: v }))} msgs={chats[chatWith.id] || []} onSend={(m) => send(chatWith, m)} onBack={() => setChatWith(null)} onInfo={setProfile} onReport={() => setReporting(chatWith)} />
           : <Matches matches={visibleMatches} chats={chats} openChat={openChat} />)}
