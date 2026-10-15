@@ -90,6 +90,7 @@ const DEFAULT_ME = {
   bio: 'Jugador de cartas de toda la vida. Busco mesa fija entre semana y algún torneo de tienda.',
   stores: ['s1'], days: ['X', 'V'], slots: ['Tarde'],
   verifiedStore: 's1', // demo: Dragón Rojo Games te ha verificado
+  premium: false, // cuenta premium: activa el brillo foil de tus cartas (aún no hay compra; ver isPremium)
   radius: 5, onlyVerified: false,
   showDistance: true, visible: true,
   notif: { matches: true, messages: true, events: false },
@@ -252,7 +253,10 @@ function useBack(active, onBack) {
 }
 
 /* Respeta la opción del sistema "reducir movimiento" */
-const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+// Con el rendimiento «ligero» se atenúa el movimiento igual que con la preferencia de accesibilidad del sistema
+const reducedMotion = () => document.documentElement.dataset.perf === 'light' || !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+// Brillo «foil» de la carta: solo para cuentas premium (el servidor debe confirmarlo; aquí solo es visual)
+const isPremium = (me) => me.premium === true;
 
 /* Vibración breve en móviles que la admiten (Android); en el resto no hace nada */
 const haptic = (pattern = 12) => { try { navigator.vibrate?.(pattern); } catch { /* sin vibración */ } };
@@ -624,7 +628,7 @@ function TableCard({ p, me, leaving, onInfo }) {
   const deck = p.decks[0];
   return (
     <article
-      ref={ref} className={`swipe-card table-card g-${p.favCard.game}${leaving ? ' leaving' : ''}`}
+      ref={ref} className={`swipe-card table-card g-${p.favCard.game}${leaving ? ' leaving' : ''}${p.superLikedYou ? ' super' : ''}${isPremium(me) ? ' premium' : ''}`}
       style={{ '--frame': grad, '--glow': glow, transform: LEAVE[leaving] ?? 'perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg))' }}
       onPointerMove={tilt} onPointerLeave={untilt} onPointerCancel={untilt}
     >
@@ -2244,7 +2248,8 @@ function DeleteAccountDialog({ uid, onClose }) {
 }
 
 /* ================= Ajustes (se abren desde el botón de la rueda en el perfil) ================= */
-function SettingsScreen({ me, setMe, theme, setTheme, blocked, onUnblock, onReset, onRules, onNorms, onWipe, installer, user, onSignOut, onClose }) {
+const PERF = [['full', 'Completo', I.star], ['light', 'Ligero', I.auto]];
+function SettingsScreen({ me, setMe, theme, setTheme, perf, setPerf, blocked, onUnblock, onReset, onRules, onNorms, onWipe, installer, user, onSignOut, onClose }) {
   const set = (patch) => setMe((x) => ({ ...x, ...patch }));
   const [accountDialog, setAccountDialog] = useState(null); // 'email' | 'delete'
   useBack(!!accountDialog, () => setAccountDialog(null));
@@ -2264,6 +2269,10 @@ function SettingsScreen({ me, setMe, theme, setTheme, blocked, onUnblock, onRese
         <div className="panel">
           <div className="setting"><span className="setting-icon">{I.palette}</span><div className="grow"><div className="setting-label">{t('Tema')}</div><div className="setting-hint">{t('Auto sigue el modo de tu dispositivo')}</div></div></div>
           <Segmented name={t('Tema')} value={theme} onChange={setTheme} options={THEMES.map(([v, label, icon]) => [v, t(label), icon])} />
+        </div>
+        <div className="panel">
+          <div className="setting"><span className="setting-icon">{I.star}</span><div className="grow"><div className="setting-label">{t('Rendimiento')}</div><div className="setting-hint">{t('Ligero quita el brillo, la inclinación y las animaciones de las cartas. Solo en este dispositivo')}</div></div></div>
+          <Segmented name={t('Rendimiento')} value={perf} onChange={setPerf} options={PERF.map(([v, label, icon]) => [v, t(label), icon])} />
         </div>
         <div className="panel lang-panel">
           <div className="setting">
@@ -2473,6 +2482,9 @@ export default function App() {
   // Por defecto sigue el modo del móvil (día o noche), igual que el login. Clave nueva: la anterior guardaba
   // "noche" aunque nadie lo hubiera elegido, y el login (que sigue al móvil) no coincidía con el resto de la app
   const [theme, setTheme] = useStoredState('manamatch-theme-v2', 'system');
+  // Rendimiento de este dispositivo: «ligero» quita el brillo foil, la inclinación 3D y las animaciones de la carta
+  const [perf, setPerf] = useStoredState('manamatch-perf', 'full', (v) => (v === 'light' ? 'light' : 'full'));
+  useEffect(() => { document.documentElement.dataset.perf = perf; }, [perf]);
   const [blocked, setBlocked] = useStoredState('manamatch-blocked', []);
   const [accepted, setAccepted] = useStoredState('manamatch-rules', false);
   useAppearance(theme, me.favCard.game);
@@ -2715,7 +2727,7 @@ export default function App() {
 
       {settingsOpen && (
         <SettingsScreen
-          me={me} setMe={setMe} theme={theme} setTheme={setTheme} installer={installer}
+          me={me} setMe={setMe} theme={theme} setTheme={setTheme} perf={perf} setPerf={setPerf} installer={installer}
           blocked={blocked} onUnblock={(id) => setBlocked((b) => b.filter((x) => x !== id))}
           onRules={() => setRulesOpen(true)} onNorms={() => setNormsOpen(true)} onWipe={() => setWiping(true)}
           onReset={() => { setMe(DEFAULT_ME); flash(t('Perfil restablecido'), I.reset); }}
