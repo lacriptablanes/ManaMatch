@@ -1423,13 +1423,13 @@ function openAdLink(ad) {
   window.open(ad.link, '_blank', 'noopener,noreferrer');
 }
 
-function SponsoredRow({ ad, store, onOpen }) {
+function SponsoredRow({ ad, onOpen }) {
   useEffect(() => { logStoreAd(ad.id, 'view'); }, [ad.id]);
   // Con enlace, todo el anuncio (imagen y texto) lleva a la web del anunciante; sin enlace, a la ficha de la tienda
   const openRow = () => {
     if (ad.link) { openAdLink(ad); return; }
     logStoreAd(ad.id, 'click');
-    onOpen(store.id);
+    if (STORES.some((s) => s.id === ad.store_id)) onOpen(ad.store_id);
   };
   return (
     <div className="row store-row sponsored" role="button" tabIndex={0}
@@ -1440,7 +1440,7 @@ function SponsoredRow({ ad, store, onOpen }) {
         <span className="sponsored-tag">{t('Patrocinado')}</span>
         {ad.imageUrl && <img className="sponsored-img" src={ad.imageUrl} alt="" loading="lazy" decoding="async" />}
         <div className="title">{ad.title}</div>
-        <div className="sub sponsored-store">{store.name}{ad.body ? ` · ${ad.body}` : ''}</div>
+        <div className="sub sponsored-store">{ad.storeName}{ad.body ? ` · ${ad.body}` : ''}</div>
         {ad.link && <span className="sponsored-link">{t('Visitar web')}</span>}
       </div>
     </div>
@@ -1451,7 +1451,7 @@ function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore, ads = [
   const R = me.radius;
   const stores = STORES.filter((st) => st.dist <= R);
   // El primer anuncio de una tienda que está en tu radio; el patrocinio nunca sustituye a la tienda real
-  const sponsored = ads.map((ad) => ({ ad, store: stores.find((s) => s.id === ad.store_id) })).find((x) => x.store);
+  const sponsored = ads[0];
   return (
     <>
       <div className="radius-ctl panel">
@@ -1483,10 +1483,10 @@ function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore, ads = [
       <div className="legend"><span><i className="lg-player" />{t('Jugadores (zona aproximada)')}</span><span><i className="lg-store" />{t('Tiendas')}</span></div>
       <p className="privacy-note">{I.shield}{t('Por tu seguridad, nunca mostramos dónde está un jugador: solo su rango de distancia.')}</p>
 
+      {sponsored && <div className="sponsored-wrap"><SponsoredRow key={sponsored.id} ad={sponsored} onOpen={onStore} /></div>}
       <h3 className="section-title">{t('Tiendas cercanas')}</h3>
       {!stores.length && <p className="section-hint">{t('No hay tiendas en esa distancia. Amplíala para ver más.')}</p>}
       <div className="list">
-        {sponsored && <SponsoredRow key={sponsored.ad.id} ad={sponsored.ad} store={sponsored.store} onOpen={onStore} />}
         {stores.map((st) => {
           const regulars = players.filter((p) => p.stores.includes(st.id));
           return (
