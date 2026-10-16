@@ -2571,18 +2571,26 @@ export default function App() {
   const [reporting, setReporting] = useState(null);
   const [blocking, setBlocking] = useState(null);
   const [rulesOpen, setRulesOpen] = useState(false);
-  const [ads, setAds] = useState([]); // anuncios de tiendas activos (premium no los ve)
+  // Anuncios de tiendas: cada visita a una pestaña es un número (n) y cada anuncio cargado lleva el de su visita.
+  // Así, al volver a Descubrir o Cerca de ti nunca se enseña (ni se cuenta) el anuncio de la visita anterior.
+  const [adVisit, setAdVisit] = useState({ tab, n: 0 });
+  if (adVisit.tab !== tab) setAdVisit({ tab, n: adVisit.n + 1 });
+  const [adsState, setAdsState] = useState({ n: -1, list: [] });
   const [normsOpen, setNormsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [wiping, setWiping] = useState(false);
   const [me, setMe] = useStoredState('manamatch-me', DEFAULT_ME, migrateMe);
   // Un anuncio por visita a Descubrir o Cerca de ti; premium no ve anuncios
+  const adTab = tab === 'discover' || tab === 'nearby';
+  const visitN = adVisit.n;
   useEffect(() => {
-    if (me.premium === true || (tab !== 'discover' && tab !== 'nearby')) return;
-    loadStoreAds().then(setAds);
-  }, [tab, me.premium]);
-  // Premium no ve anuncios, y solo aparecen en Descubrir y Cerca de ti
-  const adsNow = me.premium === true || (tab !== 'discover' && tab !== 'nearby') ? [] : ads;
+    if (me.premium === true || !adTab) return;
+    let alive = true;
+    loadStoreAds().then((list) => { if (alive) setAdsState({ n: visitN, list }); });
+    return () => { alive = false; };
+  }, [visitN, adTab, me.premium]);
+  // Solo se muestra el anuncio cargado para la visita actual
+  const adsNow = me.premium === true || !adTab || adsState.n !== visitN ? [] : adsState.list;
   // Imágenes que has denunciado (y, con cuenta, las ocultas para todos): se sincronizan con el conjunto global
   const [hidden, setHidden] = useStoredState('manamatch-hidden-imgs', [], (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(-200) : []));
   hidden.forEach((x) => hiddenImgs.add(x));
