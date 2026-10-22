@@ -1490,11 +1490,17 @@ const mapPos = (key, km, radius) => {
   const r = Math.max(0.14, Math.min(km / radius, 0.92)) * 44;
   return { left: `${50 + Math.cos(a) * r}%`, top: `${50 + Math.sin(a) * r}%` };
 };
-function NearbyMap({ players, stores, radius, onInfo, onStore }) {
+function NearbyMap({ players, stores, radius, onRadius, onInfo, onStore }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`near-map${open ? ' open' : ''}`}>
       <div className="near-map-canvas" role="img" aria-label={t('Mapa de jugadores y tiendas cercanas')}>
+        <div className="near-km">
+          <select id="nearby-radius" value={radius} aria-label={t('Distancia máxima')} onChange={(e) => onRadius(+e.target.value)}>
+            {RADIUS_STEPS.map((km) => <option key={km} value={km}>{km} km</option>)}
+          </select>
+          {I.chevron}
+        </div>
         <span className="near-map-me" />
         {open && players.map((p) => (
           <button key={p.id} type="button" className="near-map-pin" style={mapPos(p.id, p.dist, radius)} onClick={() => onInfo(p)} title={p.name} aria-label={p.name}>
@@ -1521,20 +1527,11 @@ function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore, ads = [
   const sponsored = ads[0];
   return (
     <>
-      <div className="radius-ctl panel">
-        <div className="label-row"><b>{t('Distancia máxima')}</b><span className="radius-val">{R} km</span></div>
-        <input id="nearby-radius" type="range" min="1" max="50" value={R} aria-label={t('Distancia máxima')}
-          onChange={(e) => onRadius(+e.target.value)} style={{ '--p': `${((R - 1) / 49) * 100}%` }} />
-        <div className="radius-steps">
-          {RADIUS_STEPS.map((km) => <button key={km} type="button" className={R === km ? 'on' : ''} onClick={() => onRadius(km)}>{km} km</button>)}
-        </div>
-        <p className="radius-count">
-          {players.length === 1 ? t('1 persona con tus juegos') : t('{n} personas con tus juegos', { n: players.length })}
-        </p>
-      </div>
-
+      <NearbyMap players={players} stores={stores} radius={R} onRadius={onRadius} onInfo={onInfo} onStore={onStore} />
+      <p className="radius-count">
+        {players.length === 1 ? t('1 persona con tus juegos') : t('{n} personas con tus juegos', { n: players.length })}
+      </p>
       {sponsored && <div className="sponsored-wrap"><SponsoredRow key={sponsored.id} ad={sponsored} onOpen={onStore} /></div>}
-      <NearbyMap players={players} stores={stores} radius={R} onInfo={onInfo} onStore={onStore} />
       <div className="near-list">
         {players.length ? players.map((p) => (
           <button key={p.id} className="near-card" onClick={() => onInfo(p)}>

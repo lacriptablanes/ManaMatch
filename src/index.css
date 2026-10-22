@@ -2476,13 +2476,18 @@ body { background: var(--body-bg); }
 .near-dist svg { width: 13px; height: 13px; }
 /* Mapa de dibujo: plegado por defecto; la marca de abajo indica que se despliega */
 .near-map { margin-top: 14px; border-radius: 20px; overflow: hidden; background: var(--card); border: 1px solid var(--border); }
-.near-map-canvas { position: relative; height: 0; overflow: hidden; transition: height 0.45s var(--ease-spring, ease); background-color: color-mix(in srgb, var(--card) 88%, var(--hot) 12%); background-image: repeating-linear-gradient(0deg, transparent 0 35px, color-mix(in srgb, var(--border) 80%, transparent) 35px 36px), repeating-linear-gradient(90deg, transparent 0 51px, color-mix(in srgb, var(--border) 80%, transparent) 51px 52px); }
+/* Estilo de la referencia: mapa claro con calles y río, selector de km arriba, pines verdes para tiendas.
+   Es un dibujo fijo (no un mapa real) y siempre claro, también en modo oscuro. */
+.near-map-canvas { position: relative; height: 0; overflow: hidden; transition: height 0.45s var(--ease-spring, ease); background-color: #eef0f3; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300' preserveAspectRatio='none'%3E%3Crect width='400' height='300' fill='%23eef0f3'/%3E%3Cpath d='M-10 40 C80 20 140 90 220 70 S330 10 410 40 L410 70 C330 40 260 120 200 110 S90 60 -10 80Z' fill='%23bfe0f7'/%3E%3Cpath d='M0 150 L400 120 M60 0 L140 300 M250 0 L300 300 M0 250 L400 220 M330 0 L380 300' stroke='%23ffffff' stroke-width='9' fill='none'/%3E%3Cpath d='M0 190 L400 175 M100 0 L120 300 M200 150 L400 260 M0 80 L300 300' stroke='%23ffffff' stroke-width='4' fill='none'/%3E%3C/svg%3E"); background-size: 100% 100%; }
 .near-map.open .near-map-canvas { height: 300px; }
-.near-map-me { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--hot); box-shadow: 0 0 0 6px color-mix(in srgb, var(--hot) 22%, transparent); }
-.near-map-pin { position: absolute; width: 38px; height: 38px; margin: -19px 0 0 -19px; padding: 0; border-radius: 50%; border: 2px solid var(--card); background: var(--card); overflow: hidden; display: grid; place-items: center; cursor: pointer; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18); animation: near-pop 0.35s var(--ease-spring, ease) both; }
+.near-km { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 2; display: flex; align-items: center; height: 40px; padding: 0 12px 0 16px; border-radius: 999px; background: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); color: #222; }
+.near-km select { appearance: none; -webkit-appearance: none; border: 0; background: transparent; color: #222; font: inherit; font-size: 0.875rem; font-weight: 700; padding: 0 6px 0 0; outline: none; cursor: pointer; }
+.near-km svg { width: 14px; height: 14px; pointer-events: none; }
+.near-map-me { position: absolute; left: 50%; top: 58%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #3b82f6; border: 2px solid #fff; box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.18); }
+.near-map-pin { position: absolute; width: 40px; height: 40px; margin: -20px 0 0 -20px; padding: 0; border-radius: 50%; border: 2px solid #fff; background: #fff; overflow: hidden; display: grid; place-items: center; cursor: pointer; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18); animation: near-pop 0.35s var(--ease-spring, ease) both; }
 .near-map-pin img { width: 100%; height: 100%; object-fit: cover; }
-.near-map-pin.store { background: var(--text); color: var(--card); }
-.near-map-pin.store svg { width: 17px; height: 17px; }
+.near-map-pin.store { background: #2bb673; color: #fff; }
+.near-map-pin.store svg { width: 18px; height: 18px; }
 .near-map-toggle { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 0.8125rem; font-weight: 700; cursor: pointer; }
 .near-map-toggle svg { width: 16px; height: 16px; transition: transform 0.3s; }
 .near-map.open .near-map-toggle svg { transform: rotate(180deg); }
