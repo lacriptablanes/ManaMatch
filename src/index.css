@@ -636,6 +636,12 @@ fieldset .segmented { margin-top: 0; }
   outline: none; transition: border-color 0.2s, box-shadow 0.2s; font-size: 0.9375rem; font-weight: 500;
 }
 .form textarea { resize: none; line-height: 1.5; }
+/* Código de jugador: panel fino como en las tarjetas de ajustes; el código en monoespaciada para leerlo bien */
+.share-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--border); }
+.share-code { font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 1.125rem; font-weight: 600; letter-spacing: 0.1em; color: var(--text); font-variant-numeric: tabular-nums; }
+.code-search { display: flex; gap: 10px; align-items: center; }
+.code-search input { flex: 1; min-width: 0; font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; letter-spacing: 0.06em; }
+.code-search .primary { flex-shrink: 0; }
 .form select:focus, .form input:not([type=range]):focus, .form textarea:focus { border-color: var(--hot); box-shadow: 0 0 0 3px color-mix(in srgb, var(--hot) 15%, transparent); }
 input[type=range] {
   -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px; padding: 0; border: none; outline: none;

@@ -2126,8 +2126,12 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
   const fav = me.favCard;
   const [codeInput, setCodeInput] = useState('');
   const [codeBusy, setCodeBusy] = useState(false);
+  const copyCode = async (c) => {
+    try { await navigator.clipboard.writeText(formatCode(c)); flash(t('Código copiado'), I.check); } catch { flash(t('No se ha podido copiar el código'), I.alert); }
+  };
   const submitCode = async (e) => {
     e.preventDefault();
+    if (!codeInput.trim()) return;
     setCodeBusy(true);
     const found = await onFindCode(codeInput);
     setCodeBusy(false);
@@ -2171,13 +2175,18 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
       {me.avatar && <button type="button" className="link-btn photo-remove" onClick={() => onPhoto('')}>{t('Quitar foto')}</button>}
 
       <h3 className="section-title">{t('Tu código')}</h3>
-      {shareCode && <p id="my-code" style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '0.08em' }}>{formatCode(shareCode)}</p>}
+      {shareCode && (
+        <div className="share-card">
+          <span id="my-code" className="share-code">{formatCode(shareCode)}</span>
+          <button type="button" className="link-btn" onClick={() => copyCode(shareCode)}>{t('Copiar')}</button>
+        </div>
+      )}
       <p className="setting-hint">{t('Quien tenga tu código puede encontrarte y retarte, aunque no estéis cerca.')}</p>
       {shareCode && <button type="button" className="link-btn" onClick={onRegenerateCode}>{t('Cambiar código')}</button>}
       <h3 className="section-title">{t('Buscar jugador por código')}</h3>
-      <form className="field-row" onSubmit={submitCode}>
+      <form className="form code-search" onSubmit={submitCode}>
         <input id="find-code" value={codeInput} onChange={(e) => setCodeInput(e.target.value)} placeholder="xxxx-xxxx-xxxx" aria-label={t('Código del jugador')} autoComplete="off" autoCapitalize="none" spellCheck={false} />
-        <button type="submit" className="primary small" disabled={codeBusy || !codeInput.trim()}>{t('Buscar')}</button>
+        <button type="submit" className="primary small" disabled={codeBusy}>{t('Buscar')}</button>
       </form>
 
       <h3 className="section-title">{t('Mis mazos')}</h3>
