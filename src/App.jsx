@@ -1446,19 +1446,6 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, o
 /* ================= Nearby (radar + tiendas) ================= */
 /* Los jugadores se colocan en una franja según su rango de distancia y con un ángulo
    que no depende de su posición real: el radar nunca revela dónde está alguien. */
-// El radar se escala a tu distancia máxima. La posición sale de un tramo aproximado (1, 2, 5, 10 km…),
-// nunca de la distancia exacta, y el ángulo no depende de dónde esté: el radar no revela dónde vive nadie.
-const distBucket = (km) => (km < 1 ? 1 : km < 2 ? 2 : km < 5 ? 5 : Math.ceil(km / 5) * 5);
-const fuzzyPos = (p, radius) => {
-  const band = Math.min(0.9, Math.max(0.24, (distBucket(p.dist) - 0.5) / radius));
-  const a = ((p.id * 137 + 40) % 360) * (Math.PI / 180);
-  return { left: `${50 + Math.cos(a) * band * 46}%`, top: `${50 + Math.sin(a) * band * 46}%` };
-};
-const storePos = (km, i, n, radius) => {
-  const a = ((i + 0.5) / n) * Math.PI * 2 + 0.6;
-  const r = Math.min(km / radius, 0.92) * 50;
-  return { left: `${50 + Math.cos(a) * r}%`, top: `${50 + Math.sin(a) * r}%` };
-};
 const RADIUS_STEPS = [1, 2, 5, 10, 25, 50];
 
 // Anuncio de una tienda: se marca siempre como «Patrocinado» y cuenta visualizaciones y clics (sin datos personales)
@@ -1510,31 +1497,29 @@ function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore, ads = [
           {RADIUS_STEPS.map((km) => <button key={km} type="button" className={R === km ? 'on' : ''} onClick={() => onRadius(km)}>{km} km</button>)}
         </div>
         <p className="radius-count">
-          {players.length === 1 ? t('1 jugador con tus juegos') : t('{n} jugadores con tus juegos', { n: players.length })}
-          {' · '}
-          {stores.length === 1 ? t('1 tienda') : t('{n} tiendas', { n: stores.length })}
+          {players.length === 1 ? t('1 persona con tus juegos') : t('{n} personas con tus juegos', { n: players.length })}
         </p>
       </div>
 
-      <div className="radar" role="img" aria-label={t('Radar de jugadores cercanos')}>
-        <span className="ring-label half">{Math.round(R / 2 * 10) / 10} km</span>
-        <span className="ring-label full">{R} km</span>
-        <div className="me" />
-        {players.map((p) => (
-          <button key={p.id} className="dot" style={{ ...fuzzyPos(p, R), '--c': FRAME.glow }} onClick={() => onInfo(p)} title={`${p.name} · ${GAMES[p.favCard.game].name} · ${fuzzyDist(p.dist)}`}>
-            <img src={avatarOf(p)} alt={p.name} />
-            <span className={`dot-game g-${p.favCard.game}`}>{gameIcon(p.favCard.game)}</span>
+      {sponsored && <div className="sponsored-wrap"><SponsoredRow key={sponsored.id} ad={sponsored} onOpen={onStore} /></div>}
+      <div className="near-list">
+        {players.length ? players.map((p) => (
+          <button key={p.id} className="near-card" onClick={() => onInfo(p)}>
+            <Hex src={avatarOf(p)} alt="" size={56} colors={FRAME.list} ring={false} />
+            <div className="grow">
+              <div className="near-name">{p.name}{p.verified && <span className="verified" title={t('Verificado')}>{I.check}</span>}</div>
+              <div className="near-games">{sharedGames(me, p).map((g) => <span key={g} className="tag interest on">{gameName(g)}</span>)}</div>
+              <div className="near-meta">{levelLine(p, 1)}</div>
+            </div>
+            <span className="near-dist">{I.pin}{fuzzyDist(p.dist)}</span>
           </button>
-        ))}
-        {stores.map((st, i) => <button type="button" key={st.id} className="shop" title={st.name} aria-label={st.name} style={storePos(st.dist, i, stores.length, R)} onClick={() => onStore(st.id)}>{I.store}</button>)}
+        )) : <Empty icon={I.radar} title={t('Nadie cerca por ahora')} text={t('Amplía la distancia o vuelve más tarde. También puedes añadir a alguien por su código en Rivales.')} />}
       </div>
-      <div className="legend"><span><i className="lg-player" />{t('Jugadores (zona aproximada)')}</span><span><i className="lg-store" />{t('Tiendas')}</span></div>
       <p className="privacy-note">{I.shield}{t('Por tu seguridad, nunca mostramos dónde está un jugador: solo su rango de distancia.')}</p>
 
-      {sponsored && <div className="sponsored-wrap"><SponsoredRow key={sponsored.id} ad={sponsored} onOpen={onStore} /></div>}
-      <h3 className="section-title">{t('Tiendas cercanas')}</h3>
-      {!stores.length && <p className="section-hint">{t('No hay tiendas en esa distancia. Amplíala para ver más.')}</p>}
-      <div className="list">
+      {STORES_ENABLED && <h3 className="section-title">{t('Tiendas cercanas')}</h3>}
+      {STORES_ENABLED && !stores.length && <p className="section-hint">{t('No hay tiendas en esa distancia. Amplíala para ver más.')}</p>}
+      {STORES_ENABLED && <div className="list">
         {stores.map((st) => {
           const regulars = players.filter((p) => p.stores.includes(st.id));
           return (
@@ -1557,7 +1542,7 @@ function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore, ads = [
             </div>
           );
         })}
-      </div>
+      </div>}
     </>
   );
 }

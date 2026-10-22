@@ -2464,6 +2464,16 @@ body { background: var(--body-bg); }
   color: var(--text-2); background: var(--bg3); border: 1px solid transparent; cursor: pointer;
 }
 .radius-steps button.on { background: var(--hot); color: var(--on-sec); }
+/* Cerca de ti: personas en tarjetas claras con aire entre ellas, como en las listas de la referencia */
+.near-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.near-card { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--border); color: var(--text); text-align: left; font: inherit; cursor: pointer; transition: transform 0.15s; }
+.near-card:active { transform: scale(0.98); }
+.near-name { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.9375rem; }
+.near-name .verified svg { width: 14px; height: 14px; }
+.near-games { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.near-meta { margin-top: 4px; font-size: 0.75rem; color: var(--muted); }
+.near-dist { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; font-size: 0.6875rem; font-weight: 700; color: var(--text-2); white-space: nowrap; }
+.near-dist svg { width: 13px; height: 13px; }
 :root[data-theme="light"] .radius-steps button.on { background: var(--lime-soft); color: #171522; border-color: #A9DB4E; }
 .radius-count { margin: 0; font-size: 0.8125rem; color: var(--muted); }
 .radar .ring-label {
