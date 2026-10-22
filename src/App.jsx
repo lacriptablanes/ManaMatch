@@ -12,7 +12,7 @@ import ManaBreak from './ManaBreak';
 import {
   loadMe, saveMe, uploadAvatar, removeAvatars, isAvatarPath, avatarUrl, ageFrom, isCardUpload,
   hasLocalCardImages, uploadCardImages, replaceUploads, cleanCardImages, flagImage, hiddenImages, loadDiscover, saveLocation,
-  ensureShareCode, regenerateShareCode, findPlayerByCode, formatCode,
+  ensureShareCode, findPlayerByCode, formatCode,
 } from './profileStore';
 
 /* ---------- Iconos SVG inline (sin dependencias) ---------- */
@@ -2122,7 +2122,7 @@ function DeckSheet({ games, onSave, onClose }) {
 /* ================= My profile ================= */
 const THEMES = [['light', 'Día', I.sun], ['dark', 'Noche', I.moon], ['system', 'Auto', I.auto]];
 
-function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindStores, onStore, flash, fallbackPhoto, shareCode, onRegenerateCode, onFindCode }) {
+function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindStores, onStore, flash, fallbackPhoto, shareCode, onFindCode }) {
   const fav = me.favCard;
   const [codeInput, setCodeInput] = useState('');
   const [codeBusy, setCodeBusy] = useState(false);
@@ -2174,18 +2174,15 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
       {photoError && <p className="upload-error" role="alert">{t(photoError)}</p>}
       {me.avatar && <button type="button" className="link-btn photo-remove" onClick={() => onPhoto('')}>{t('Quitar foto')}</button>}
 
-      <h3 className="section-title">{t('Tu código')}</h3>
+      <h3 className="section-title">{t('Código')}</h3>
       {shareCode && (
         <div className="share-card">
           <span id="my-code" className="share-code">{formatCode(shareCode)}</span>
           <button type="button" className="link-btn" onClick={() => copyCode(shareCode)}>{t('Copiar')}</button>
         </div>
       )}
-      <p className="setting-hint">{t('Quien tenga tu código puede encontrarte y retarte, aunque no estéis cerca.')}</p>
-      {shareCode && <button type="button" className="link-btn" onClick={onRegenerateCode}>{t('Cambiar código')}</button>}
-      <h3 className="section-title">{t('Buscar jugador por código')}</h3>
       <form className="form code-search" onSubmit={submitCode}>
-        <input id="find-code" value={codeInput} onChange={(e) => setCodeInput(e.target.value)} placeholder="xxxx-xxxx-xxxx" aria-label={t('Código del jugador')} autoComplete="off" autoCapitalize="none" spellCheck={false} />
+        <input id="find-code" value={codeInput} onChange={(e) => setCodeInput(e.target.value)} placeholder={t('Código de otro jugador')} aria-label={t('Código del jugador')} autoComplete="off" autoCapitalize="none" spellCheck={false} />
         <button type="submit" className="primary small" disabled={codeBusy}>{t('Buscar')}</button>
       </form>
 
@@ -2817,12 +2814,6 @@ export default function App() {
       return false;
     }
   };
-  const newCode = async () => {
-    try { setMyCode(await regenerateShareCode()); flash(t('Código cambiado. El anterior ya no funciona'), I.check); } catch (err) {
-      console.error('ManaMatch: nuevo código', err);
-      flash(t('No se ha podido cambiar el código'), I.alert);
-    }
-  };
 
   const rewind = () => {
     const last = passed.at(-1);
@@ -2931,7 +2922,7 @@ export default function App() {
             me={me} setMe={setMe} matchCount={visibleMatches.length} flash={flash}
             fallbackPhoto={session?.user?.app_metadata?.provider === 'discord' && String(session.user.user_metadata?.avatar_url ?? '').startsWith('https://cdn.discordapp.com/') ? session.user.user_metadata.avatar_url : ''}
             stats={myStats}
-            shareCode={myCode} onRegenerateCode={newCode} onFindCode={findByCode}
+            shareCode={myCode} onFindCode={findByCode}
             onPhoto={savePhoto} onAddDeck={() => setEditing('deck')} onFindStores={() => setTab('nearby')} onStore={setStoreOpen}
           />
         )}

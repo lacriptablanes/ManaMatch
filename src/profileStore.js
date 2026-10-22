@@ -136,11 +136,6 @@ export async function ensureShareCode() {
   check({ error });
   return data;
 }
-export async function regenerateShareCode() {
-  const { data, error } = await supabase.rpc('regenerate_share_code');
-  check({ error });
-  return data;
-}
 /* Jugador con ese código, o null si no existe, no es visible o te ha bloqueado */
 export async function findPlayerByCode(code) {
   const clean = code.toLowerCase().replace(/[^0-9a-f]/g, '');
