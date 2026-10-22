@@ -1,6 +1,6 @@
 import { useState, useRef, useId, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { PLAYERS, STORES, pokeImg, opImg } from './data';
+import { STORES, pokeImg, opImg } from './data';
 import { GAMES, placeholderArt, defaultAvatar } from './games';
 import { CATALOG, GAME_CATEGORIES, MAX_GAMES, gameName, isGameId } from './catalog';
 import { compat, byCompat, reliability } from './compat';
@@ -12,7 +12,7 @@ import ManaBreak from './ManaBreak';
 import {
   loadMe, saveMe, uploadAvatar, removeAvatars, isAvatarPath, avatarUrl, ageFrom, isCardUpload,
   hasLocalCardImages, uploadCardImages, replaceUploads, cleanCardImages, flagImage, hiddenImages, loadDiscover, saveLocation,
-  ensureShareCode, findPlayerByCode, formatCode,
+  ensureShareCode, findPlayerByCode, formatCode, loadMatches, loadMatchPlayer, loadMessages, sendMessage, messageFromRow,
 } from './profileStore';
 
 /* ---------- Iconos SVG inline (sin dependencias) ---------- */
@@ -325,6 +325,8 @@ function useCardSuggest(game, q) {
 }
 
 /* ---------- Utilidades por juego ---------- */
+// Tiendas: apartado hasta tener un sistema para añadirlas. Mientras, no se muestran ni se eligen.
+const STORES_ENABLED = false;
 const storeName = (id) => STORES.find((s) => s.id === id)?.name;
 // Tienda que ha verificado en persona a un jugador (la marca el personal de la tienda, nunca el jugador)
 const verifiedStoreOf = (p) => p.verifiedStore ?? (p.verified ? p.stores?.[0] : null) ?? null;
@@ -1495,7 +1497,7 @@ function SponsoredRow({ ad, onOpen }) {
 
 function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore, ads = [] }) {
   const R = me.radius;
-  const stores = STORES.filter((st) => st.dist <= R);
+  const stores = STORES_ENABLED ? STORES.filter((st) => st.dist <= R) : [];
   // El primer anuncio de una tienda que está en tu radio; el patrocinio nunca sustituye a la tienda real
   const sponsored = ads[0];
   return (
@@ -1703,7 +1705,7 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport, attended, onAtten
   const [text, setText] = useState('');
   const [planning, setPlanning] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(true);
-  const [plan, setPlan] = useState({ store: p.stores[0] ?? STORES[0].id, date: '', format: p.formats.find((f) => me.formats.includes(f)) ?? p.formats[0] ?? me.formats[0] ?? '' });
+  const [plan, setPlan] = useState({ store: STORES_ENABLED ? (p.stores[0] ?? STORES[0].id) : null, date: '', format: p.formats.find((f) => me.formats.includes(f)) ?? p.formats[0] ?? me.formats[0] ?? '' });
   const game = GAMES[duelGame(me, p)];
   const [sendText, warn, clearWarn] = useModeratedSend((t) => onSend({ type: 'text', from: 'me', text: t }));
 
@@ -1738,7 +1740,7 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport, attended, onAtten
             <div className="ticket-head">{I.cal}<b>{t('Partida propuesta')}</b></div>
             <div className="ticket-body">
               <div><small>{t('Formato')}</small>{t(m.format)}</div>
-              <div><small>{t('Tienda')}</small>{storeName(m.store)}</div>
+              {m.store && <div><small>{t('Tienda')}</small>{storeName(m.store)}</div>}
               <div><small>{t('Cuándo')}</small>{m.date ? new Date(m.date).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : t('Por concretar')}</div>
             </div>
             {m.from === 'them' && <div className="ticket-ok">{I.check}{t('{name} ha aceptado', { name: p.name })}</div>}
@@ -1748,7 +1750,7 @@ function Chat({ p, me, msgs, onSend, onBack, onInfo, onReport, attended, onAtten
       </div>
       {planning && (
         <div className="panel form plan">
-          <label>{t('Tienda')}<select id="plan-store" value={plan.store} onChange={(e) => setPlan({ ...plan, store: e.target.value })}>{STORES.map((s) => <option key={s.id} value={s.id}>{s.name}{p.stores.includes(s.id) ? ' ★' : ''}</option>)}</select></label>
+          {STORES_ENABLED && <label>{t('Tienda')}<select id="plan-store" value={plan.store} onChange={(e) => setPlan({ ...plan, store: e.target.value })}>{STORES.map((s) => <option key={s.id} value={s.id}>{s.name}{p.stores.includes(s.id) ? ' ★' : ''}</option>)}</select></label>}
           <label>{t('Formato')}<select id="plan-format" value={plan.format} onChange={(e) => setPlan({ ...plan, format: e.target.value })}>{formats.map((f) => <option key={f} value={f}>{t(f)}</option>)}</select></label>
           <label>{t('Fecha y hora')}<input id="plan-date" type="datetime-local" value={plan.date} onChange={(e) => setPlan({ ...plan, date: e.target.value })} /></label>
           <p className="field-hint">{I.store}{t('Las partidas se proponen solo en tiendas: siempre en un sitio público.')}</p>
@@ -2398,7 +2400,7 @@ function SettingsScreen({ me, setMe, theme, setTheme, perf, setPerf, blocked, on
   const viaGoogle = provider === 'google';
   const viaDiscord = provider === 'discord';
   const setNotif = (k, v) => setMe((x) => ({ ...x, notif: { ...x.notif, [k]: v } }));
-  const blockedPlayers = PLAYERS.filter((x) => blocked.includes(x.id));
+  const blockedPlayers = blocked.map((id) => ({ id, name: t('Jugador bloqueado') }));
   return (
     <div className="page" role="dialog" aria-label={t('Ajustes')}>
       <header className="page-bar">
@@ -2574,7 +2576,6 @@ function MatchScreen({ p, me, onSend, onContinue }) {
 }
 
 /* ================= App ================= */
-const REPLIES = ['¡Hola! ¿Qué mazo llevarías? 😄', 'Me parece genial, ¡allí nos vemos!', 'Jajaja trae fundas de sobra', '¿Hacemos un al mejor de 3?'];
 const TABS = [['discover', I.flame, 'Descubrir'], ['nearby', I.radar, 'Cerca de ti'], ['chat', I.chat, 'Rivales'], ['me', I.user, 'Perfil']];
 const DARK_MQ = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
@@ -2600,7 +2601,8 @@ export default function App() {
   // Los accesos directos del icono de la app abren una pestaña concreta (?tab=chat)
   const [tab, setTab] = useState(() => { const t = new URLSearchParams(location.search).get('tab'); return TABS.some(([id]) => id === t) ? t : 'discover'; });
   // Con cuenta, la cola viene de la base de datos; sin Supabase se usan los jugadores de ejemplo
-  const [queue, setQueue] = useState(() => (supabase ? [] : PLAYERS));
+  const [queue, setQueue] = useState([]);
+  const [nearby, setNearby] = useState([]); // todas las personas cercanas, también las que ya decidiste
   const [passed, setPassed] = useState([]);
   const [matches, setMatches] = useState([]);
   const [chats, setChats] = useState({});
@@ -2714,10 +2716,52 @@ export default function App() {
     if (!supabase || !uid || cloudStatus !== 'ready') return;
     let alive = true;
     loadDiscover(uid, me.radius)
-      .then((list) => { if (alive) setQueue(list); })
+      .then((list) => { if (alive) { setNearby(list); setQueue(list.filter((x) => !x.decided)); } })
       .catch((err) => console.error('ManaMatch: no se han podido cargar perfiles', err));
     return () => { alive = false; };
   }, [uid, cloudStatus, me.radius, located]);
+
+  const flash = (text, icon = I.sword) => { setToast({ text, icon }); setTimeout(() => setToast(null), 2200); };
+  // Duelos y chats: se cargan al entrar y después llegan en tiempo real
+  const addChatMessage = (userId, m) => setChats((c) => {
+    const list = c[userId] || [];
+    return list.some((x) => x.id === m.id) ? c : { ...c, [userId]: [...list, m] };
+  });
+  const matchesRef = useRef([]);
+  const viewingRef = useRef(null); // id del rival cuyo chat está abierto
+  useEffect(() => { matchesRef.current = matches; }, [matches]);
+  useEffect(() => { viewingRef.current = tab === 'chat' ? chatWith?.id ?? null : null; }, [tab, chatWith]);
+  useEffect(() => {
+    if (!supabase || !uid || cloudStatus !== 'ready') return;
+    let alive = true;
+    loadMatches(uid)
+      .then(async (list) => {
+        const msgs = await loadMessages(list.map((p) => p.matchId), uid);
+        if (!alive) return;
+        const userOf = Object.fromEntries(list.map((p) => [p.matchId, p.id]));
+        const byUser = {};
+        msgs.forEach((m) => { const k = userOf[m.matchId]; byUser[k] = [...(byUser[k] || []), m]; });
+        setMatches(list);
+        setChats(byUser);
+      })
+      .catch((err) => console.error('ManaMatch: no se han podido cargar los duelos', err));
+    const channel = supabase.channel(`duelos-${uid}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, ({ new: row }) => {
+        const p = matchesRef.current.find((x) => x.matchId === row.match_id);
+        if (!p) return;
+        addChatMessage(p.id, { matchId: row.match_id, ...messageFromRow(row, uid) });
+        if (row.sender_id !== uid && viewingRef.current !== p.id) setUnread((u) => u + 1);
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matches' }, async ({ new: row }) => {
+        const p = await loadMatchPlayer(row, uid).catch(() => null);
+        if (!p) return;
+        setMatches((m) => (m.some((x) => x.matchId === p.matchId) ? m : [p, ...m]));
+        setUnread((u) => u + 1);
+        flash(t('¡Tienes un nuevo rival: {name}!', { name: p.name }), I.sword);
+      })
+      .subscribe();
+    return () => { alive = false; supabase.removeChannel(channel); };
+  }, [uid, cloudStatus]);
 
   // El botón "atrás" cierra primero lo último que se abrió
   useBack(tab !== 'discover', () => setTab('discover'));
@@ -2781,7 +2825,6 @@ export default function App() {
     window.location.assign(data.url);
   };
 
-  const flash = (text, icon = I.sword) => { setToast({ text, icon }); setTimeout(() => setToast(null), 2200); };
 
   // Con cuenta: el reto va al servidor. El duelo existe solo si es mutuo (lo crea un trigger en la base de datos)
   const sendLike = async (p, isSuper) => {
@@ -2794,8 +2837,8 @@ export default function App() {
     const [a, b] = uid < p.id ? [uid, p.id] : [p.id, uid];
     const { data } = await supabase.from('matches').select('id').eq('user_a', a).eq('user_b', b).maybeSingle();
     if (!data) { flash(t('Has retado a {name}', { name: p.name })); return; }
-    const duel = { ...p, superDuel: isSuper ? 'sent' : p.superLikedYou ? 'received' : null };
-    setMatches((m) => [duel, ...m]);
+    const duel = { ...p, matchId: data.id, superDuel: isSuper ? 'sent' : p.superLikedYou ? 'received' : null };
+    setMatches((m) => (m.some((x) => x.matchId === data.id) ? m : [duel, ...m]));
     setUnread((u) => u + 1);
     setMatchFx(duel);
     setTimeout(() => haptic([30, 60, 40]), 300);
@@ -2806,17 +2849,7 @@ export default function App() {
     setProfile(null);
     haptic(like ? 15 : 8);
     if (!like) { setPassed((h) => [...h, p]); return; }
-    if (supabase && uid) { sendLike(p, isSuper); return; }
-    if (isSuper) setCredits((c) => Math.max(0, c - 1));
-    // Duelo marcado como Súper duelo si lo enviaste tú o si te lo enviaron a ti
-    const duel = { ...p, superDuel: isSuper ? 'sent' : p.superLikedYou ? 'received' : null };
-    // Demo: los jugadores competitivos/cercanos aceptan el reto; un súper duelo (o si ya te retó) siempre se acepta
-    if (isSuper || p.superLikedYou || p.dist < 2.5 || p.id % 2 === 0) {
-      setMatches((m) => [duel, ...m]);
-      setUnread((u) => u + 1);
-      setMatchFx(duel);
-      setTimeout(() => haptic([30, 60, 40]), 300);
-    } else flash(t('Has retado a {name}', { name: p.name }));
+    sendLike(p, isSuper);
   };
 
   // Buscar por código: abre la ficha de esa persona (aunque no esté cerca) con el botón de reto
@@ -2849,12 +2882,13 @@ export default function App() {
     if (!silent) flash(t('Has bloqueado a {name}', { name: p.name }), I.ban);
   };
 
-  const send = (p, m) => {
-    setChats((c) => ({ ...c, [p.id]: [...(c[p.id] || []), m] }));
-    setTimeout(() => {
-      const reply = m.type === 'meetup' ? { ...m, from: 'them' } : { type: 'text', from: 'them', text: t(REPLIES[Math.floor(Math.random() * REPLIES.length)]) };
-      setChats((c) => ({ ...c, [p.id]: [...(c[p.id] || []), reply] }));
-    }, 1200);
+  const send = async (p, m) => {
+    try {
+      addChatMessage(p.id, await sendMessage(p.matchId, uid, m));
+    } catch (err) {
+      console.error('ManaMatch: mensaje', err);
+      flash(t('No se ha podido enviar el mensaje'), I.alert);
+    }
   };
 
   const addDeck = (d) => setMe((x) => ({ ...x, decks: [...x.decks, d] }));
@@ -2932,7 +2966,7 @@ export default function App() {
           </header>
         )}
         {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} credits={credits} onNeedCredits={() => setShopOpen(true)} ads={adsNow} onStore={setStoreOpen} />}
-        {tab === 'nearby' && <Nearby players={PLAYERS.filter((p) => notBlocked(p) && sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))} me={me} onRadius={(km) => setMe((x) => ({ ...x, radius: km }))} onInfo={setProfile}
+        {tab === 'nearby' && <Nearby players={nearby.filter((p) => notBlocked(p) && sharedGames(me, p).length > 0 && p.dist <= me.radius && (!me.onlyVerified || p.verified))} me={me} onRadius={(km) => setMe((x) => ({ ...x, radius: km }))} onInfo={setProfile}
           onToggleStore={toggleStore} onStore={setStoreOpen} ads={adsNow} />}
         {tab === 'chat' && (chatWith
           ? <Chat p={chatWith} me={me} attended={attendance[chatWith.id]} onAttend={(v) => setAttendance((a) => ({ ...a, [chatWith.id]: v }))} msgs={chats[chatWith.id] || []} onSend={(m) => send(chatWith, m)} onBack={() => setChatWith(null)} onInfo={setProfile} onReport={() => setReporting(chatWith)} />
@@ -2963,7 +2997,7 @@ export default function App() {
 
       {storeOpen && STORES.some((st) => st.id === storeOpen) && (
         <StoreSheet store={STORES.find((st) => st.id === storeOpen)} me={me} saved={me.stores.includes(storeOpen)}
-          players={PLAYERS.filter((p) => notBlocked(p) && sharedGames(me, p).length > 0)}
+          players={nearby.filter((p) => notBlocked(p) && sharedGames(me, p).length > 0)}
           onToggle={() => toggleStore(storeOpen)} onInfo={setProfile} onClose={() => setStoreOpen(null)} />
       )}
       {profile && (

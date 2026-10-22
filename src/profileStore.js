@@ -101,7 +101,7 @@ export async function loadDiscover(uid, radius) {
   ]);
   [near, likes, supers].forEach(check);
   const decided = new Set(likes.data.map((l) => l.to_user));
-  const bands = new Map(near.data.filter((r) => !decided.has(r.user_id)).map((r) => [r.user_id, r.distance_band]));
+  const bands = new Map(near.data.map((r) => [r.user_id, r.distance_band]));
   if (!bands.size) return [];
   const ids = [...bands.keys()];
   const [prof, decks] = await Promise.all([
@@ -110,7 +110,59 @@ export async function loadDiscover(uid, radius) {
   ]);
   [prof, decks].forEach(check);
   const superIds = new Set(supers.data);
-  return prof.data.map((p) => toPlayer(p, decks.data, BAND_KM[bands.get(p.id)] ?? 7, superIds.has(p.id)));
+  // decided: ya le diste like o súper duelo (no vuelve a salir en Descubrir, sí en Cerca de ti)
+  return prof.data.map((p) => ({ ...toPlayer(p, decks.data, BAND_KM[bands.get(p.id)] ?? 7, superIds.has(p.id)), decided: decided.has(p.id) }));
+}
+
+/* Mensajes: en la base de datos una propuesta de partida va como texto con este prefijo y su JSON */
+const MEETUP = '@meetup ';
+export const messageFromRow = (row, uid) => {
+  const from = row.sender_id === uid ? 'me' : 'them';
+  if (row.body.startsWith(MEETUP)) {
+    try { return { id: row.id, type: 'meetup', from, ...JSON.parse(row.body.slice(MEETUP.length)) }; } catch { /* sin formato válido: se muestra como texto */ }
+  }
+  return { id: row.id, type: 'text', from, text: row.body };
+};
+
+/* Duelos con sus rivales (perfil, mazos y si uno de los dos envió súper duelo) */
+async function rowsToPlayers(rows, uid) {
+  if (!rows.length) return [];
+  const others = rows.map((r) => (r.user_a === uid ? r.user_b : r.user_a));
+  const [prof, decks, supers] = await Promise.all([
+    supabase.from('profiles').select('*').in('id', others),
+    supabase.from('decks').select('*').in('user_id', others),
+    supabase.from('likes').select('from_user, to_user').eq('is_super', true).or(`from_user.eq.${uid},to_user.eq.${uid}`),
+  ]);
+  [prof, decks, supers].forEach(check);
+  return rows.map((r, i) => {
+    const other = others[i];
+    // Si no se puede leer su perfil (oculto o bloqueado) se muestra un marcador sin datos
+    const p = prof.data.find((x) => x.id === other) ?? { id: other, display_name: 'Jugador', active_game: 'magic' };
+    const sent = supers.data.some((l) => l.from_user === uid && l.to_user === other);
+    const received = supers.data.some((l) => l.from_user === other && l.to_user === uid);
+    return { ...toPlayer(p, decks.data, 99, received), matchId: r.id, superDuel: sent ? 'sent' : received ? 'received' : null };
+  });
+}
+export async function loadMatches(uid) {
+  const { data, error } = await supabase.from('matches').select('id, user_a, user_b').order('created_at', { ascending: false });
+  check({ error });
+  return rowsToPlayers(data, uid);
+}
+export async function loadMatchPlayer(row, uid) {
+  return (await rowsToPlayers([row], uid))[0];
+}
+/* Mensajes de varios duelos, ya en el formato del chat: { matchId, id, type, from, text | ...propuesta } */
+export async function loadMessages(matchIds, uid) {
+  if (!matchIds.length) return [];
+  const { data, error } = await supabase.from('messages').select('*').in('match_id', matchIds).order('created_at');
+  check({ error });
+  return data.map((row) => ({ matchId: row.match_id, ...messageFromRow(row, uid) }));
+}
+export async function sendMessage(matchId, uid, m) {
+  const body = m.type === 'meetup' ? MEETUP + JSON.stringify({ format: m.format, store: m.store, date: m.date }) : m.text;
+  const { data, error } = await supabase.from('messages').insert({ match_id: matchId, sender_id: uid, body }).select().single();
+  check({ error });
+  return { matchId, ...messageFromRow(data, uid) };
 }
 
 /* Convierte una fila de profiles (y sus mazos) al formato de jugador de la app */
