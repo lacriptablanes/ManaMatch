@@ -2123,20 +2123,10 @@ function DeckSheet({ games, onSave, onClose }) {
 /* ================= My profile ================= */
 const THEMES = [['light', 'Día', I.sun], ['dark', 'Noche', I.moon], ['system', 'Auto', I.auto]];
 
-function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindStores, onStore, flash, fallbackPhoto, shareCode, onFindCode }) {
+function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindStores, onStore, flash, fallbackPhoto, shareCode }) {
   const fav = me.favCard;
-  const [codeInput, setCodeInput] = useState('');
-  const [codeBusy, setCodeBusy] = useState(false);
   const copyCode = async (c) => {
     try { await navigator.clipboard.writeText(formatCode(c)); flash(t('Código copiado'), I.check); } catch { flash(t('No se ha podido copiar el código'), I.alert); }
-  };
-  const submitCode = async (e) => {
-    e.preventDefault();
-    if (!codeInput.trim()) return;
-    setCodeBusy(true);
-    const found = await onFindCode(codeInput);
-    setCodeBusy(false);
-    if (found) setCodeInput('');
   };
   const set = (patch) => setMe((x) => normalizeMe({ ...x, ...(typeof patch === 'function' ? patch(x) : patch) }));
   const [gamesOpen, setGamesOpen] = useState(false);
@@ -2180,10 +2170,6 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
       {photoError && <p className="upload-error" role="alert">{t(photoError)}</p>}
       {me.avatar && <button type="button" className="link-btn photo-remove" onClick={() => onPhoto('')}>{t('Quitar foto')}</button>}
 
-      <form className="form code-search" onSubmit={submitCode}>
-        <input id="find-code" value={codeInput} onChange={(e) => setCodeInput(e.target.value)} placeholder={t('Código de otro jugador')} aria-label={t('Código del jugador')} autoComplete="off" autoCapitalize="none" spellCheck={false} />
-        <button type="submit" className="primary small" disabled={codeBusy}>{t('Buscar')}</button>
-      </form>
 
       <h3 className="section-title">{t('Mis mazos')}</h3>
       <div className="decks">
@@ -2289,6 +2275,37 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
 
 /* ================= Cuenta: cambiar correo y eliminar cuenta ================= */
 // Supabase envía la confirmación al correo antiguo y al nuevo: no cambia hasta confirmar los dos
+/* Añadir rival: pegas el código de tu amigo y se abre su ficha con el botón de reto */
+function AddRivalDialog({ onFind, onClose }) {
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!code.trim()) return;
+    setBusy(true);
+    const found = await onFind(code);
+    setBusy(false);
+    if (found) onClose();
+  };
+  return (
+    <>
+      <div className="sheet-bg top" onClick={onClose} />
+      <div className="dialog" role="dialog" aria-label={t('Añadir rival por código')}>
+        <div className="dialog-icon">{I.plus}</div>
+        <h3>{t('Añadir rival')}</h3>
+        <p>{t('Pega el código de tu amigo para ver su ficha y retarle.')}</p>
+        <form className="form dialog-form" onSubmit={submit}>
+          <input id="find-code" autoFocus value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('Código de otro jugador')} aria-label={t('Código del jugador')} autoComplete="off" autoCapitalize="none" spellCheck={false} />
+          <div className="btn-row">
+            <button type="button" className="ghost" onClick={onClose}>{t('Cancelar')}</button>
+            <button type="submit" className="primary" disabled={busy || !code.trim()}>{t('Buscar')}</button>
+          </div>
+        </form>
+      </div>
+    </>
+  );
+}
+
 function ChangeEmailDialog({ current, onClose }) {
   const [email, setEmail] = useState('');
   const [state, setState] = useState(null); // null | 'sending' | 'sent' | 'error'
@@ -2557,7 +2574,7 @@ function MatchScreen({ p, me, onSend, onContinue }) {
 
 /* ================= App ================= */
 const REPLIES = ['¡Hola! ¿Qué mazo llevarías? 😄', 'Me parece genial, ¡allí nos vemos!', 'Jajaja trae fundas de sobra', '¿Hacemos un al mejor de 3?'];
-const TABS = [['discover', I.flame, 'Descubrir'], ['nearby', I.radar, 'Cerca de ti'], ['chat', I.chat, 'Mensajes'], ['me', I.user, 'Perfil']];
+const TABS = [['discover', I.flame, 'Descubrir'], ['nearby', I.radar, 'Cerca de ti'], ['chat', I.chat, 'Rivales'], ['me', I.user, 'Perfil']];
 const DARK_MQ = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
 /* Tema (día/noche) y ambientación del juego activo, aplicados en <html> */
@@ -2604,6 +2621,7 @@ export default function App() {
   const [adsState, setAdsState] = useState({ n: -1, list: [] });
   const [normsOpen, setNormsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [wiping, setWiping] = useState(false);
   const [me, setMe] = useStoredState('manamatch-me', DEFAULT_ME, migrateMe);
   // Un anuncio por visita a Descubrir o Cerca de ti; premium no ve anuncios
@@ -2710,6 +2728,7 @@ export default function App() {
   useBack(!!blocking, () => setBlocking(null));
   useBack(rulesOpen, () => setRulesOpen(false));
   useBack(settingsOpen, () => setSettingsOpen(false));
+  useBack(addOpen, () => setAddOpen(false));
   useBack(normsOpen, () => setNormsOpen(false));
   useBack(wiping, () => setWiping(false));
 
@@ -2908,6 +2927,7 @@ export default function App() {
               <h1 className="screen-title">{t(TABS.find((x) => x[0] === tab)[2])}</h1>
             </div>
             {tab === 'me' && <button id="open-settings" className="icon-btn head-action" onClick={() => setSettingsOpen(true)} aria-label={t('Ajustes')} title={t('Ajustes')}>{I.gear}</button>}
+            {tab === 'chat' && <button id="add-rival" className="icon-btn head-action" onClick={() => setAddOpen(true)} aria-label={t('Añadir rival por código')} title={t('Añadir rival por código')}>{I.plus}</button>}
           </header>
         )}
         {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} credits={credits} onNeedCredits={() => setShopOpen(true)} ads={adsNow} onStore={setStoreOpen} />}
@@ -2921,11 +2941,13 @@ export default function App() {
             me={me} setMe={setMe} matchCount={visibleMatches.length} flash={flash}
             fallbackPhoto={session?.user?.app_metadata?.provider === 'discord' && String(session.user.user_metadata?.avatar_url ?? '').startsWith('https://cdn.discordapp.com/') ? session.user.user_metadata.avatar_url : ''}
             stats={myStats}
-            shareCode={myCode} onFindCode={findByCode}
+            shareCode={myCode}
             onPhoto={savePhoto} onAddDeck={() => setEditing('deck')} onFindStores={() => setTab('nearby')} onStore={setStoreOpen}
           />
         )}
       </section>
+
+      {addOpen && <AddRivalDialog onFind={findByCode} onClose={() => setAddOpen(false)} />}
 
       {settingsOpen && (
         <SettingsScreen

@@ -640,10 +640,6 @@ fieldset .segmented { margin-top: 0; }
 /* Código de jugador dentro de la tarjeta: píldora que se copia al pulsarla */
 .me-code { display: inline-flex; align-items: center; gap: 6px; margin: 8px auto 0; padding: 4px 12px; border-radius: 999px; border: none; background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text); font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.08em; font-variant-numeric: tabular-nums; cursor: pointer; }
 .me-code svg { width: 14px; height: 14px; color: var(--muted); }
-.code-search { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
-.code-search input { padding: 8px 12px; }
-.code-search input { flex: 1; min-width: 0; font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; letter-spacing: 0.06em; }
-.code-search .primary { flex-shrink: 0; }
 .form select:focus, .form input:not([type=range]):focus, .form textarea:focus { border-color: var(--hot); box-shadow: 0 0 0 3px color-mix(in srgb, var(--hot) 15%, transparent); }
 input[type=range] {
   -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px; padding: 0; border: none; outline: none;
