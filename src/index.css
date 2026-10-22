@@ -2464,6 +2464,49 @@ body { background: var(--body-bg); }
   color: var(--text-2); background: var(--bg3); border: 1px solid transparent; cursor: pointer;
 }
 .radius-steps button.on { background: var(--hot); color: var(--on-sec); }
+/* ---- Radar moderno de Cerca de ti ---- */
+.phone.nearby .screen { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.radar-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; color: #f4f1ff; background: radial-gradient(circle at 50% 46%, #2c2358 0%, #17132a 52%, #0c0a14 100%); }
+.radar-rings { position: absolute; inset: 0; pointer-events: none; }
+.radar-rings span { position: absolute; left: 50%; top: 50%; border-radius: 50%; border: 1px solid rgba(167, 139, 250, 0.22); transform: translate(-50%, -50%); }
+.radar-rings span:nth-child(1) { width: 32vmin; height: 32vmin; }
+.radar-rings span:nth-child(2) { width: 62vmin; height: 62vmin; border-color: rgba(167, 139, 250, 0.15); }
+.radar-rings span:nth-child(3) { width: 92vmin; height: 92vmin; border-color: rgba(167, 139, 250, 0.09); }
+.radar-field { position: absolute; inset: 0; }
+.radar-me { position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #c4b5fd; box-shadow: 0 0 18px 4px rgba(167, 139, 250, 0.7); }
+.radar-me::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid #a78bfa; animation: radar-pulse 2.4s ease-out infinite; }
+@keyframes radar-pulse { from { transform: scale(0.6); opacity: 0.9; } to { transform: scale(2.4); opacity: 0; } }
+.radar-dot { position: absolute; width: 46px; height: 46px; margin: -23px 0 0 -23px; padding: 0; border-radius: 50%; border: 2px solid var(--c, #a78bfa); background: #1d1838; overflow: hidden; cursor: pointer; box-shadow: 0 0 16px -2px var(--c, #a78bfa); animation: radar-pop 0.4s var(--ease-spring, ease) both; }
+.radar-dot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.radar-dot:hover { transform: scale(1.12); }
+.radar-store { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; padding: 0; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.1); color: #f4f1ff; display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(10px); }
+.radar-store svg { width: 16px; height: 16px; }
+@keyframes radar-pop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+.radar-km, .radar-stats, .radar-fab { position: absolute; z-index: 2; background: rgba(28, 23, 48, 0.72); border: 1px solid rgba(255, 255, 255, 0.14); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); color: #f4f1ff; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
+.radar-km { top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px 0 16px; border-radius: 999px; }
+.radar-km select { appearance: none; -webkit-appearance: none; border: 0; background: transparent; color: #f4f1ff; font: inherit; font-size: 0.875rem; font-weight: 700; letter-spacing: 0.01em; padding: 0 4px 0 0; outline: none; cursor: pointer; }
+.radar-km select option { background: #1d1838; color: #f4f1ff; }
+.radar-km svg { width: 14px; height: 14px; pointer-events: none; }
+.radar-stats { left: 16px; right: 16px; bottom: calc(16px + var(--safe-bottom)); display: flex; height: 44px; border-radius: 16px; font-size: 0.8125rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.radar-stats span { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.radar-stats span + span { border-left: 1px solid rgba(255, 255, 255, 0.12); }
+.radar-stats svg { width: 15px; height: 15px; }
+.radar-fab { right: 16px; bottom: calc(76px + var(--safe-bottom)); width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: linear-gradient(135deg, #a78bfa, #7c3aed); border: 0; }
+.radar-fab svg { width: 22px; height: 22px; }
+.radar-fab:hover { filter: brightness(1.08); }
+.radar-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; max-height: 62%; overflow-y: auto; overscroll-behavior: contain; padding: 16px 16px calc(20px + var(--safe-bottom)); border-radius: 24px 24px 0 0; background: var(--bg); color: var(--text); box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3); animation: radar-up 0.35s var(--ease-spring, ease) both; }
+@keyframes radar-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.radar-sheet .radius-count { margin: 0 0 8px; color: var(--muted); font-size: 0.8125rem; }
+.near-list { display: flex; flex-direction: column; gap: 10px; }
+.near-card { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--border); color: var(--text); text-align: left; font: inherit; cursor: pointer; transition: transform 0.15s; }
+.near-card:active { transform: scale(0.98); }
+.near-avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.near-name { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.9375rem; }
+.near-name .verified svg { width: 14px; height: 14px; }
+.near-games { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.near-meta { margin-top: 4px; font-size: 0.75rem; color: var(--muted); }
+.near-dist { display: inline-flex; flex-shrink: 0; font-size: 0.6875rem; font-weight: 700; color: var(--muted); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .radar-me::after, .radar-dot, .radar-sheet { animation: none; } .near-card { transition: none; } }
 :root[data-theme="light"] .radius-steps button.on { background: var(--lime-soft); color: #171522; border-color: #A9DB4E; }
 .radius-count { margin: 0; font-size: 0.8125rem; color: var(--muted); }
 .radar .ring-label {
