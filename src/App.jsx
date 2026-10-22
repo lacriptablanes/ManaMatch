@@ -325,8 +325,8 @@ function useCardSuggest(game, q) {
 }
 
 /* ---------- Utilidades por juego ---------- */
-// Tiendas: apartado hasta tener un sistema para añadirlas. Mientras, no se muestran ni se eligen.
-const STORES_ENABLED = false;
+// Tiendas de ejemplo (data.js). Cuando haya un sistema para añadir tiendas, deberán venir de Supabase.
+const STORES_ENABLED = true;
 const storeName = (id) => STORES.find((s) => s.id === id)?.name;
 // Tienda que ha verificado en persona a un jugador (la marca el personal de la tienda, nunca el jugador)
 const verifiedStoreOf = (p) => p.verifiedStore ?? (p.verified ? p.stores?.[0] : null) ?? null;
@@ -1482,6 +1482,38 @@ function SponsoredRow({ ad, onOpen }) {
   );
 }
 
+/* Mapa de dibujo (no es un mapa real): plegado al abrir, con una marca para desplegarlo.
+   Las posiciones salen del rango de distancia y de un ángulo fijo por persona: nunca hay coordenadas. */
+const mapPos = (key, km, radius) => {
+  const h = [...String(key)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7);
+  const a = (h % 360) * (Math.PI / 180);
+  const r = Math.max(0.14, Math.min(km / radius, 0.92)) * 44;
+  return { left: `${50 + Math.cos(a) * r}%`, top: `${50 + Math.sin(a) * r}%` };
+};
+function NearbyMap({ players, stores, radius, onInfo, onStore }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={`near-map${open ? ' open' : ''}`}>
+      <div className="near-map-canvas" role="img" aria-label={t('Mapa de jugadores y tiendas cercanas')}>
+        <span className="near-map-me" />
+        {open && players.map((p) => (
+          <button key={p.id} type="button" className="near-map-pin" style={mapPos(p.id, p.dist, radius)} onClick={() => onInfo(p)} title={p.name} aria-label={p.name}>
+            <img src={avatarOf(p)} alt="" />
+          </button>
+        ))}
+        {open && stores.map((st) => (
+          <button key={st.id} type="button" className="near-map-pin store" style={mapPos(st.id, st.dist, radius)} onClick={() => onStore(st.id)} title={st.name} aria-label={st.name}>
+            {I.store}
+          </button>
+        ))}
+      </div>
+      <button type="button" className="near-map-toggle" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        {open ? t('Plegar mapa') : t('Desplegar mapa')}{I.chevron}
+      </button>
+    </div>
+  );
+}
+
 function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore, ads = [] }) {
   const R = me.radius;
   const stores = STORES_ENABLED ? STORES.filter((st) => st.dist <= R) : [];
@@ -1502,6 +1534,7 @@ function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore, ads = [
       </div>
 
       {sponsored && <div className="sponsored-wrap"><SponsoredRow key={sponsored.id} ad={sponsored} onOpen={onStore} /></div>}
+      <NearbyMap players={players} stores={stores} radius={R} onInfo={onInfo} onStore={onStore} />
       <div className="near-list">
         {players.length ? players.map((p) => (
           <button key={p.id} className="near-card" onClick={() => onInfo(p)}>
