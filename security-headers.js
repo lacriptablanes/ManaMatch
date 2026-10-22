@@ -9,7 +9,6 @@ const IMAGES = [
   'https://optcgapi.com', // One Piece
   'https://randomuser.me', // avatares de los jugadores de ejemplo
   'https://cdn.discordapp.com', // avatares de Discord (quien entra con Discord)
-  'https://*.tile.openstreetmap.org', // mapa de Cerca de ti (OpenStreetMap; con atribución visible)
 ];
 const APIS = ['https://api.scryfall.com', 'https://api.pokemontcg.io', 'https://*.supabase.co'];
 

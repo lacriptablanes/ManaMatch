@@ -2464,54 +2464,6 @@ body { background: var(--body-bg); }
   color: var(--text-2); background: var(--bg3); border: 1px solid transparent; cursor: pointer;
 }
 .radius-steps button.on { background: var(--hot); color: var(--on-sec); }
-/* Cerca de ti: personas en tarjetas claras con aire entre ellas, como en las listas de la referencia */
-.near-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
-.near-card { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--border); color: var(--text); text-align: left; font: inherit; cursor: pointer; transition: transform 0.15s; }
-.near-card:active { transform: scale(0.98); }
-.near-name { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.9375rem; }
-.near-name .verified svg { width: 14px; height: 14px; }
-.near-games { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.near-meta { margin-top: 4px; font-size: 0.75rem; color: var(--muted); }
-.near-dist { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; font-size: 0.6875rem; font-weight: 700; color: var(--text-2); white-space: nowrap; }
-.near-dist svg { width: 13px; height: 13px; }
-/* Mapa de dibujo: plegado por defecto; la marca de abajo indica que se despliega */
-.near-map { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-/* Mapa real (OpenStreetMap, con Leaflet) a pantalla completa. Los controles van por encima del mapa. */
-.near-map-canvas { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #e9ecef; }
-.near-leaflet { position: absolute; inset: 0; z-index: 0; }
-.near-map-empty { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; color: #222; font-size: 0.875rem; font-weight: 600; }
-.near-map-empty p { margin: 0; max-width: 280px; }
-.leaflet-container { font: inherit; }
-.leaflet-control-attribution { font-size: 10px; }
-.near-leaflet-icon { background: none; border: 0; }
-.near-leaflet-icon .near-map-pin { position: relative; width: 40px; height: 40px; margin: 0; animation: none; }
-.near-leaflet-icon .near-map-me { position: relative; display: block; width: 18px; height: 18px; margin: 0; border-radius: 50%; }
-/* Cerca de ti ocupa toda la pantalla (sin cabecera, como en la referencia) */
-.phone.nearby .screen { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
-.near-stats { position: absolute; left: 16px; right: 16px; bottom: 16px; z-index: 2; display: flex; align-items: stretch; height: 44px; border-radius: 14px; background: #fff; color: #222; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14); font-size: 0.8125rem; font-weight: 600; }
-.near-stats span { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; }
-.near-stats span + span { border-left: 1px solid #e5e7eb; }
-.near-stats svg { width: 15px; height: 15px; }
-.near-fab { position: absolute; right: 16px; bottom: 76px; z-index: 2; width: 52px; height: 52px; border-radius: 50%; border: 0; background: #fff; color: #222; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18); display: grid; place-items: center; cursor: pointer; }
-.near-fab svg { width: 22px; height: 22px; }
-.near-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; max-height: 62%; overflow-y: auto; padding: 14px 16px 18px; border-radius: 24px 24px 0 0; background: var(--bg); box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.18); animation: near-up 0.35s var(--ease-spring, ease) both; }
-.near-sheet .radius-count { margin: 0 0 4px; }
-@keyframes near-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
-.near-sheet { overscroll-behavior: contain; padding-bottom: calc(18px + var(--safe-bottom)); }
-.near-stats { bottom: calc(16px + var(--safe-bottom)); font-variant-numeric: tabular-nums; }
-.near-fab { bottom: calc(76px + var(--safe-bottom)); }
-.near-km option { background: #fff; color: #222; }
-.near-fab:hover, .near-card:hover { filter: brightness(0.97); }
-@media (prefers-reduced-motion: reduce) { .near-sheet, .near-map-pin { animation: none; } .near-card { transition: none; } }
-.near-km { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 2; display: flex; align-items: center; height: 40px; padding: 0 12px 0 16px; border-radius: 999px; background: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); color: #222; }
-.near-km select { appearance: none; -webkit-appearance: none; border: 0; background: transparent; color: #222; font: inherit; font-size: 0.875rem; font-weight: 700; padding: 0 6px 0 0; outline: none; cursor: pointer; }
-.near-km svg { width: 14px; height: 14px; pointer-events: none; }
-.near-map-me { position: absolute; left: 50%; top: 58%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #3b82f6; border: 2px solid #fff; box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.18); }
-.near-map-pin { position: absolute; width: 40px; height: 40px; margin: -20px 0 0 -20px; padding: 0; border-radius: 50%; border: 2px solid #fff; background: #fff; overflow: hidden; display: grid; place-items: center; cursor: pointer; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18); animation: near-pop 0.35s var(--ease-spring, ease) both; }
-.near-map-pin img { width: 100%; height: 100%; object-fit: cover; }
-.near-map-pin.store { background: #2bb673; color: #fff; }
-.near-map-pin.store svg { width: 18px; height: 18px; }
-@keyframes near-pop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
 :root[data-theme="light"] .radius-steps button.on { background: var(--lime-soft); color: #171522; border-color: #A9DB4E; }
 .radius-count { margin: 0; font-size: 0.8125rem; color: var(--muted); }
 .radar .ring-label {

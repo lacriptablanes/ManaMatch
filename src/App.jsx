@@ -1,7 +1,5 @@
 import { useState, useRef, useId, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { STORES, pokeImg, opImg } from './data';
 import { GAMES, placeholderArt, defaultAvatar } from './games';
 import { CATALOG, GAME_CATEGORIES, MAX_GAMES, gameName, isGameId } from './catalog';
@@ -40,7 +38,6 @@ const I = {
   sword: svg(<><path d="M21 3l-.8 3.6L10 16.8 7.2 14 17.4 3.8z" fill="currentColor" fillOpacity="0.25" /><path d="M5 12.5l6.5 6.5" strokeWidth="2.4" /><path d="M8.2 15.8L4.5 19.5" strokeWidth="2.6" /><circle cx="3.6" cy="20.4" r="1.1" fill="currentColor" /></>, { strokeWidth: 1.8 }),
   pin: svg(<><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></>),
   clock: svg(<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>),
-  list: svg(<><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></>),
   copy: svg(<><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></>),
   userPlus: svg(<><circle cx="9" cy="8" r="4" /><path d="M2 21a7 7 0 0 1 14 0" /><path d="M19 8v6M16 11h6" /></>),
   trophy: svg(<><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" /></>),
@@ -328,7 +325,7 @@ function useCardSuggest(game, q) {
 }
 
 /* ---------- Utilidades por juego ---------- */
-// Tiendas de ejemplo (data.js). Cuando haya un sistema para añadir tiendas, deberán venir de Supabase.
+// Tiendas: apartado hasta tener un sistema para añadirlas. Mientras, no se muestran ni se eligen.
 const STORES_ENABLED = true;
 const storeName = (id) => STORES.find((s) => s.id === id)?.name;
 // Tienda que ha verificado en persona a un jugador (la marca el personal de la tienda, nunca el jugador)
@@ -1449,6 +1446,19 @@ function Discover({ queue, me, onDecide, onInfo, onRewind, canRewind, credits, o
 /* ================= Nearby (radar + tiendas) ================= */
 /* Los jugadores se colocan en una franja según su rango de distancia y con un ángulo
    que no depende de su posición real: el radar nunca revela dónde está alguien. */
+// El radar se escala a tu distancia máxima. La posición sale de un tramo aproximado (1, 2, 5, 10 km…),
+// nunca de la distancia exacta, y el ángulo no depende de dónde esté: el radar no revela dónde vive nadie.
+const distBucket = (km) => (km < 1 ? 1 : km < 2 ? 2 : km < 5 ? 5 : Math.ceil(km / 5) * 5);
+const fuzzyPos = (p, radius) => {
+  const band = Math.min(0.9, Math.max(0.24, (distBucket(p.dist) - 0.5) / radius));
+  const a = ((p.id * 137 + 40) % 360) * (Math.PI / 180);
+  return { left: `${50 + Math.cos(a) * band * 46}%`, top: `${50 + Math.sin(a) * band * 46}%` };
+};
+const storePos = (km, i, n, radius) => {
+  const a = ((i + 0.5) / n) * Math.PI * 2 + 0.6;
+  const r = Math.min(km / radius, 0.92) * 50;
+  return { left: `${50 + Math.cos(a) * r}%`, top: `${50 + Math.sin(a) * r}%` };
+};
 const RADIUS_STEPS = [1, 2, 5, 10, 25, 50];
 
 // Anuncio de una tienda: se marca siempre como «Patrocinado» y cuenta visualizaciones y clics (sin datos personales)
@@ -1485,145 +1495,46 @@ function SponsoredRow({ ad, onOpen }) {
   );
 }
 
-/* Mapa real (OpenStreetMap) centrado en tu ubicación. Cada persona se coloca a su distancia aproximada, en un
-   ángulo fijo y con algo de variación: no sabemos dónde vive nadie, solo a qué distancia está. */
-const hashOf = (key) => [...String(key)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7);
-const pointAt = (lat, lng, km, bearing) => {
-  const d = km / 6371;
-  const b = (bearing * Math.PI) / 180;
-  const lat1 = (lat * Math.PI) / 180;
-  const lng1 = (lng * Math.PI) / 180;
-  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(b));
-  const lng2 = lng1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2));
-  return [(lat2 * 180) / Math.PI, (lng2 * 180) / Math.PI];
-};
-const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const STORE_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v9h14v-9M10 21v-5h4v5"/></svg>';
-
-/* Pantalla completa: el mapa ocupa todo. Abajo, el contador; el botón flotante abre la lista de personas */
-function NearbyMap({ players, stores, radius, onRadius, onInfo, onStore, children }) {
-  const [listOpen, setListOpen] = useState(false);
-  const [here, setHere] = useState(null); // { lat, lng } con permiso de ubicación
-  const [locating, setLocating] = useState(true);
-  const hostRef = useRef(null);
-  const mapRef = useRef(null);
-  const layerRef = useRef(null);
-  // Los pines llaman siempre a los handlers más recientes sin volver a crearse en cada render
-  const handlers = useRef({});
-  useEffect(() => { handlers.current = { onInfo, onStore }; });
-  const locate = () => {
-    if (!navigator.geolocation) { setLocating(false); return; }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { setHere({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocating(false); },
-      () => { setHere(null); setLocating(false); },
-      { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 },
-    );
-  };
-  useEffect(() => { locate(); }, []);
-
-  // Crea el mapa cuando hay ubicación; al salir se destruye
-  useEffect(() => {
-    if (!here || !hostRef.current) return undefined;
-    const map = L.map(hostRef.current, { zoomControl: false });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(map);
-    layerRef.current = L.layerGroup().addTo(map);
-    mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; layerRef.current = null; };
-  }, [here]);
-
-  // Encuadra el mapa en tu radio
-  useEffect(() => {
-    if (!here || !mapRef.current) return;
-    mapRef.current.fitBounds(L.latLng(here.lat, here.lng).toBounds(radius * 2000));
-  }, [here, radius]);
-
-  // Pines: tu posición, las personas y las tiendas (las de ejemplo, si están activas)
-  useEffect(() => {
-    const layer = layerRef.current;
-    if (!layer || !here) return;
-    layer.clearLayers();
-    L.marker([here.lat, here.lng], {
-      icon: L.divIcon({ className: 'near-leaflet-icon', html: '<span class="near-map-me"></span>', iconSize: [18, 18], iconAnchor: [9, 9] }),
-      interactive: false,
-    }).addTo(layer);
-    players.forEach((p) => {
-      const h = hashOf(p.id);
-      const [lat, lng] = pointAt(here.lat, here.lng, p.dist * (0.75 + (h % 50) / 100), h % 360);
-      L.marker([lat, lng], {
-        icon: L.divIcon({ className: 'near-leaflet-icon', html: `<span class="near-map-pin"><img src="${escapeHtml(avatarOf(p))}" alt=""></span>`, iconSize: [40, 40], iconAnchor: [20, 20] }),
-        title: p.name, keyboard: true,
-      }).on('click', () => handlers.current.onInfo(p)).addTo(layer);
-    });
-    stores.forEach((st) => {
-      const h = hashOf(st.id);
-      const [lat, lng] = pointAt(here.lat, here.lng, st.dist, h % 360);
-      L.marker([lat, lng], {
-        icon: L.divIcon({ className: 'near-leaflet-icon', html: `<span class="near-map-pin store">${STORE_SVG}</span>`, iconSize: [40, 40], iconAnchor: [20, 20] }),
-        title: st.name, keyboard: true,
-      }).on('click', () => handlers.current.onStore(st.id)).addTo(layer);
-    });
-  }, [here, players, stores]);
-
-  return (
-    <div className="near-map">
-      <div className="near-map-canvas">
-        {here
-          ? <div ref={hostRef} className="near-leaflet" role="region" aria-label={t('Mapa de jugadores y tiendas cercanas')} />
-          : (
-            <div className="near-map-empty">
-              <p>{locating ? t('Buscando tu ubicación…') : t('Activa la ubicación para ver el mapa y las personas cerca de ti')}</p>
-              {!locating && <button type="button" className="primary small" onClick={locate}>{t('Usar mi ubicación')}</button>}
-            </div>
-          )}
-        <div className="near-km">
-          <select id="nearby-radius" value={radius} aria-label={t('Distancia máxima')} onChange={(e) => onRadius(+e.target.value)}>
-            {RADIUS_STEPS.map((km) => <option key={km} value={km}>{`${km} km`}</option>)}
-          </select>
-          {I.chevron}
-        </div>
-        <div className="near-stats">
-          <span>{I.user}{players.length === 1 ? t('1 persona') : t('{n} personas', { n: players.length })}</span>
-          {STORES_ENABLED && <span>{I.store}{stores.length === 1 ? t('1 tienda') : t('{n} tiendas', { n: stores.length })}</span>}
-        </div>
-        <button type="button" className="near-fab" aria-expanded={listOpen} aria-label={t('Ver lista de personas')} onClick={() => setListOpen((v) => !v)}>{I.list}</button>
-      </div>
-      {listOpen && <div className="near-sheet">{children}</div>}
-    </div>
-  );
-}
-
 function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore, ads = [] }) {
   const R = me.radius;
   const stores = STORES_ENABLED ? STORES.filter((st) => st.dist <= R) : [];
   // El primer anuncio de una tienda que está en tu radio; el patrocinio nunca sustituye a la tienda real
   const sponsored = ads[0];
   return (
-    <NearbyMap players={players} stores={stores} radius={R} onRadius={onRadius} onInfo={onInfo} onStore={onStore}>
-      <p className="radius-count">
-        {players.length === 1 ? t('1 persona con tus juegos') : t('{n} personas con tus juegos', { n: players.length })}
-      </p>
-      {sponsored && <div className="sponsored-wrap"><SponsoredRow key={sponsored.id} ad={sponsored} onOpen={onStore} /></div>}
-      <div className="near-list">
-        {players.length ? players.map((p) => (
-          <button key={p.id} className="near-card" onClick={() => onInfo(p)}>
-            <Hex src={avatarOf(p)} alt="" size={56} colors={FRAME.list} ring={false} />
-            <div className="grow">
-              <div className="near-name">{p.name}{p.verified && <span className="verified" title={t('Verificado')}>{I.check}</span>}</div>
-              <div className="near-games">{sharedGames(me, p).map((g) => <span key={g} className="tag interest on">{gameName(g)}</span>)}</div>
-              <div className="near-meta">{levelLine(p, 1)}</div>
-            </div>
-            <span className="near-dist">{I.pin}{fuzzyDist(p.dist)}</span>
-          </button>
-        )) : <Empty icon={I.radar} title={t('Nadie cerca por ahora')} text={t('Amplía la distancia o vuelve más tarde. También puedes añadir a alguien por su código en Rivales.')} />}
+    <>
+      <div className="radius-ctl panel">
+        <div className="label-row"><b>{t('Distancia máxima')}</b><span className="radius-val">{R} km</span></div>
+        <input id="nearby-radius" type="range" min="1" max="50" value={R} aria-label={t('Distancia máxima')}
+          onChange={(e) => onRadius(+e.target.value)} style={{ '--p': `${((R - 1) / 49) * 100}%` }} />
+        <div className="radius-steps">
+          {RADIUS_STEPS.map((km) => <button key={km} type="button" className={R === km ? 'on' : ''} onClick={() => onRadius(km)}>{km} km</button>)}
+        </div>
+        <p className="radius-count">
+          {players.length === 1 ? t('1 jugador con tus juegos') : t('{n} jugadores con tus juegos', { n: players.length })}
+          {' · '}
+          {stores.length === 1 ? t('1 tienda') : t('{n} tiendas', { n: stores.length })}
+        </p>
       </div>
+
+      <div className="radar" role="img" aria-label={t('Radar de jugadores cercanos')}>
+        <span className="ring-label half">{Math.round(R / 2 * 10) / 10} km</span>
+        <span className="ring-label full">{R} km</span>
+        <div className="me" />
+        {players.map((p) => (
+          <button key={p.id} className="dot" style={{ ...fuzzyPos(p, R), '--c': FRAME.glow }} onClick={() => onInfo(p)} title={`${p.name} · ${GAMES[p.favCard.game].name} · ${fuzzyDist(p.dist)}`}>
+            <img src={avatarOf(p)} alt={p.name} />
+            <span className={`dot-game g-${p.favCard.game}`}>{gameIcon(p.favCard.game)}</span>
+          </button>
+        ))}
+        {stores.map((st, i) => <button type="button" key={st.id} className="shop" title={st.name} aria-label={st.name} style={storePos(st.dist, i, stores.length, R)} onClick={() => onStore(st.id)}>{I.store}</button>)}
+      </div>
+      <div className="legend"><span><i className="lg-player" />{t('Jugadores (zona aproximada)')}</span><span><i className="lg-store" />{t('Tiendas')}</span></div>
       <p className="privacy-note">{I.shield}{t('Por tu seguridad, nunca mostramos dónde está un jugador: solo su rango de distancia.')}</p>
 
-      {STORES_ENABLED && <h3 className="section-title">{t('Tiendas cercanas')}</h3>}
-      {STORES_ENABLED && !stores.length && <p className="section-hint">{t('No hay tiendas en esa distancia. Amplíala para ver más.')}</p>}
-      {STORES_ENABLED && <div className="list">
+      {sponsored && <div className="sponsored-wrap"><SponsoredRow key={sponsored.id} ad={sponsored} onOpen={onStore} /></div>}
+      <h3 className="section-title">{t('Tiendas cercanas')}</h3>
+      {!stores.length && <p className="section-hint">{t('No hay tiendas en esa distancia. Amplíala para ver más.')}</p>}
+      <div className="list">
         {stores.map((st) => {
           const regulars = players.filter((p) => p.stores.includes(st.id));
           return (
@@ -1646,8 +1557,8 @@ function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore, ads = [
             </div>
           );
         })}
-      </div>}
-    </NearbyMap>
+      </div>
+    </>
   );
 }
 
@@ -3035,7 +2946,7 @@ export default function App() {
   }
 
   return (
-    <main className={`phone ${tab === 'discover' ? 'discover' : ''} ${tab === 'nearby' ? 'nearby' : ''}`}>
+    <main className={`phone ${tab === 'discover' ? 'discover' : ''}`}>
       <nav className="topnav" aria-label={t('Secciones')}>
         {TABS.map(([id, icon, label]) => (
           <button key={id} id={`nav-${id}`} aria-label={t(label)} title={t(label)} className={tab === id ? 'active' : ''} onClick={() => { setTab(id); if (id === 'chat') setUnread(0); }}>
@@ -3045,7 +2956,7 @@ export default function App() {
       </nav>
 
       <section className="screen" key={tab + (chatWith?.id ?? '')}>
-        {tab !== 'discover' && tab !== 'nearby' && !inChat && (
+        {tab !== 'discover' && !inChat && (
           <header className="screen-head">
             <div>
               <h1 className="screen-title">{t(TABS.find((x) => x[0] === tab)[2])}</h1>
