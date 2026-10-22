@@ -1496,10 +1496,10 @@ function NearbyMap({ players, stores, radius, onRadius, onInfo, onStore, childre
   const [listOpen, setListOpen] = useState(false);
   return (
     <div className="near-map">
-      <div className="near-map-canvas" role="img" aria-label={t('Mapa de jugadores y tiendas cercanas')}>
+      <div className="near-map-canvas" role="region" aria-label={t('Mapa de jugadores y tiendas cercanas')}>
         <div className="near-km">
           <select id="nearby-radius" value={radius} aria-label={t('Distancia máxima')} onChange={(e) => onRadius(+e.target.value)}>
-            {RADIUS_STEPS.map((km) => <option key={km} value={km}>{km} km</option>)}
+            {RADIUS_STEPS.map((km) => <option key={km} value={km}>{`${km} km`}</option>)}
           </select>
           {I.chevron}
         </div>
