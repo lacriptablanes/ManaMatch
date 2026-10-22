@@ -89,6 +89,51 @@ export async function loadMe(uid) {
   };
 }
 
+// Distancia aproximada de cada rango (solo para ordenar y filtrar en la app; nunca es una ubicación real)
+const BAND_KM = { 'A menos de 1 km': 0.5, 'A 1–2 km': 1.5, 'A 2–5 km': 3.5 };
+
+/* Jugadores cercanos que aún no has decidido, con su rango de distancia. Solo llegan perfiles visibles y no bloqueados. */
+export async function loadDiscover(uid, radius) {
+  const [near, likes, supers] = await Promise.all([
+    supabase.rpc('nearby_players', { radius_km: radius }),
+    supabase.from('likes').select('to_user').eq('from_user', uid),
+    supabase.rpc('my_super_likers'),
+  ]);
+  [near, likes, supers].forEach(check);
+  const decided = new Set(likes.data.map((l) => l.to_user));
+  const bands = new Map(near.data.filter((r) => !decided.has(r.user_id)).map((r) => [r.user_id, r.distance_band]));
+  if (!bands.size) return [];
+  const ids = [...bands.keys()];
+  const [prof, decks] = await Promise.all([
+    supabase.from('profiles').select('*').in('id', ids),
+    supabase.from('decks').select('*').in('user_id', ids),
+  ]);
+  [prof, decks].forEach(check);
+  const superIds = new Set(supers.data);
+  return prof.data.map((p) => {
+    const game = p.active_game;
+    return {
+      id: p.id, name: p.display_name, bio: p.bio,
+      avatar: isAvatarPath(p.avatar_path) ? avatarUrl(p.avatar_path) : '',
+      verified: !!p.verified_store_id, superLikedYou: superIds.has(p.id), dist: BAND_KM[bands.get(p.id)] ?? 7,
+      interests: p.interests?.length ? p.interests : [game], game,
+      level: p.level, formats: p.formats ?? [], title: p.title ?? '',
+      favCard: { ...(p.fav_card ?? {}), game: p.fav_card?.game ?? game },
+      decks: decks.data.filter((d) => d.user_id === p.id).map((d) => ({ id: d.id, game: d.game, name: d.name, format: d.format, card: d.card })),
+      stores: p.store_ids ?? [], days: p.days ?? [], slots: p.slots ?? [], colors: [], availability: '',
+      rel: { played: 0, noShow: 0 },
+    };
+  });
+}
+
+/* Guarda tu ubicación para que te encuentren cerca. Se redondea a unos 100 m; los demás solo ven rangos de distancia. */
+export async function saveLocation(uid, { latitude, longitude }) {
+  const round = (n) => Math.round(n * 1000) / 1000;
+  check(await supabase.from('private_profiles').update({
+    location: `SRID=4326;POINT(${round(longitude)} ${round(latitude)})`, location_at: new Date().toISOString(),
+  }).eq('user_id', uid));
+}
+
 /* Guarda el perfil completo. Los mazos que ya no están en la app se borran del servidor. */
 export async function saveMe(uid, me) {
   const fields = {

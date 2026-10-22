@@ -11,7 +11,7 @@ import { loadStoreAds, logStoreAd } from './storeAds';
 import ManaBreak from './ManaBreak';
 import {
   loadMe, saveMe, uploadAvatar, removeAvatars, isAvatarPath, avatarUrl, ageFrom, isCardUpload,
-  hasLocalCardImages, uploadCardImages, replaceUploads, cleanCardImages, flagImage, hiddenImages,
+  hasLocalCardImages, uploadCardImages, replaceUploads, cleanCardImages, flagImage, hiddenImages, loadDiscover, saveLocation,
 } from './profileStore';
 
 /* ---------- Iconos SVG inline (sin dependencias) ---------- */
@@ -2556,7 +2556,8 @@ export default function App() {
   useLang(); // al cambiar de idioma se vuelve a pintar toda la app
   // Los accesos directos del icono de la app abren una pestaña concreta (?tab=chat)
   const [tab, setTab] = useState(() => { const t = new URLSearchParams(location.search).get('tab'); return TABS.some(([id]) => id === t) ? t : 'discover'; });
-  const [queue, setQueue] = useState(PLAYERS);
+  // Con cuenta, la cola viene de la base de datos; sin Supabase se usan los jugadores de ejemplo
+  const [queue, setQueue] = useState(() => (supabase ? [] : PLAYERS));
   const [passed, setPassed] = useState([]);
   const [matches, setMatches] = useState([]);
   const [chats, setChats] = useState({});
@@ -2648,6 +2649,25 @@ export default function App() {
     if (!supabase || !uid) return;
     hiddenImages().then((list) => setHidden((h) => [...new Set([...h, ...list])].slice(-200))).catch(() => {});
   }, [uid, setHidden]);
+  // Ubicación: el navegador la pide y se guarda (solo rangos de distancia salen a otros usuarios)
+  const [located, setLocated] = useState(0);
+  useEffect(() => {
+    if (!supabase || !uid || cloudStatus !== 'ready' || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => saveLocation(uid, pos.coords).then(() => setLocated((n) => n + 1)).catch((err) => console.error('ManaMatch: ubicación', err)),
+      () => {},
+      { maximumAge: 10 * 60 * 1000, timeout: 15000 },
+    );
+  }, [uid, cloudStatus]);
+  // Descubrir con cuenta: perfiles reales cercanos (se vuelve a cargar al cambiar el radio o la ubicación)
+  useEffect(() => {
+    if (!supabase || !uid || cloudStatus !== 'ready') return;
+    let alive = true;
+    loadDiscover(uid, me.radius)
+      .then((list) => { if (alive) setQueue(list); })
+      .catch((err) => console.error('ManaMatch: no se han podido cargar perfiles', err));
+    return () => { alive = false; };
+  }, [uid, cloudStatus, me.radius, located]);
 
   // El botón "atrás" cierra primero lo último que se abrió
   useBack(tab !== 'discover', () => setTab('discover'));
@@ -2712,11 +2732,30 @@ export default function App() {
 
   const flash = (text, icon = I.sword) => { setToast({ text, icon }); setTimeout(() => setToast(null), 2200); };
 
+  // Con cuenta: el reto va al servidor. El duelo existe solo si es mutuo (lo crea un trigger en la base de datos)
+  const sendLike = async (p, isSuper) => {
+    const req = isSuper
+      ? supabase.rpc('send_super_like', { target: p.id })
+      : supabase.from('likes').upsert({ from_user: uid, to_user: p.id }, { onConflict: 'from_user,to_user', ignoreDuplicates: true });
+    const { error } = await req;
+    if (error) { console.error('ManaMatch: reto', error); flash(t('No se ha podido enviar el reto'), I.alert); return; }
+    if (isSuper) setCredits((c) => Math.max(0, c - 1));
+    const [a, b] = uid < p.id ? [uid, p.id] : [p.id, uid];
+    const { data } = await supabase.from('matches').select('id').eq('user_a', a).eq('user_b', b).maybeSingle();
+    if (!data) { flash(t('Has retado a {name}', { name: p.name })); return; }
+    const duel = { ...p, superDuel: isSuper ? 'sent' : p.superLikedYou ? 'received' : null };
+    setMatches((m) => [duel, ...m]);
+    setUnread((u) => u + 1);
+    setMatchFx(duel);
+    setTimeout(() => haptic([30, 60, 40]), 300);
+  };
+
   const decide = (p, like, isSuper = false) => {
     setQueue((q) => q.filter((x) => x.id !== p.id));
     setProfile(null);
     haptic(like ? 15 : 8);
     if (!like) { setPassed((h) => [...h, p]); return; }
+    if (supabase && uid) { sendLike(p, isSuper); return; }
     if (isSuper) setCredits((c) => Math.max(0, c - 1));
     // Duelo marcado como Súper duelo si lo enviaste tú o si te lo enviaron a ti
     const duel = { ...p, superDuel: isSuper ? 'sent' : p.superLikedYou ? 'received' : null };
