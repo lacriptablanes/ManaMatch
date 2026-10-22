@@ -38,6 +38,7 @@ const I = {
   sword: svg(<><path d="M21 3l-.8 3.6L10 16.8 7.2 14 17.4 3.8z" fill="currentColor" fillOpacity="0.25" /><path d="M5 12.5l6.5 6.5" strokeWidth="2.4" /><path d="M8.2 15.8L4.5 19.5" strokeWidth="2.6" /><circle cx="3.6" cy="20.4" r="1.1" fill="currentColor" /></>, { strokeWidth: 1.8 }),
   pin: svg(<><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></>),
   clock: svg(<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>),
+  copy: svg(<><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></>),
   trophy: svg(<><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" /></>),
   store: svg(<><path d="M3 9l1.5-5h15L21 9" /><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0" /><path d="M5 12v9h14v-9M10 21v-5h4v5" /></>),
   chevron: svg(<path d="M9 6l6 6-6 6" />, { strokeWidth: 2.4 }),
@@ -2165,6 +2166,11 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
         <div className="me-sub">{levelLine(me, 3)}</div>
         {me.bio && <p className="me-bio">{me.bio}</p>}
         <div className="me-avail">{I.clock}{dayNames || t('Sin días')}{me.slots.length > 0 && ` · ${me.slots.map((x) => t(x)).join(', ')}`}</div>
+        {shareCode && (
+          <button type="button" id="my-code" className="me-code" onClick={() => copyCode(shareCode)} aria-label={t('Copiar código')}>
+            {formatCode(shareCode)}{I.copy}
+          </button>
+        )}
         <div className="stats">
           <div><b>{me.decks.length}</b><span>{t('Mazos')}</span></div>
           <div><b>{matchCount}</b><span>{t('Rivales')}</span></div>
@@ -2174,13 +2180,6 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
       {photoError && <p className="upload-error" role="alert">{t(photoError)}</p>}
       {me.avatar && <button type="button" className="link-btn photo-remove" onClick={() => onPhoto('')}>{t('Quitar foto')}</button>}
 
-      <h3 className="section-title">{t('Código')}</h3>
-      {shareCode && (
-        <div className="share-card">
-          <span id="my-code" className="share-code">{formatCode(shareCode)}</span>
-          <button type="button" className="link-btn" onClick={() => copyCode(shareCode)}>{t('Copiar')}</button>
-        </div>
-      )}
       <form className="form code-search" onSubmit={submitCode}>
         <input id="find-code" value={codeInput} onChange={(e) => setCodeInput(e.target.value)} placeholder={t('Código de otro jugador')} aria-label={t('Código del jugador')} autoComplete="off" autoCapitalize="none" spellCheck={false} />
         <button type="submit" className="primary small" disabled={codeBusy}>{t('Buscar')}</button>
