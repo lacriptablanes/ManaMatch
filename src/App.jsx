@@ -12,6 +12,7 @@ import ManaBreak from './ManaBreak';
 import {
   loadMe, saveMe, uploadAvatar, removeAvatars, isAvatarPath, avatarUrl, ageFrom, isCardUpload,
   hasLocalCardImages, uploadCardImages, replaceUploads, cleanCardImages, flagImage, hiddenImages, loadDiscover, saveLocation,
+  ensureShareCode, regenerateShareCode, findPlayerByCode, formatCode,
 } from './profileStore';
 
 /* ---------- Iconos SVG inline (sin dependencias) ---------- */
@@ -2121,8 +2122,17 @@ function DeckSheet({ games, onSave, onClose }) {
 /* ================= My profile ================= */
 const THEMES = [['light', 'Día', I.sun], ['dark', 'Noche', I.moon], ['system', 'Auto', I.auto]];
 
-function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindStores, onStore, flash, fallbackPhoto }) {
+function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindStores, onStore, flash, fallbackPhoto, shareCode, onRegenerateCode, onFindCode }) {
   const fav = me.favCard;
+  const [codeInput, setCodeInput] = useState('');
+  const [codeBusy, setCodeBusy] = useState(false);
+  const submitCode = async (e) => {
+    e.preventDefault();
+    setCodeBusy(true);
+    const found = await onFindCode(codeInput);
+    setCodeBusy(false);
+    if (found) setCodeInput('');
+  };
   const set = (patch) => setMe((x) => normalizeMe({ ...x, ...(typeof patch === 'function' ? patch(x) : patch) }));
   const [gamesOpen, setGamesOpen] = useState(false);
   const [photoError, setPhotoError] = useState('');
@@ -2159,6 +2169,16 @@ function MyProfile({ me, setMe, matchCount, stats, onPhoto, onAddDeck, onFindSto
       </div>
       {photoError && <p className="upload-error" role="alert">{t(photoError)}</p>}
       {me.avatar && <button type="button" className="link-btn photo-remove" onClick={() => onPhoto('')}>{t('Quitar foto')}</button>}
+
+      <h3 className="section-title">{t('Tu código')}</h3>
+      {shareCode && <p id="my-code" style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '0.08em' }}>{formatCode(shareCode)}</p>}
+      <p className="setting-hint">{t('Quien tenga tu código puede encontrarte y retarte, aunque no estéis cerca.')}</p>
+      {shareCode && <button type="button" className="link-btn" onClick={onRegenerateCode}>{t('Cambiar código')}</button>}
+      <h3 className="section-title">{t('Buscar jugador por código')}</h3>
+      <form className="field-row" onSubmit={submitCode}>
+        <input id="find-code" value={codeInput} onChange={(e) => setCodeInput(e.target.value)} placeholder="xxxx-xxxx-xxxx" aria-label={t('Código del jugador')} autoComplete="off" autoCapitalize="none" spellCheck={false} />
+        <button type="submit" className="primary small" disabled={codeBusy || !codeInput.trim()}>{t('Buscar')}</button>
+      </form>
 
       <h3 className="section-title">{t('Mis mazos')}</h3>
       <div className="decks">
@@ -2659,6 +2679,12 @@ export default function App() {
       { maximumAge: 10 * 60 * 1000, timeout: 15000 },
     );
   }, [uid, cloudStatus]);
+  // Código de jugador: se crea la primera vez que entras con cuenta
+  const [myCode, setMyCode] = useState('');
+  useEffect(() => {
+    if (!supabase || !uid || cloudStatus !== 'ready') return;
+    ensureShareCode().then((c) => setMyCode(c ?? '')).catch((err) => console.error('ManaMatch: código', err));
+  }, [uid, cloudStatus]);
   // Descubrir con cuenta: perfiles reales cercanos (se vuelve a cargar al cambiar el radio o la ubicación)
   useEffect(() => {
     if (!supabase || !uid || cloudStatus !== 'ready') return;
@@ -2768,6 +2794,27 @@ export default function App() {
     } else flash(t('Has retado a {name}', { name: p.name }));
   };
 
+  // Buscar por código: abre la ficha de esa persona (aunque no esté cerca) con el botón de reto
+  const findByCode = async (code) => {
+    try {
+      const p = await findPlayerByCode(code);
+      if (!p) { flash(t('No hay nadie con ese código')); return false; }
+      setQueue((q) => [p, ...q.filter((x) => x.id !== p.id)]);
+      setProfile(p);
+      return true;
+    } catch (err) {
+      console.error('ManaMatch: buscar código', err);
+      flash(t('No se ha podido buscar el código'), I.alert);
+      return false;
+    }
+  };
+  const newCode = async () => {
+    try { setMyCode(await regenerateShareCode()); flash(t('Código cambiado. El anterior ya no funciona'), I.check); } catch (err) {
+      console.error('ManaMatch: nuevo código', err);
+      flash(t('No se ha podido cambiar el código'), I.alert);
+    }
+  };
+
   const rewind = () => {
     const last = passed.at(-1);
     if (!last) return;
@@ -2875,6 +2922,7 @@ export default function App() {
             me={me} setMe={setMe} matchCount={visibleMatches.length} flash={flash}
             fallbackPhoto={session?.user?.app_metadata?.provider === 'discord' && String(session.user.user_metadata?.avatar_url ?? '').startsWith('https://cdn.discordapp.com/') ? session.user.user_metadata.avatar_url : ''}
             stats={myStats}
+            shareCode={myCode} onRegenerateCode={newCode} onFindCode={findByCode}
             onPhoto={savePhoto} onAddDeck={() => setEditing('deck')} onFindStores={() => setTab('nearby')} onStore={setStoreOpen}
           />
         )}

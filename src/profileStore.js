@@ -110,20 +110,54 @@ export async function loadDiscover(uid, radius) {
   ]);
   [prof, decks].forEach(check);
   const superIds = new Set(supers.data);
-  return prof.data.map((p) => {
-    const game = p.active_game;
-    return {
-      id: p.id, name: p.display_name, bio: p.bio,
-      avatar: isAvatarPath(p.avatar_path) ? avatarUrl(p.avatar_path) : '',
-      verified: !!p.verified_store_id, superLikedYou: superIds.has(p.id), dist: BAND_KM[bands.get(p.id)] ?? 7,
-      interests: p.interests?.length ? p.interests : [game], game,
-      level: p.level, formats: p.formats ?? [], title: p.title ?? '',
-      favCard: { ...(p.fav_card ?? {}), game: p.fav_card?.game ?? game },
-      decks: decks.data.filter((d) => d.user_id === p.id).map((d) => ({ id: d.id, game: d.game, name: d.name, format: d.format, card: d.card })),
-      stores: p.store_ids ?? [], days: p.days ?? [], slots: p.slots ?? [], colors: [], availability: '',
-      rel: { played: 0, noShow: 0 },
-    };
-  });
+  return prof.data.map((p) => toPlayer(p, decks.data, BAND_KM[bands.get(p.id)] ?? 7, superIds.has(p.id)));
+}
+
+/* Convierte una fila de profiles (y sus mazos) al formato de jugador de la app */
+const toPlayer = (p, allDecks, dist, superLikedYou) => {
+  const game = p.active_game;
+  return {
+    id: p.id, name: p.display_name, bio: p.bio,
+    avatar: isAvatarPath(p.avatar_path) ? avatarUrl(p.avatar_path) : '',
+    verified: !!p.verified_store_id, superLikedYou, dist,
+    interests: p.interests?.length ? p.interests : [game], game,
+    level: p.level, formats: p.formats ?? [], title: p.title ?? '',
+    favCard: { ...(p.fav_card ?? {}), game: p.fav_card?.game ?? game },
+    decks: allDecks.filter((d) => d.user_id === p.id).map((d) => ({ id: d.id, game: d.game, name: d.name, format: d.format, card: d.card })),
+    stores: p.store_ids ?? [], days: p.days ?? [], slots: p.slots ?? [], colors: [], availability: '',
+    rel: { played: 0, noShow: 0 },
+  };
+};
+
+// Código de jugador: 12 caracteres hexadecimales, mostrados en grupos de 4
+export const formatCode = (c) => (c ? `${c.slice(0, 4)}-${c.slice(4, 8)}-${c.slice(8)}` : '');
+export async function ensureShareCode() {
+  const { data, error } = await supabase.rpc('ensure_share_code');
+  check({ error });
+  return data;
+}
+export async function regenerateShareCode() {
+  const { data, error } = await supabase.rpc('regenerate_share_code');
+  check({ error });
+  return data;
+}
+/* Jugador con ese código, o null si no existe, no es visible o te ha bloqueado */
+export async function findPlayerByCode(code) {
+  const clean = code.toLowerCase().replace(/[^0-9a-f]/g, '');
+  if (clean.length !== 12) return null;
+  const { data: ids, error } = await supabase.rpc('find_player_by_code', { p_code: clean });
+  check({ error });
+  const id = ids?.[0];
+  if (!id) return null;
+  const [prof, decks, supers] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', id).maybeSingle(),
+    supabase.from('decks').select('*').eq('user_id', id),
+    supabase.rpc('my_super_likers'),
+  ]);
+  [prof, decks, supers].forEach(check);
+  if (!prof.data) return null;
+  // Sin distancia conocida: no entra en la cola de Descubrir, solo se abre su ficha
+  return toPlayer(prof.data, decks.data, 99, supers.data.includes(id));
 }
 
 /* Guarda tu ubicación para que te encuentren cerca. Se redondea a unos 100 m; los demás solo ven rangos de distancia. */
