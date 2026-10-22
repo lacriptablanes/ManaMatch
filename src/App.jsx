@@ -39,6 +39,7 @@ const I = {
   pin: svg(<><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></>),
   clock: svg(<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>),
   copy: svg(<><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></>),
+  userPlus: svg(<><circle cx="9" cy="8" r="4" /><path d="M2 21a7 7 0 0 1 14 0" /><path d="M19 8v6M16 11h6" /></>),
   trophy: svg(<><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" /></>),
   store: svg(<><path d="M3 9l1.5-5h15L21 9" /><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0" /><path d="M5 12v9h14v-9M10 21v-5h4v5" /></>),
   chevron: svg(<path d="M9 6l6 6-6 6" />, { strokeWidth: 2.4 }),
@@ -2927,7 +2928,7 @@ export default function App() {
               <h1 className="screen-title">{t(TABS.find((x) => x[0] === tab)[2])}</h1>
             </div>
             {tab === 'me' && <button id="open-settings" className="icon-btn head-action" onClick={() => setSettingsOpen(true)} aria-label={t('Ajustes')} title={t('Ajustes')}>{I.gear}</button>}
-            {tab === 'chat' && <button id="add-rival" className="icon-btn head-action" onClick={() => setAddOpen(true)} aria-label={t('Añadir rival por código')} title={t('Añadir rival por código')}>{I.plus}</button>}
+            {tab === 'chat' && <button id="add-rival" className="icon-btn head-action" onClick={() => setAddOpen(true)} aria-label={t('Añadir rival por código')} title={t('Añadir rival por código')}>{I.userPlus}</button>}
           </header>
         )}
         {tab === 'discover' && <Discover queue={visibleQueue} me={me} onDecide={decide} onInfo={setProfile} onRewind={rewind} canRewind={passed.length > 0} credits={credits} onNeedCredits={() => setShopOpen(true)} ads={adsNow} onStore={setStoreOpen} />}

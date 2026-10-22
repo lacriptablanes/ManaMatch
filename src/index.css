@@ -2050,7 +2050,7 @@ body { background: var(--body-bg); }
 .screen-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .head-action { flex-shrink: 0; margin-bottom: 2px; }
 .head-action svg { width: 21px; height: 21px; }
-.head-action:hover svg { transform: rotate(45deg); transition: transform 0.4s var(--ease-spring); }
+.head-action:not(#add-rival):hover svg { transform: rotate(45deg); transition: transform 0.4s var(--ease-spring); }
 
 /* Página completa de ajustes: tapa la app y vuelve al perfil con la flecha */
 .page { position: absolute; inset: 0; z-index: 15; display: flex; flex-direction: column; background: var(--bg); animation: page-in 0.3s var(--ease-spring); }
