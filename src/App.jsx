@@ -38,6 +38,7 @@ const I = {
   sword: svg(<><path d="M21 3l-.8 3.6L10 16.8 7.2 14 17.4 3.8z" fill="currentColor" fillOpacity="0.25" /><path d="M5 12.5l6.5 6.5" strokeWidth="2.4" /><path d="M8.2 15.8L4.5 19.5" strokeWidth="2.6" /><circle cx="3.6" cy="20.4" r="1.1" fill="currentColor" /></>, { strokeWidth: 1.8 }),
   pin: svg(<><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></>),
   clock: svg(<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>),
+  list: svg(<><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></>),
   copy: svg(<><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></>),
   userPlus: svg(<><circle cx="9" cy="8" r="4" /><path d="M2 21a7 7 0 0 1 14 0" /><path d="M19 8v6M16 11h6" /></>),
   trophy: svg(<><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" /></>),
@@ -1490,10 +1491,11 @@ const mapPos = (key, km, radius) => {
   const r = Math.max(0.14, Math.min(km / radius, 0.92)) * 44;
   return { left: `${50 + Math.cos(a) * r}%`, top: `${50 + Math.sin(a) * r}%` };
 };
-function NearbyMap({ players, stores, radius, onRadius, onInfo, onStore }) {
-  const [open, setOpen] = useState(false);
+/* Pantalla completa: el mapa ocupa todo. Abajo, el contador; el botón flotante abre la lista de personas */
+function NearbyMap({ players, stores, radius, onRadius, onInfo, onStore, children }) {
+  const [listOpen, setListOpen] = useState(false);
   return (
-    <div className={`near-map${open ? ' open' : ''}`}>
+    <div className="near-map">
       <div className="near-map-canvas" role="img" aria-label={t('Mapa de jugadores y tiendas cercanas')}>
         <div className="near-km">
           <select id="nearby-radius" value={radius} aria-label={t('Distancia máxima')} onChange={(e) => onRadius(+e.target.value)}>
@@ -1502,20 +1504,23 @@ function NearbyMap({ players, stores, radius, onRadius, onInfo, onStore }) {
           {I.chevron}
         </div>
         <span className="near-map-me" />
-        {open && players.map((p) => (
+        {players.map((p) => (
           <button key={p.id} type="button" className="near-map-pin" style={mapPos(p.id, p.dist, radius)} onClick={() => onInfo(p)} title={p.name} aria-label={p.name}>
             <img src={avatarOf(p)} alt="" />
           </button>
         ))}
-        {open && stores.map((st) => (
+        {stores.map((st) => (
           <button key={st.id} type="button" className="near-map-pin store" style={mapPos(st.id, st.dist, radius)} onClick={() => onStore(st.id)} title={st.name} aria-label={st.name}>
             {I.store}
           </button>
         ))}
+        <div className="near-stats">
+          <span>{I.user}{players.length === 1 ? t('1 persona') : t('{n} personas', { n: players.length })}</span>
+          {STORES_ENABLED && <span>{I.store}{stores.length === 1 ? t('1 tienda') : t('{n} tiendas', { n: stores.length })}</span>}
+        </div>
+        <button type="button" className="near-fab" aria-expanded={listOpen} aria-label={t('Ver lista de personas')} onClick={() => setListOpen((v) => !v)}>{I.list}</button>
       </div>
-      <button type="button" className="near-map-toggle" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        {open ? t('Plegar mapa') : t('Desplegar mapa')}{I.chevron}
-      </button>
+      {listOpen && <div className="near-sheet">{children}</div>}
     </div>
   );
 }
@@ -1526,8 +1531,7 @@ function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore, ads = [
   // El primer anuncio de una tienda que está en tu radio; el patrocinio nunca sustituye a la tienda real
   const sponsored = ads[0];
   return (
-    <>
-      <NearbyMap players={players} stores={stores} radius={R} onRadius={onRadius} onInfo={onInfo} onStore={onStore} />
+    <NearbyMap players={players} stores={stores} radius={R} onRadius={onRadius} onInfo={onInfo} onStore={onStore}>
       <p className="radius-count">
         {players.length === 1 ? t('1 persona con tus juegos') : t('{n} personas con tus juegos', { n: players.length })}
       </p>
@@ -1573,7 +1577,7 @@ function Nearby({ players, me, onRadius, onToggleStore, onInfo, onStore, ads = [
           );
         })}
       </div>}
-    </>
+    </NearbyMap>
   );
 }
 
@@ -2961,7 +2965,7 @@ export default function App() {
   }
 
   return (
-    <main className={`phone ${tab === 'discover' ? 'discover' : ''}`}>
+    <main className={`phone ${tab === 'discover' ? 'discover' : ''} ${tab === 'nearby' ? 'nearby' : ''}`}>
       <nav className="topnav" aria-label={t('Secciones')}>
         {TABS.map(([id, icon, label]) => (
           <button key={id} id={`nav-${id}`} aria-label={t(label)} title={t(label)} className={tab === id ? 'active' : ''} onClick={() => { setTab(id); if (id === 'chat') setUnread(0); }}>
@@ -2971,7 +2975,7 @@ export default function App() {
       </nav>
 
       <section className="screen" key={tab + (chatWith?.id ?? '')}>
-        {tab !== 'discover' && !inChat && (
+        {tab !== 'discover' && tab !== 'nearby' && !inChat && (
           <header className="screen-head">
             <div>
               <h1 className="screen-title">{t(TABS.find((x) => x[0] === tab)[2])}</h1>
