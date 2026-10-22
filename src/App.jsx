@@ -1,5 +1,7 @@
 import { useState, useRef, useId, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { STORES, pokeImg, opImg } from './data';
 import { GAMES, placeholderArt, defaultAvatar } from './games';
 import { CATALOG, GAME_CATEGORIES, MAX_GAMES, gameName, isGameId } from './catalog';
@@ -1483,37 +1485,105 @@ function SponsoredRow({ ad, onOpen }) {
   );
 }
 
-/* Mapa de dibujo (no es un mapa real): plegado al abrir, con una marca para desplegarlo.
-   Las posiciones salen del rango de distancia y de un ángulo fijo por persona: nunca hay coordenadas. */
-const mapPos = (key, km, radius) => {
-  const h = [...String(key)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7);
-  const a = (h % 360) * (Math.PI / 180);
-  const r = Math.max(0.14, Math.min(km / radius, 0.92)) * 44;
-  return { left: `${50 + Math.cos(a) * r}%`, top: `${50 + Math.sin(a) * r}%` };
+/* Mapa real (OpenStreetMap) centrado en tu ubicación. Cada persona se coloca a su distancia aproximada, en un
+   ángulo fijo y con algo de variación: no sabemos dónde vive nadie, solo a qué distancia está. */
+const hashOf = (key) => [...String(key)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7);
+const pointAt = (lat, lng, km, bearing) => {
+  const d = km / 6371;
+  const b = (bearing * Math.PI) / 180;
+  const lat1 = (lat * Math.PI) / 180;
+  const lng1 = (lng * Math.PI) / 180;
+  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(b));
+  const lng2 = lng1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2));
+  return [(lat2 * 180) / Math.PI, (lng2 * 180) / Math.PI];
 };
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const STORE_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v9h14v-9M10 21v-5h4v5"/></svg>';
+
 /* Pantalla completa: el mapa ocupa todo. Abajo, el contador; el botón flotante abre la lista de personas */
 function NearbyMap({ players, stores, radius, onRadius, onInfo, onStore, children }) {
   const [listOpen, setListOpen] = useState(false);
+  const [here, setHere] = useState(null); // { lat, lng } con permiso de ubicación
+  const [locating, setLocating] = useState(true);
+  const hostRef = useRef(null);
+  const mapRef = useRef(null);
+  const layerRef = useRef(null);
+  // Los pines llaman siempre a los handlers más recientes sin volver a crearse en cada render
+  const handlers = useRef({});
+  useEffect(() => { handlers.current = { onInfo, onStore }; });
+  const locate = () => {
+    if (!navigator.geolocation) { setLocating(false); return; }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setHere({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocating(false); },
+      () => { setHere(null); setLocating(false); },
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 },
+    );
+  };
+  useEffect(() => { locate(); }, []);
+
+  // Crea el mapa cuando hay ubicación; al salir se destruye
+  useEffect(() => {
+    if (!here || !hostRef.current) return undefined;
+    const map = L.map(hostRef.current, { zoomControl: false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(map);
+    layerRef.current = L.layerGroup().addTo(map);
+    mapRef.current = map;
+    return () => { map.remove(); mapRef.current = null; layerRef.current = null; };
+  }, [here]);
+
+  // Encuadra el mapa en tu radio
+  useEffect(() => {
+    if (!here || !mapRef.current) return;
+    mapRef.current.fitBounds(L.latLng(here.lat, here.lng).toBounds(radius * 2000));
+  }, [here, radius]);
+
+  // Pines: tu posición, las personas y las tiendas (las de ejemplo, si están activas)
+  useEffect(() => {
+    const layer = layerRef.current;
+    if (!layer || !here) return;
+    layer.clearLayers();
+    L.marker([here.lat, here.lng], {
+      icon: L.divIcon({ className: 'near-leaflet-icon', html: '<span class="near-map-me"></span>', iconSize: [18, 18], iconAnchor: [9, 9] }),
+      interactive: false,
+    }).addTo(layer);
+    players.forEach((p) => {
+      const h = hashOf(p.id);
+      const [lat, lng] = pointAt(here.lat, here.lng, p.dist * (0.75 + (h % 50) / 100), h % 360);
+      L.marker([lat, lng], {
+        icon: L.divIcon({ className: 'near-leaflet-icon', html: `<span class="near-map-pin"><img src="${escapeHtml(avatarOf(p))}" alt=""></span>`, iconSize: [40, 40], iconAnchor: [20, 20] }),
+        title: p.name, keyboard: true,
+      }).on('click', () => handlers.current.onInfo(p)).addTo(layer);
+    });
+    stores.forEach((st) => {
+      const h = hashOf(st.id);
+      const [lat, lng] = pointAt(here.lat, here.lng, st.dist, h % 360);
+      L.marker([lat, lng], {
+        icon: L.divIcon({ className: 'near-leaflet-icon', html: `<span class="near-map-pin store">${STORE_SVG}</span>`, iconSize: [40, 40], iconAnchor: [20, 20] }),
+        title: st.name, keyboard: true,
+      }).on('click', () => handlers.current.onStore(st.id)).addTo(layer);
+    });
+  }, [here, players, stores]);
+
   return (
     <div className="near-map">
-      <div className="near-map-canvas" role="region" aria-label={t('Mapa de jugadores y tiendas cercanas')}>
+      <div className="near-map-canvas">
+        {here
+          ? <div ref={hostRef} className="near-leaflet" role="region" aria-label={t('Mapa de jugadores y tiendas cercanas')} />
+          : (
+            <div className="near-map-empty">
+              <p>{locating ? t('Buscando tu ubicación…') : t('Activa la ubicación para ver el mapa y las personas cerca de ti')}</p>
+              {!locating && <button type="button" className="primary small" onClick={locate}>{t('Usar mi ubicación')}</button>}
+            </div>
+          )}
         <div className="near-km">
           <select id="nearby-radius" value={radius} aria-label={t('Distancia máxima')} onChange={(e) => onRadius(+e.target.value)}>
             {RADIUS_STEPS.map((km) => <option key={km} value={km}>{`${km} km`}</option>)}
           </select>
           {I.chevron}
         </div>
-        <span className="near-map-me" />
-        {players.map((p) => (
-          <button key={p.id} type="button" className="near-map-pin" style={mapPos(p.id, p.dist, radius)} onClick={() => onInfo(p)} title={p.name} aria-label={p.name}>
-            <img src={avatarOf(p)} alt="" />
-          </button>
-        ))}
-        {stores.map((st) => (
-          <button key={st.id} type="button" className="near-map-pin store" style={mapPos(st.id, st.dist, radius)} onClick={() => onStore(st.id)} title={st.name} aria-label={st.name}>
-            {I.store}
-          </button>
-        ))}
         <div className="near-stats">
           <span>{I.user}{players.length === 1 ? t('1 persona') : t('{n} personas', { n: players.length })}</span>
           {STORES_ENABLED && <span>{I.store}{stores.length === 1 ? t('1 tienda') : t('{n} tiendas', { n: stores.length })}</span>}

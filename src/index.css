@@ -2476,9 +2476,16 @@ body { background: var(--body-bg); }
 .near-dist svg { width: 13px; height: 13px; }
 /* Mapa de dibujo: plegado por defecto; la marca de abajo indica que se despliega */
 .near-map { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-/* Estilo de la referencia: mapa claro con calles y río, selector de km arriba, pines verdes para tiendas.
-   Es un dibujo fijo (no un mapa real) y siempre claro, también en modo oscuro. */
-.near-map-canvas { position: relative; flex: 1; min-height: 0; overflow: hidden; background-color: #eef0f3; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300' preserveAspectRatio='none'%3E%3Crect width='400' height='300' fill='%23eef0f3'/%3E%3Cpath d='M-10 40 C80 20 140 90 220 70 S330 10 410 40 L410 70 C330 40 260 120 200 110 S90 60 -10 80Z' fill='%23bfe0f7'/%3E%3Cpath d='M0 150 L400 120 M60 0 L140 300 M250 0 L300 300 M0 250 L400 220 M330 0 L380 300' stroke='%23ffffff' stroke-width='9' fill='none'/%3E%3Cpath d='M0 190 L400 175 M100 0 L120 300 M200 150 L400 260 M0 80 L300 300' stroke='%23ffffff' stroke-width='4' fill='none'/%3E%3C/svg%3E"); background-size: 100% 100%; }
+/* Mapa real (OpenStreetMap, con Leaflet) a pantalla completa. Los controles van por encima del mapa. */
+.near-map-canvas { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #e9ecef; }
+.near-leaflet { position: absolute; inset: 0; z-index: 0; }
+.near-map-empty { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; color: #222; font-size: 0.875rem; font-weight: 600; }
+.near-map-empty p { margin: 0; max-width: 280px; }
+.leaflet-container { font: inherit; }
+.leaflet-control-attribution { font-size: 10px; }
+.near-leaflet-icon { background: none; border: 0; }
+.near-leaflet-icon .near-map-pin { position: relative; width: 40px; height: 40px; margin: 0; animation: none; }
+.near-leaflet-icon .near-map-me { position: relative; display: block; width: 18px; height: 18px; margin: 0; border-radius: 50%; }
 /* Cerca de ti ocupa toda la pantalla (sin cabecera, como en la referencia) */
 .phone.nearby .screen { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
 .near-stats { position: absolute; left: 16px; right: 16px; bottom: 16px; z-index: 2; display: flex; align-items: stretch; height: 44px; border-radius: 14px; background: #fff; color: #222; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14); font-size: 0.8125rem; font-weight: 600; }
